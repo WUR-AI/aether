@@ -1,0 +1,34 @@
+{
+  "default": 
+    {"paths": {
+      "home": "TMP_DEFAULT",
+      "repo": "TMP_DEFAULT",
+      "model_folder": "TMP_DEFAULT",
+      "data_folder": ""
+              }
+    },
+  "tplas": 
+    {"paths": {
+      "home": "/Users/tplas/",
+      "repo": "/Users/tplas/repos/aether/",
+      "model_folder": "/Users/tplas/models/aether/",
+      "data_folder": "/Users/tplas/data/"
+              }
+    },
+  "runner_Linux":
+  {"paths": {
+    "home": "/home/runner/",
+    "repo": "/home/runner/work/PECL/PECL",
+    "model_folder": "",
+    "data_folder": ""
+            }
+    },
+    "runner_Darwin":
+  {"paths": {
+    "home": "/Users/runner/",
+    "repo": "/Users/runner/work/PECL/PECL",
+    "model_folder": "",
+    "data_folder": ""
+            }
+    }
+}
