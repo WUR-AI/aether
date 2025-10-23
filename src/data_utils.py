@@ -1,7 +1,9 @@
-import os, sys
+import os, sys, datetime, ast
 import numpy as np 
 import pandas as pd 
 import geopandas as gpd
+import rasterio
+import rioxarray as rxr
 import loadpaths
 path_dict = loadpaths.loadpaths()
 import shapely
@@ -29,5 +31,33 @@ def load_s2bms_presence(path_dict=path_dict):
     df_s2bms_presence = df_s2bms_presence.to_crs(epsg=4326)
     df_s2bms_presence['lat'] = df_s2bms_presence.geometry.y
     df_s2bms_presence['lon'] = df_s2bms_presence.geometry.x
+    df_s2bms_presence['tuple_coords'] = [tuple([ast.literal_eval(x) for x in df_s2bms_presence.tuple_coor[ii].lstrip('(').rstrip(')').split(', ')]) for ii in range(len(df_s2bms_presence))]
     df_s2bms_presence.drop(columns=['row_id', 'tuple_coor'], inplace=True)
+    
+
     return df_s2bms_presence
+
+def load_tiff(tiff_file_path, datatype='np', verbose=0):
+    '''Load tiff file as np or da'''
+    with rasterio.open(tiff_file_path) as f:
+        if verbose > 0:
+            print(f.profile)
+        if datatype == 'np':  # handle different file types 
+            im = f.read()
+            assert type(im) == np.ndarray
+        elif datatype == 'da':
+            im = rxr.open_rasterio(f)
+            assert type(im) == xr.DataArray
+        else:
+            assert False, 'datatype should be np or da'
+    return im 
+
+def create_timestamp(include_seconds=False):
+    dt = datetime.datetime.now()
+    timestamp = str(dt.date()) + '-' + str(dt.hour).zfill(2) + str(dt.minute).zfill(2)
+    if include_seconds:
+        timestamp += ':' + str(dt.second).zfill(2)
+    return timestamp
+
+if __name__ == "__main__":
+    print('This is a utility script for creating and processing the dataset.')
