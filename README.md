@@ -1,6 +1,7 @@
 ![Python](https://img.shields.io/badge/python-3.12+-blue)
-![Issues](https://img.shields.io/github/issues/vdplasthijs/aether)
 [![License](https://img.shields.io/github/license/vdplasthijs/aether.svg)](LICENSE)
+![Issues](https://img.shields.io/github/issues/vdplasthijs/aether)
+![GitHub Tag](https://img.shields.io/github/v/tag/vdplasthijs/aether)
 
 # AETHER
 
