@@ -17,7 +17,7 @@ def get_bioclim_lc_from_coords(coords):
     return {**bioclim_data, **lc_data}
 
 def get_bioclim_lc_from_coords_list(coords_list, name_list=None, save_file=False,
-                                    save_folder=os.path.join(path_dict['repo'], 'outputs/'), 
+                                    save_folder=os.path.join(path_dict['repo'], 'data/source/butterflies/'), 
                                     save_filename='bioclim_lc_data.csv'):
     """Get both bioclimatic and land cover data from a list of coordinates."""
     if name_list is not None:

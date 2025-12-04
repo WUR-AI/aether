@@ -12,7 +12,6 @@ def get_hydra_paths():
     cwd = os.getcwd() + '/..'
     output_dir = os.path.join(cwd, "temp/outputs")
     # repo_dir = os.environ.get('PROJECT_ROOT', cwd)
-    print(cwd)
     with initialize(config_path='../../configs/paths', version_base="1.1"):
         cfg = compose(
             config_name="default.yaml",
