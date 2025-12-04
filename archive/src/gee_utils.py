@@ -18,24 +18,34 @@ if ONLINE_ACCESS_TO_GEE:
 else:
     print('WARNING: ONLINE_ACCESS_TO_GEE is set to False, so no access to GEE')
 
-def create_aoi_from_coord_buffer(coords, buffer_deg=0.01, buffer_m=1000, bool_buffer_in_deg=True):
+def get_epsg_from_latlon(lat, lon):
+    """Get the UTM EPSG code from latitude and longitude.
+    https://gis.stackexchange.com/questions/269518/auto-select-suitable-utm-zone-based-on-grid-intersection
+    """
+    utm_result = utm.from_latlon(lat, lon)
+    zone_number = utm_result[2]
+    hemisphere = '326' if lat >= 0 else '327'
+    epsg_code = int(hemisphere + str(zone_number).zfill(2))
+    return epsg_code
+
+def create_aoi_from_coord_buffer(coords, buffer_deg=0.01, buffer_m=1000, bool_buffer_in_deg=False):
     """Create an Earth Engine AOI (Geometry) from a coordinate and buffer in meters."""
     point = shapely.geometry.Point(coords)
     if bool_buffer_in_deg:  # not ideal https://gis.stackexchange.com/questions/304914/python-shapely-intersection-with-buffer-in-meter
+        print('WARNING: using buffer in degrees, which is not ideal for large latitudes.')
+        point = shapely.geometry.Point(coords)
         polygon = point.buffer(buffer_deg, cap_style=3)  ## buffer in degrees
         xy_coords = np.array(polygon.exterior.coords.xy).T 
         aoi = ee.Geometry.Polygon(xy_coords.tolist())
     else:
-        assert False, 'verify this part of the code'
-         ## buffer in meters
         point = ee.Geometry.Point(coords)
-        aoi = point.buffer(buffer_m)
+        aoi = point.buffer(buffer_m).bounds()
     assert aoi is not None
     return aoi
 
 def get_bioclim_from_coord(coords):
     assert ONLINE_ACCESS_TO_GEE, "ONLINE_ACCESS_TO_GEE is set to False, so no access to GEE"
-    aoi = create_aoi_from_coord_buffer(coords, buffer_deg=0.01, bool_buffer_in_deg=True)
+    aoi = create_aoi_from_coord_buffer(coords, buffer_m=1000, bool_buffer_in_deg=False)
     im_gee = ee.Image("WORLDCLIM/V1/BIO").clip(aoi) 
     point = ee.Geometry.Point(coords)  # redefine point for sampling
     values = im_gee.sample(region=point.buffer(1000), scale=1000).first().toDictionary().getInfo()
@@ -53,14 +63,16 @@ def convert_bioclim_to_units(bioclim_dict):
     bioclim_dict = {f'bioclim_{k.lstrip("bio")}': float(v) for k, v in bioclim_dict.items()}
     return bioclim_dict
 
-def get_lc_from_coord(coords, patch_size=None):
-    aoi = create_aoi_from_coord_buffer(coords, bool_buffer_in_deg=True)
-
+def get_lc_from_coord(coords, patch_size=2000, year=2017):
+    aoi = create_aoi_from_coord_buffer(coords, buffer_m=patch_size // 2, bool_buffer_in_deg=False)
+    lon, lat = coords
+    epsg_code = get_epsg_from_latlon(lat=lat, lon=lon)
     collection = ee.ImageCollection("COPERNICUS/CORINE/V20/100m")
     im_gee = ee.Image(collection
                       .filterBounds(aoi)
-                      .filterDate('2017-01-01', '2018-12-31')
+                      .filterDate(f'{year}-01-01', f'{year}-12-31')
                       .first()
+                      .reproject(f'EPSG:{epsg_code}', scale=10)
                       .clip(aoi))
     return im_gee
     
