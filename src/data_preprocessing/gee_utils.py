@@ -1,5 +1,6 @@
 import os, sys
-import numpy as np 
+import numpy as np
+import ee, geemap
 import utm
 import shapely
 from . import data_utils as du
@@ -10,7 +11,6 @@ if ONLINE_ACCESS_TO_GEE:
     if gee_api_key is None:
         print('WARNING: GEE_API environment variable not set, not using GEE API')
     else:
-        import ee, geemap 
         ee.Authenticate()
         ee.Initialize(project=gee_api_key)
         geemap.ee_initialize()
