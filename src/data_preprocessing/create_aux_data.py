@@ -5,8 +5,8 @@ import pandas as pd
 import loadpaths
 path_dict = loadpaths.loadpaths()
 
-import data_utils as du 
-import gee_utils as gu
+from . import data_utils as du 
+from . import gee_utils as gu
 
 def get_bioclim_lc_from_coords(coords):
     """Get both bioclimatic and land cover data from coordinates."""

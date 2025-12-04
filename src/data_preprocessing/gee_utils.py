@@ -2,12 +2,12 @@ import os, sys
 import numpy as np 
 import pandas as pd
 import utm
-import loadpaths
-path_dict = loadpaths.loadpaths()
+# import loadpaths
+# path_dict = loadpaths.loadpaths()
 import shapely
 from tqdm import tqdm
-sys.path.append('../content/')
-import data_utils as du
+# sys.path.append('../content/')
+from . import data_utils as du
 
 ONLINE_ACCESS_TO_GEE = True 
 if ONLINE_ACCESS_TO_GEE:
