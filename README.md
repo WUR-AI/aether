@@ -102,21 +102,24 @@ First, install dependencies
 ```bash
 # clone project   
 git clone https://github.com/WUR-AI/aether
-
-# install conda environment  
 cd aether
 
-conda env create -f requirements.yml
+# install conda environment  
+conda create -n aether python=3.12
 conda activate aether
 
-# or install virtual environmenmt
-python3 -m venv .aether
-source .aether/bin/activate
-pip install - r requirements.txt
+# or venv 
+python3 -m .venv
+source .venv/bin/activate
 
-# install peoject package
-pip install - e.
+# install uv manager
+pip install uv
 
+# install all Python dependencies
+uv sync # reads pyproject.toml + uv.lock
+
+# install project locally (editable)
+uv pip install -e .
 ```
 
 ## Citation 
