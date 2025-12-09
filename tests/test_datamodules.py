@@ -1,38 +1,84 @@
-from pathlib import Path
-
 import pytest
-import torch
 
-from src.data.mnist_datamodule import MNISTDataModule
+from build.lib.src.data.base_datamodule import BaseDataModule
+from src.data.components.butterfly_dataset import ButterflyDataset
 
 
-@pytest.mark.parametrize("batch_size", [32, 128])
-def test_mnist_datamodule(batch_size: int) -> None:
-    """Tests `MNISTDataModule` to verify that it can be downloaded correctly, that the necessary
-    attributes were created (e.g., the dataloader objects), and that dtypes and batch sizes
-    correctly match.
+@pytest.mark.parametrize(
+    "modalities, target, numericals",
+    [
+        (['coords'], True, False),
+        (['coords'], True, True),
+        (['coords'], False, False)
+    ]
+)
+def test_butterfly_dataset(modalities, target, numericals):
+    df_path = 'data/model_ready/s2bms_presence_with_aux_data.csv'
 
-    :param batch_size: Batch size of the data to be loaded by the dataloader.
-    """
-    data_dir = "data/"
+    dataset = ButterflyDataset(df_path, modalities, target, numericals)
 
-    dm = MNISTDataModule(data_dir=data_dir, batch_size=batch_size)
-    dm.prepare_data()
+    assert dataset.modalities == modalities
+    assert dataset.target == target
+    assert dataset.numericals == numericals
 
-    assert not dm.data_train and not dm.data_val and not dm.data_test
-    assert Path(data_dir, "MNIST").exists()
-    assert Path(data_dir, "MNIST", "raw").exists()
+    data_point = dataset[0]
+
+    if target:
+        assert dataset.target_names is not None
+        assert len(dataset.target_names) > 0
+        assert data_point.get('target') is not None
+    else:
+        assert dataset.target_names is None
+
+    if numericals:
+        assert dataset.numerical_names is not None
+        assert len(dataset.numerical_names) > 0
+        assert data_point.get('numericals') is not None
+    else:
+        assert dataset.numerical_names is None
+
+    for modality in modalities:
+        assert data_point.get('eo', {}).get(modality) is not None
+
+        if modality == 'coords':
+            assert len(data_point.get('eo', {}).get(modality)) == 2
+
+
+
+
+@pytest.mark.parametrize(
+    "modalities, target, numericals, batch_size",
+    [
+        (['coords'], True, False, 32),
+        (['coords'], True, True, 16),
+        (['coords'], False, False, 4)
+    ]
+)
+def test_butterfly_datamodule(modalities, target, numericals, batch_size):
+    df_path = 'data/model_ready/s2bms_presence_with_aux_data.csv'
+
+    dataset = ButterflyDataset(df_path, modalities, target, numericals)
+
+    dm = BaseDataModule(dataset, batch_size=batch_size)
 
     dm.setup()
     assert dm.data_train and dm.data_val and dm.data_test
     assert dm.train_dataloader() and dm.val_dataloader() and dm.test_dataloader()
 
     num_datapoints = len(dm.data_train) + len(dm.data_val) + len(dm.data_test)
-    assert num_datapoints == 70_000
+    assert num_datapoints == len(dataset)
 
     batch = next(iter(dm.train_dataloader()))
-    x, y = batch
-    assert len(x) == batch_size
-    assert len(y) == batch_size
-    assert x.dtype == torch.float32
-    assert y.dtype == torch.int64
+    for modality in modalities:
+        assert len(batch.get('eo', {}).get(modality)) == batch_size
+    if target:
+        assert batch.get('target') is not None
+        assert len(batch.get('target')) == batch_size
+    else:
+        assert batch.get('target') is None
+
+    if numericals:
+        assert batch.get('numericals') is not None
+        assert len(batch.get('numericals')) == batch_size
+    else:
+        assert batch.get('numericals') is None
