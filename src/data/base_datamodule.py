@@ -19,8 +19,8 @@ class BaseDataModule(LightningDataModule):
         super().__init__()
         self.save_hyperparameters(logger=False)
 
-        self.dataset = dataset
-        self.batch_size_per_device = batch_size
+        self.dataset: BaseDataset = dataset
+        self.batch_size_per_device: int = batch_size
 
     @property
     def num_classes(self) -> int:
@@ -83,7 +83,7 @@ class BaseDataModule(LightningDataModule):
             batch_size=self.batch_size_per_device,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
-            persistent_workers=True,
+            persistent_workers=True if self.hparams.num_workers > 0 else False,
             shuffle=False,
         )
 
@@ -97,7 +97,7 @@ class BaseDataModule(LightningDataModule):
             batch_size=self.batch_size_per_device,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
-            persistent_workers=True,
+            persistent_workers=True if self.hparams.num_workers > 0 else False,
             shuffle=False,
         )
 
