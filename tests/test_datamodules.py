@@ -1,6 +1,6 @@
 import pytest
 
-from build.lib.src.data.base_datamodule import BaseDataModule
+from src.data.base_datamodule import BaseDataModule
 from src.data.components.butterfly_dataset import ButterflyDataset
 
 
