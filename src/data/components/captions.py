@@ -1,6 +1,4 @@
-import os, sys 
-sys.path.append('../../data_processing')  # tidy up  
-import data_utils as du
+from src.data_preprocessing import data_utils as du
 
 def create_simple_caption(data_single_loc, include_lc=True, include_bioclim=True):
     # assert type(data_single_loc) == pd.Series or type(data_single_loc) == dict, f'Input must be a pandas Series or dict, but got {type(data_single_loc)}'
