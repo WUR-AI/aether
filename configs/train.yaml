@@ -8,8 +8,8 @@ defaults:
   - model: predictive_geoclip
   - callbacks: default
   - logger: wandb # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
-  - trainer: default
-  - paths: default
+  - trainer: ${env:TRAINER_PROFILE,default} 
+  - paths: ${env:STORAGE_MODE,default} 
   - extras: default
   - hydra: default
 
