@@ -3,8 +3,8 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 
-from . import data_utils as du 
-from . import gee_utils as gu
+from src.data_preprocessing import gee_utils as gu
+from src.data_preprocessing import data_utils as du
 
 path_dict = du.get_hydra_paths()
 

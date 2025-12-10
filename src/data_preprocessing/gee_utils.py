@@ -3,7 +3,8 @@ import numpy as np
 import ee, geemap
 import utm
 import shapely
-from . import data_utils as du
+
+from src.data_preprocessing import data_utils as du
 
 ONLINE_ACCESS_TO_GEE = True 
 if ONLINE_ACCESS_TO_GEE:

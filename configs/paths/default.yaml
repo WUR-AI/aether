@@ -5,13 +5,13 @@
 root_dir: ${oc.env:PROJECT_ROOT,.}
 
 # path to data directory
-data_dir: ${paths.root_dir}/data/
+data_dir: ${root_dir}/data/
 
 # path to data splits directory
-splits: ${paths.data_dir}/splits/
+splits: ${data_dir}/splits/
 
 # path to logging directory
-log_dir: ${paths.root_dir}/logs/
+log_dir: ${root_dir}/logs/
 
 # path to output directory, created dynamically by hydra
 # path generation pattern is specified in `configs/hydra/default.yaml`

@@ -18,13 +18,13 @@ def get_hydra_paths():
             overrides=[
                 f"hydra.run.dir={cwd}",
                 f"hydra.job.num=0",  # required to resolve hydra.job.* interpolations
-                f"paths.output_dir={output_dir}",
-                f"paths.work_dir={cwd}",
+                f"output_dir={output_dir}",
+                f"work_dir={cwd}",
             ]
         )
 
     resolved_cfg = OmegaConf.to_container(cfg, resolve=True)
-    path_dict = resolved_cfg['paths']
+    path_dict = resolved_cfg#['paths']
     path_dict['repo'] = path_dict['root_dir']
     return path_dict
 
