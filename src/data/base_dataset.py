@@ -9,30 +9,30 @@ from torch.utils.data import Dataset
 class BaseDataset(Dataset, ABC):
     def __init__(
             self,
-            df_path: str,
+            path_csv: str,
             modalities: list[str],
-            target: bool=True,
-            numericals: bool=False,
-            dataset_name:str='BaseDataset',
+            use_target_data: bool = True,
+            use_aux_data: bool = False,
+           dataset_name:str='BaseDataset',
             random_state=42
     ) -> None:
 
         # read and shuffle df
-        assert os.path.exists(df_path), f'{df_path} does not exist.'
-        self.df: pd.DataFrame = pd.read_csv(df_path)
+        assert os.path.exists(path_csv), f'{path_csv} does not exist.'
+        self.df: pd.DataFrame = pd.read_csv(path_csv)
         self.df = shuffle(self.df, random_state=random_state)
 
         # Set attributes
         self.dataset_name: str = dataset_name + '_'+ '_'.join(modalities)
 
         self.modalities: list[str] = modalities
-        self.target: bool = target
-        self.numericals: bool = numericals
+        self.use_target_data: bool = use_target_data
+        self.use_aux_data: bool = use_aux_data
 
         # Set placeholders
         self.num_classes: int | None = None
         self.target_names: list[str] | None = None
-        self.numerical_names: list[str] | None = None
+        self.aux_names: list[str] | None = None
         self.records: Dict[str] | None = None
 
     @final
