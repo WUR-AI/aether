@@ -1,7 +1,7 @@
 _target_: src.models.predictive_model.PredictiveModel
 
 eo_encoder:
-  _target_: src.models.components.eo_encoders.geoclip.GeoClipEncoder
+  _target_: src.models.components.eo_encoders.geoclip.GeoClipCoordinateEncoder
 
 prediction_head:
   _target_: src.models.components.pred_heads.linear_pred_head.LinearPredictionHead
