@@ -13,8 +13,9 @@ class BaseDataset(Dataset, ABC):
             modalities: list[str],
             use_target_data: bool = True,
             use_aux_data: bool = False,
-           dataset_name:str='BaseDataset',
-            random_state=42
+            dataset_name:str='BaseDataset',
+            random_state=42,
+            mode: str = 'train'
     ) -> None:
 
         # read and shuffle df
@@ -34,6 +35,8 @@ class BaseDataset(Dataset, ABC):
         self.target_names: list[str] | None = None
         self.aux_names: list[str] | None = None
         self.records: Dict[str] | None = None
+
+        self.mode = mode  # 'train', 'val', 'test'
 
     @final
     def __len__(self) -> int:
