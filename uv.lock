@@ -13,7 +13,6 @@ name = "aether"
 version = "1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "geemap" },
     { name = "geoclip" },
     { name = "geopandas" },
     { name = "hydra-colorlog" },
@@ -29,18 +28,20 @@ dependencies = [
     { name = "torch" },
     { name = "torchaudio" },
     { name = "torchvision" },
+    { name = "utm" },
     { name = "wandb" },
     { name = "xarray" },
 ]
 
 [package.optional-dependencies]
-requirements = [
+create-data = [
+    { name = "geemap" },
     { name = "pipreqs" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "geemap", specifier = ">=0.36.6" },
+    { name = "geemap", marker = "extra == 'create-data'", specifier = ">=0.36.6" },
     { name = "geoclip", specifier = ">=1.2.0" },
     { name = "geopandas", specifier = ">=1.1.1" },
     { name = "hydra-colorlog", specifier = "==1.2.0" },
@@ -48,7 +49,7 @@ requires-dist = [
     { name = "hydra-optuna-sweeper", specifier = "==1.2.0" },
     { name = "lightning", specifier = ">=2.6.0" },
     { name = "pandas", specifier = ">=2.3.3" },
-    { name = "pipreqs", marker = "extra == 'requirements'", specifier = ">=0.5.0" },
+    { name = "pipreqs", marker = "extra == 'create-data'", specifier = ">=0.5.0" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "rasterio", specifier = ">=1.4.3" },
     { name = "rioxarray", specifier = ">=0.20.0" },
@@ -57,10 +58,11 @@ requires-dist = [
     { name = "torch", specifier = ">=2.9.1" },
     { name = "torchaudio", specifier = ">=2.9.1" },
     { name = "torchvision", specifier = ">=0.24.1" },
+    { name = "utm", specifier = ">=0.8.1" },
     { name = "wandb", specifier = ">=0.23.1" },
     { name = "xarray", specifier = ">=2025.12.0" },
 ]
-provides-extras = ["requirements"]
+provides-extras = ["create-data"]
 
 [[package]]
 name = "affine"
@@ -3903,6 +3905,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5e/1d/0f3a93cca1ac5e8287842ed4eebbd0f7a991315089b1a0b01c7788aa7b63/urllib3-2.6.1.tar.gz", hash = "sha256:5379eb6e1aba4088bae84f8242960017ec8d8e3decf30480b3a1abdaa9671a3f", size = 432678, upload-time = "2025-12-08T15:25:26.773Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bc/56/190ceb8cb10511b730b564fb1e0293fa468363dbad26145c34928a60cb0c/urllib3-2.6.1-py3-none-any.whl", hash = "sha256:e67d06fe947c36a7ca39f4994b08d73922d40e6cca949907be05efa6fd75110b", size = 131138, upload-time = "2025-12-08T15:25:25.51Z" },
+]
+
+[[package]]
+name = "utm"
+version = "0.8.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/c4/f7662574e0d8c883cea257a59efdc2dbb21f19f4a78e7c54be570d740f24/utm-0.8.1.tar.gz", hash = "sha256:634d5b6221570ddc6a1e94afa5c51bae92bcead811ddc5c9bc0a20b847c2dafa", size = 13128, upload-time = "2025-03-06T11:40:56.022Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3b/a4/0698f3e5c397442ec9323a537e48cc63b846288b6878d38efd04e91005e3/utm-0.8.1-py3-none-any.whl", hash = "sha256:e3d5e224082af138e40851dcaad08d7f99da1cc4b5c413a7de34eabee35f434a", size = 8613, upload-time = "2025-03-06T11:40:54.273Z" },
 ]
 
 [[package]]
