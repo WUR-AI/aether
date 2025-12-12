@@ -3,10 +3,10 @@ _target_: src.data.base_datamodule.BaseDataModule
 dataset:
   _target_: src.data.components.butterfly_dataset.ButterflyDataset
 
-  df_path: ${paths.data_dir}/model_ready/s2bms_presence_with_aux_data.csv
+  path_csv: ${paths.data_dir}/model_ready/s2bms_presence_with_aux_data.csv
   modalities: [ 'coords' ]
-  target: true
-  numericals: false
+  use_target_data: true
+  use_aux_data: false
 
 batch_size: 16
 train_val_test_split: [0.7, 0.15, 0.15]
