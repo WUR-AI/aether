@@ -2,16 +2,16 @@
 # this requires PROJECT_ROOT environment variable to exist
 # falls back to "." if PROJECT_ROOT is not set
 
-root_dir: ${oc.env:PROJECT_ROOT,.}
+root_dir: ${oc.env:PROJECT_ROOT,./}
 
 # path to data directory
-data_dir: ${root_dir}/data/
+data_dir: ${paths.root_dir}/data/
 
 # path to data splits directory
-splits: ${data_dir}/splits/
+splits: ${paths.data_dir}/splits/
 
 # path to logging directory
-log_dir: ${root_dir}/logs/
+log_dir: ${paths.root_dir}/logs/
 
 # path to output directory, created dynamically by hydra
 # path generation pattern is specified in `configs/hydra/local.yaml`
@@ -23,4 +23,4 @@ work_dir: ${hydra:runtime.cwd}
 
 # huggingface cache directory
 # can be overridden via HF_HOME environment variable
-huggingface_cache: ${oc.env:HF_HOME,${root_dir}/.cache/huggingface}
+huggingface_cache: ${oc.env:HF_HOME,${paths.root_dir}/.cache/huggingface}
