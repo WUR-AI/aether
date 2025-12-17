@@ -8,6 +8,7 @@ from src.data_preprocessing import data_utils as du
 
 path_dict = du.get_hydra_paths()
 
+
 def get_bioclim_lc_from_coords(coords):
     """Get both bioclimatic and land cover data from coordinates."""
     bioclim_data = gu.get_bioclim_from_coord(coords)
@@ -16,9 +17,14 @@ def get_bioclim_lc_from_coords(coords):
     lc_data = gu.convert_corine_lc_im_to_tab(lc_im)
     return {**bioclim_data, **lc_data}
 
-def get_bioclim_lc_from_coords_list(coords_list, name_list=None, save_file=False,
-                                    save_folder=os.path.join(path_dict['repo'], 'data/source/butterflies/'), 
-                                    save_filename='bioclim_lc_data.csv'):
+
+def get_bioclim_lc_from_coords_list(
+    coords_list,
+    name_list=None,
+    save_file=False,
+    save_folder=os.path.join(path_dict['repo'], 'data/source/butterflies/'),
+    save_filename='bioclim_lc_data.csv',
+):
     """Get both bioclimatic and land cover data from a list of coordinates."""
     if name_list is not None:
         assert len(name_list) == len(coords_list), "name_list and coords_list must have the same length"
@@ -55,13 +61,37 @@ def get_bioclim_lc_from_coords_list(coords_list, name_list=None, save_file=False
             print(f"Intermediate save of bioclimatic and land cover data to {save_path} at {i_coords + 1} samples")
 
     results = pd.DataFrame(results)
+
+    # Add top-5 corine cols
+    target_cols = [c for c in results.columns if ('corine' in c and 'top' not in c)]
+    target_cols.sort()
+
+    sub_df = results[target_cols]
+    sub_np = sub_df.to_numpy()
+
+    # reproducible randomness
+    rng = np.random.default_rng(seed=42)
+    noise = rng.uniform(0, 1e-8, size=sub_np.shape)
+    sub_np_noisy = sub_np + noise
+
+    # top-5
+    top_k_idx = np.argsort(sub_np_noisy, axis=1)[:, -5:][:, ::-1]
+    target_cols_np = np.array(target_cols)
+
+    for i in range(5):
+        results[f"aux_corine_frac_top_{i + 1}"] = target_cols_np[top_k_idx[:, i]]
+
     if save_file:
         results.to_csv(save_path, index=False)
         print(f"Saved bioclimatic and land cover data to {save_path}")
     return results
 
+
 if __name__ == "__main__":
     df_s2bms_presence = du.load_s2bms_presence()
-    get_bioclim_lc_from_coords_list(coords_list=df_s2bms_presence.tuple_coords.values,
-                                   name_list=df_s2bms_presence.name_loc.values,
-                                   save_file=True, save_filename='s2bms_bioclim_lc_data.csv')
+    get_bioclim_lc_from_coords_list(
+        coords_list=df_s2bms_presence.tuple_coords.values,
+        name_list=df_s2bms_presence.name_loc.values,
+        save_file=True,
+        save_filename='s2bms_bioclim_lc_data.csv',
+    )
