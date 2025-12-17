@@ -15,7 +15,7 @@ class BaseCaptionBuilder(ABC):
         self.templates = json.load(open(templates_path, "r"))
         self.template_tokens = [self._extract_tokens(t) for t in self.templates]
 
-        self.value_key: Dict[str] | None = None
+        self.column_to_metadata_map: Dict[str] | None = None
 
         self.data_dir = data_dir
 

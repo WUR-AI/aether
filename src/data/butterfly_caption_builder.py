@@ -17,11 +17,11 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         bioclim_columns = self.get_bioclim_column_keys()
         corine_columns = self.get_corine_column_keys()
 
-        self.id_map = {}
+        self.column_to_metadata_map = {}
 
         for id, key in enumerate(dataset.aux_names):
             description, units = bioclim_columns.get(key) or corine_columns.get(key) or (None, None)
-            self.id_map[key] = {"id": id, "description": description, "units": units}
+            self.column_to_metadata_map[key] = {"id": id, "description": description, "units": units}
 
     def get_corine_column_keys(self):
 
@@ -52,11 +52,11 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         replacements = {}
 
         for token in tokens:
-            values_dict = self.id_map[token]
+            values_dict = self.column_to_metadata_map[token]
             idx = values_dict["id"]
             value = row[idx]
             if type(value) is str:
-                values_dict = self.id_map[value]
+                values_dict = self.column_to_metadata_map[value]
                 idx = values_dict["id"]
                 value = row[idx]
 
