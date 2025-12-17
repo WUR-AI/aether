@@ -1,11 +1,14 @@
 from functools import partial
 from typing import Tuple, Any, Dict, List
-import os
+import os, copy
 import torch
 from torch.utils.data import DataLoader, random_split
 from lightning import LightningDataModule
 import pandas as pd
 import numpy as np
+from sklearn.cluster import DBSCAN
+from sklearn.model_selection import GroupShuffleSplit
+from geopy.distance import distance as geodist # avoid naming confusion
 from src.data.base_dataset import BaseDataset
 from src.models.components.collate_fns import collate_fn
 from src.utils.errors import IllegalArgumentCombination
@@ -21,6 +24,7 @@ class BaseDataModule(LightningDataModule):
             pin_memory: bool = False,
             split_mode: str = 'random',
             save_split: bool = False,
+            dataset_name: str = 'base',
             filepath_split_indices_load: str | None = None,
             filepath_split_indices_save: str | None = None
     ) -> None:
@@ -37,6 +41,10 @@ class BaseDataModule(LightningDataModule):
     def num_classes(self) -> int:
         return self.dataset.num_classes
 
+    def setup(self, stage: str = 'fit') -> None:
+        self.setup_batch_size_per_device()
+        self.split_data()
+
     def setup_batch_size_per_device(self) -> None:
         """Divide batch size by the number of devices."""
         if self.trainer is not None:
@@ -46,8 +54,10 @@ class BaseDataModule(LightningDataModule):
                 )
             self.batch_size_per_device = self.hparams.batch_size // self.trainer.world_size
 
-    def setup(self, stage: str = 'fit') -> None:
-        self.setup_batch_size_per_device()
+    def split_data(self) -> None:
+        '''Split data into train, val and test. Either calculated here or loaded from file (random or dbscan clustered). 
+        Can be saved to file.'''
+        split_data_from_inds = True
 
         if self.hparams.split_mode == "random":
             self.data_train, self.data_val, self.data_test = random_split(
@@ -55,7 +65,60 @@ class BaseDataModule(LightningDataModule):
                 lengths=self.hparams.train_val_test_split,
                 generator=torch.Generator().manual_seed(42),
             )
+            split_data_from_inds = False  # already split data
             print(f'Dataset was randomly split with proportions: {self.hparams.train_val_test_split}')
+            if self.hparams.save_split:
+                split_indices = {
+                    'train_indices': self.data_train.dataset.df.id,
+                    'val_indices': self.data_val.dataset.df.id,
+                    'test_indices': self.data_test.dataset.df.id
+                    }
+
+        elif self.hparams.split_mode == "spatial_clusters":
+            print('Splitting dataset using spatial clusters. This can take a while...')
+            coords = np.array([self.dataset.df.lat, self.dataset.df.lon]).T
+            if len(coords) > 2000:
+                print('Warning: DBSCAN clustering on more than 2000 samples may be slow.')
+            ## 4000 m distance between points. Use geodist to calculate true distance.
+            min_dist = 4000
+            clustering = DBSCAN(eps=min_dist, metric=lambda u, v: geodist(u, v).meters, min_samples=2).fit(coords)
+            print('Clustering done. Creating splits and saving.')
+            ## Non-clustered points are labeled -1. Change to new cluster label.
+            clusters = copy.deepcopy(clustering.labels_)
+            new_cl = np.max(clusters) + 1
+            for i, cl in enumerate(clusters):
+                if cl == -1:
+                    clusters[i] = new_cl
+                    new_cl += 1
+
+            gss = GroupShuffleSplit(n_splits=1, test_size=self.hparams.train_val_test_split[2], random_state=0)
+            train_val_indices, test_indices = next(gss.split(np.arange(len(coords)), groups=clusters))
+            gss_2 = GroupShuffleSplit(n_splits=1, test_size=(self.hparams.train_val_test_split[1] / (self.hparams.train_val_test_split[0] + self.hparams.train_val_test_split[1])), random_state=0)
+            tmp_train_indices, tmp_val_indices = next(gss_2.split(train_val_indices, groups=clusters[train_val_indices]))
+            train_indices = train_val_indices[tmp_train_indices]
+            val_indices = train_val_indices[tmp_val_indices]
+            clusters_train = clusters[train_indices]
+            clusters_val = clusters[val_indices]
+            clusters_test = clusters[test_indices]
+            ## assert no overlap in indices:
+            assert len(np.intersect1d(train_indices, val_indices)) == 0, np.intersect1d(train_indices, val_indices)
+            assert len(np.intersect1d(train_indices, test_indices)) == 0, np.intersect1d(train_indices, test_indices)
+            assert len(np.intersect1d(val_indices, test_indices)) == 0, np.intersect1d(val_indices, test_indices)
+
+            ## assert no overlap in clusters:
+            assert len(np.intersect1d(clusters_train, clusters_val)) == 0, np.intersect1d(clusters_train, clusters_val)
+            assert len(np.intersect1d(clusters_train, clusters_test)) == 0, np.intersect1d(clusters_train, clusters_test)
+            assert len(np.intersect1d(clusters_val, clusters_test)) == 0, np.intersect1d(clusters_val, clusters_test)
+
+            print(f'Created {len(train_indices)} train, {len(val_indices)} val, {len(test_indices)} test indices using DBSCAN spatial clustering with {min_dist} m minimum distance between clusters.')
+            if self.hparams.save_split:
+                split_indices = {
+                    'train_indices': self.dataset.df.id[train_indices],
+                    'val_indices': self.dataset.df.id[val_indices],
+                    'test_indices': self.dataset.df.id[test_indices],
+                    'clusters': clusters
+                    }
+        
         elif self.hparams.split_mode == "from_file":
             assert self.hparams.filepath_split_indices is not None, IllegalArgumentCombination(f"filepath_split_indices must be provided when split_mode is 'from_file'")
             self.hparams.save_split = False  ## don't save split when loading from file
@@ -67,34 +130,34 @@ class BaseDataModule(LightningDataModule):
             if type(train_indices) != pd.Series: raise NotImplementedError('Expected a pd series of ids for data splits.')
             if type(val_indices) != pd.Series: raise NotImplementedError('Expected a pd series of ids for data splits.')
             if test_indices is not None and type(test_indices) != pd.Series: raise NotImplementedError('Expected a pd series of ids for data splits.')
-
             train_indices = np.where(self.dataset.df['id'].isin(train_indices))[0]
-            self.data_train = torch.utils.data.Subset(self.dataset, train_indices)
-            self.data_train.dataset.mode = 'train'
             val_indices = np.where(self.dataset.df['id'].isin(val_indices))[0]
-            self.data_val = torch.utils.data.Subset(self.dataset, val_indices)
-            self.data_val.dataset.mode = 'val'
-
             if test_indices is not None:
                 test_indices = np.where(self.dataset.df['id'].isin(test_indices))[0]
-                self.data_test = torch.utils.data.Subset(self.dataset, test_indices)
-                self.data_test.dataset.mode = 'test'
-            else:
-                self.data_test = None
+            
             print(f'Dataset was split using indices from file: {self.hparams.filepath_split_indices_load}')
         else:
             raise NotImplementedError(f'{self.hparams.train_val_test_split} split mode not implemented.')
 
+        if split_data_from_inds:
+            self.data_train = torch.utils.data.Subset(self.dataset, train_indices)
+            self.data_train.dataset.mode = 'train'
+            self.data_val = torch.utils.data.Subset(self.dataset, val_indices)
+            self.data_val.dataset.mode = 'val'
+
+            if test_indices is not None:
+                self.data_test = torch.utils.data.Subset(self.dataset, test_indices)
+                self.data_test.dataset.mode = 'test'
+            else:
+                self.data_test = None
+
         if self.hparams.save_split:
             assert self.hparams.filepath_split_indices_save is not None, "filepath_split_indices_save must be provided when saving a new data split."
             assert os.path.exists(os.path.dirname(self.hparams.filepath_split_indices_save)), f"Directory to save split indices does not exist: {os.path.dirname(self.hparams.filepath_split_indices_save)}"
-            split_indices = {
-                'train_indices': self.data_train.get('id'),
-                'val_indices': self.data_val.get('id'),
-                'test_indices': self.data_test.get('id')
-            }
+            assert type(split_indices) == dict, "split_indices must be a dictionary to be saved."
+
             timestamp = du.create_timestamp()
-            torch.save(split_indices, os.path.join(self.hparams.filepath_split_indices_save, f'split_indices_{self.dataset_name}_{timestamp}.pth'))
+            torch.save(split_indices, os.path.join(self.hparams.filepath_split_indices_save, f'split_indices_{self.hparams.dataset_name}_{timestamp}.pth'))
             print(f'Saved split indices to split_indices_{timestamp}.pth')
 
     def load_split_indices(self, filepath: str = None) -> dict:
