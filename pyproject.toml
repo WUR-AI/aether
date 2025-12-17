@@ -22,6 +22,7 @@ dependencies = [
     "rioxarray>=0.20.0",
     "utm>=0.8.1",
     "geopy>=2.4.1",
+    "tqdm>=4.67.1",
 ]
 
 [project.optional-dependencies]

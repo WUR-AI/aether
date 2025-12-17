@@ -78,7 +78,7 @@ class BaseDataModule(LightningDataModule):
             print('Splitting dataset using spatial clusters. This can take a while...')
             coords = np.array([self.dataset.df.lat, self.dataset.df.lon]).T
             if len(coords) > 2000:
-                print('Warning: DBSCAN clustering on more than 2000 samples may be slow.')
+                print('Warning: DBSCAN clustering on more than 2000 samples may be slow. Maybe set n_jobs in DBScan?')
             ## 4000 m distance between points. Use geodist to calculate true distance.
             min_dist = 4000
             clustering = DBSCAN(eps=min_dist, metric=lambda u, v: geodist(u, v).meters, min_samples=2).fit(coords)

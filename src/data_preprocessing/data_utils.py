@@ -9,6 +9,7 @@ from hydra import initialize, compose
 from omegaconf import DictConfig, OmegaConf
 
 def get_hydra_paths():
+    assert False, 'Deprecated. Use hydra config or environment variables instead.'
     cwd = os.getcwd() + '/..'
     output_dir = os.path.join(cwd, "outputs/temp/")
     # repo_dir = os.environ.get('PROJECT_ROOT', cwd)
