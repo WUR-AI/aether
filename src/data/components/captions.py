@@ -1,8 +1,13 @@
 from src.data_preprocessing import data_utils as du
+import pandas as pd
 
+
+# TODO could we archive this? I see you use it in notebook 03
 def create_simple_caption(data_single_loc, include_lc=True, include_bioclim=True):
     # assert type(data_single_loc) == pd.Series or type(data_single_loc) == dict, f'Input must be a pandas Series or dict, but got {type(data_single_loc)}'
-    assert type(data_single_loc) == pd.Series, f'Input must be a pandas Series, but got {type(data_single_loc)}'  ## assuming series rather than dict because it will be a bit faster
+    assert (
+        type(data_single_loc) == pd.Series
+    ), f'Input must be a pandas Series, but got {type(data_single_loc)}'  ## assuming series rather than dict because it will be a bit faster
     _, corine_dict = du.corine_lc_schema()
     corine_names = dict(zip(corine_dict['code'], corine_dict['category_level_3']))
     _, bioclim_dict = du.bioclim_schema()
@@ -11,7 +16,7 @@ def create_simple_caption(data_single_loc, include_lc=True, include_bioclim=True
     key_names = data_single_loc.index
     bioclim_keys = [k for k in key_names if 'bioclim_' in k]
     corine_keys = [k for k in key_names if 'corine_frac_' in k]
- 
+
     caption = 'Location with '
     if include_lc:
         top_3_lc = data_single_loc[corine_keys].sort_values(ascending=False)[:3]
@@ -35,7 +40,9 @@ def create_simple_caption(data_single_loc, include_lc=True, include_bioclim=True
                 caption += ' and '
             elif i_bio > 0:
                 caption += ', '
-            caption += f'{du.get_article(bioclim_names[bio_key].lower())} of {round(bio_value, 1)} {bioclim_units[bio_key]}'
-        
+            caption += (
+                f'{du.get_article(bioclim_names[bio_key].lower())} of {round(bio_value, 1)} {bioclim_units[bio_key]}'
+            )
+
     caption += '.'
     return caption

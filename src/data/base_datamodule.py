@@ -10,23 +10,25 @@ from sklearn.cluster import DBSCAN
 from sklearn.model_selection import GroupShuffleSplit
 from geopy.distance import distance as geodist # avoid naming confusion
 from src.data.base_dataset import BaseDataset
-from src.models.components.collate_fns import collate_fn
+from src.data.base_caption_builder import BaseCaptionBuilder
+from src.data.collate_fns import collate_fn
 from src.utils.errors import IllegalArgumentCombination
 
 
 class BaseDataModule(LightningDataModule):
     def __init__(
-            self,
-            dataset: BaseDataset,
-            batch_size: int = 64,
-            train_val_test_split: Tuple[float, float, float] = (0.7, 0.15, 0.15),
-            num_workers: int = 0,
-            pin_memory: bool = False,
-            split_mode: str = 'random',
-            save_split: bool = False,
-            dataset_name: str = 'base',
-            filepath_split_indices_load: str | None = None,
-            filepath_split_indices_save: str | None = None
+        self,
+        dataset: BaseDataset,
+        batch_size: int = 64,
+        train_val_test_split: Tuple[float, float, float] = (0.7, 0.15, 0.15),
+        num_workers: int = 0,
+        pin_memory: bool = False,
+        split_mode: str = 'random',
+        save_split: bool = False,
+        dataset_name: str = 'base',
+        filepath_split_indices_load: str | None = None,
+        filepath_split_indices_save: str | None = None,
+        caption_builder: BaseCaptionBuilder = None,
     ) -> None:
         super().__init__()
         self.save_hyperparameters(logger=False)
@@ -34,6 +36,9 @@ class BaseDataModule(LightningDataModule):
         self.dataset: BaseDataset = dataset
         self.batch_size_per_device: int = batch_size
         self.use_collate_fn: bool = True if self.dataset.use_aux_data else False
+        if self.use_collate_fn:
+            self.caption_builder = caption_builder
+            self.caption_builder.sync_with_dataset(self.dataset)
 
         self.setup()
 
@@ -55,7 +60,7 @@ class BaseDataModule(LightningDataModule):
             self.batch_size_per_device = self.hparams.batch_size // self.trainer.world_size
 
     def split_data(self) -> None:
-        '''Split data into train, val and test. Either calculated here or loaded from file (random or dbscan clustered). 
+        '''Split data into train, val and test. Either calculated here or loaded from file (random or dbscan clustered).
         Can be saved to file.'''
         split_data_from_inds = True
 
@@ -118,7 +123,7 @@ class BaseDataModule(LightningDataModule):
                     'test_indices': self.dataset.df.id[test_indices],
                     'clusters': clusters
                     }
-        
+
         elif self.hparams.split_mode == "from_file":
             assert self.hparams.filepath_split_indices is not None, IllegalArgumentCombination(f"filepath_split_indices must be provided when split_mode is 'from_file'")
             self.hparams.save_split = False  ## don't save split when loading from file
@@ -126,7 +131,7 @@ class BaseDataModule(LightningDataModule):
             train_indices = split_indices['train_indices']
             val_indices = split_indices['val_indices']
             test_indices = split_indices.get('test_indices', None)
-            
+
             if type(train_indices) != pd.Series: raise NotImplementedError('Expected a pd series of ids for data splits.')
             if type(val_indices) != pd.Series: raise NotImplementedError('Expected a pd series of ids for data splits.')
             if test_indices is not None and type(test_indices) != pd.Series: raise NotImplementedError('Expected a pd series of ids for data splits.')
@@ -134,7 +139,7 @@ class BaseDataModule(LightningDataModule):
             val_indices = np.where(self.dataset.df['id'].isin(val_indices))[0]
             if test_indices is not None:
                 test_indices = np.where(self.dataset.df['id'].isin(test_indices))[0]
-            
+
             print(f'Dataset was split using indices from file: {self.hparams.filepath_split_indices_load}')
         else:
             raise NotImplementedError(f'{self.hparams.train_val_test_split} split mode not implemented.')
@@ -186,7 +191,9 @@ class BaseDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=True,
-            collate_fn=partial(collate_fn, mode='train') if self.use_collate_fn else None,
+            collate_fn=(
+                partial(collate_fn, mode='train', caption_builder=self.caption_builder) if self.use_collate_fn else None
+            ),
         )
 
     def val_dataloader(self) -> DataLoader[Any]:
@@ -201,7 +208,9 @@ class BaseDataModule(LightningDataModule):
             pin_memory=self.hparams.pin_memory,
             persistent_workers=True if self.hparams.num_workers > 0 else False,
             shuffle=False,
-            collate_fn=partial(collate_fn, mode='val') if self.use_collate_fn else None,
+            collate_fn=(
+                partial(collate_fn, mode='val', caption_builder=self.caption_builder) if self.use_collate_fn else None
+            ),
         )
 
     def test_dataloader(self) -> DataLoader[Any]:
@@ -216,8 +225,11 @@ class BaseDataModule(LightningDataModule):
             pin_memory=self.hparams.pin_memory,
             persistent_workers=True if self.hparams.num_workers > 0 else False,
             shuffle=False,
-            collate_fn=partial(collate_fn, mode='test') if self.use_collate_fn else None,
+            collate_fn=(
+                partial(collate_fn, mode='test', caption_builder=self.caption_builder) if self.use_collate_fn else None
+            ),
         )
 
+
 if __name__ == "__main__":
-    _ = BaseDataModule(None, None, None, None, None, None, None)
+    _ = BaseDataModule(None, None, None, None, None, None, None, None, None, None, None)

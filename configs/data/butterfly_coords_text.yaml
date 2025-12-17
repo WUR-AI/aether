@@ -8,8 +8,14 @@ dataset:
   use_target_data: true
   use_aux_data: true
   path_s2_im:  ${oc.env:S2BMS_PATH,${paths.data_dir}/S2BMS}
-  n_bands: null
-  zscore_im: null
+  n_bands: 4
+  zscore_im: true
+
+caption_builder:
+  _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
+
+  templates_path: ${paths.data_dir}/caption_templates/butterfly.json
+  data_dir:  ${paths.data_dir}
 
 batch_size: 16
 train_val_test_split: [0.7, 0.15, 0.15]
