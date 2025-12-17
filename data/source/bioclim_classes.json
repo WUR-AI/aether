@@ -1,0 +1,21 @@
+[
+    {"name": "bio01", "units": "°C", "min": -29, "max": 32, "scale": 0.1, "pixel_size": "meters", "description": "Annual mean temperature"},
+    {"name": "bio02", "units": "°C", "min": 0.9, "max": 21.4, "scale": 0.1, "pixel_size": "meters", "description": "Mean diurnal range (mean of monthly (max temp - min temp))"},
+    {"name": "bio03", "units": "%", "min": 7, "max": 96, "scale": 1, "pixel_size": "meters", "description": "Isothermality (bio02/bio07 * 100)"},
+    {"name": "bio04", "units": "°C", "min": 0.62, "max": 227.21, "scale": 0.01, "pixel_size": "meters", "description": "Temperature seasonality (Standard deviation * 100)"},
+    {"name": "bio05", "units": "°C", "min": -9.6, "max": 49, "scale": 0.1, "pixel_size": "meters", "description": "Max temperature of warmest month"},
+    {"name": "bio06", "units": "°C", "min": -57.3, "max": 25.8, "scale": 0.1, "pixel_size": "meters", "description": "Min temperature of coldest month"},
+    {"name": "bio07", "units": "°C", "min": 5.3, "max": 72.5, "scale": 0.1, "pixel_size": "meters", "description": "Temperature annual range (bio05 - bio06)"},
+    {"name": "bio08", "units": "°C", "min": -28.5, "max": 37.8, "scale": 0.1, "pixel_size": "meters", "description": "Mean temperature of wettest quarter"},
+    {"name": "bio09", "units": "°C", "min": -52.1, "max": 36.6, "scale": 0.1, "pixel_size": "meters", "description": "Mean temperature of driest quarter"},
+    {"name": "bio10", "units": "°C", "min": -14.3, "max": 38.3, "scale": 0.1, "pixel_size": "meters", "description": "Mean temperature of warmest quarter"},
+    {"name": "bio11", "units": "°C", "min": -52.1, "max": 28.9, "scale": 0.1, "pixel_size": "meters", "description": "Mean temperature of coldest quarter"},
+    {"name": "bio12", "units": "mm", "min": 0, "max": 11401, "scale": 1, "pixel_size": "meters", "description": "Annual precipitation"},
+    {"name": "bio13", "units": "mm", "min": 0, "max": 2949, "scale": 1, "pixel_size": "meters", "description": "Precipitation of wettest month"},
+    {"name": "bio14", "units": "mm", "min": 0, "max": 752, "scale": 1, "pixel_size": "meters", "description": "Precipitation of driest month"},
+    {"name": "bio15", "units": "Coefficient of Variation", "min": 0, "max": 265, "scale": 1, "pixel_size": "meters", "description": "Precipitation seasonality"},
+    {"name": "bio16", "units": "mm", "min": 0, "max": 8019, "scale": 1, "pixel_size": "meters", "description": "Precipitation of wettest quarter"},
+    {"name": "bio17", "units": "mm", "min": 0, "max": 2495, "scale": 1, "pixel_size": "meters", "description": "Precipitation of driest quarter"},
+    {"name": "bio18", "units": "mm", "min": 0, "max": 6090, "scale": 1, "pixel_size": "meters", "description": "Precipitation of warmest quarter"},
+    {"name": "bio19", "units": "mm", "min": 0, "max": 5162, "scale": 1, "pixel_size": "meters", "description": "Precipitation of coldest quarter"}
+]

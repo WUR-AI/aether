@@ -187,9 +187,6 @@ cython_debug/
 *.tar.gz
 
 # Lightning-Hydra-Template
-configs/local/default.yaml
-/data/model_ready/
-/data/source/
 /logs/
 .env
 
