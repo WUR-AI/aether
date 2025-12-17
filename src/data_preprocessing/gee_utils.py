@@ -32,7 +32,7 @@ def create_aoi_from_coord_buffer(coords, buffer_deg=0.01, buffer_m=1000, bool_bu
     """Create an Earth Engine AOI (Geometry) from a coordinate and buffer in meters."""
     point = shapely.geometry.Point(coords)
     if bool_buffer_in_deg:  # not ideal https://gis.stackexchange.com/questions/304914/python-shapely-intersection-with-buffer-in-meter
-        print('WARNING: using buffer in degrees, which is not ideal for large latitudes.')
+        print('WARNING: using buffer in degrees, which distorts images for large latitudes.')
         point = shapely.geometry.Point(coords)
         polygon = point.buffer(buffer_deg, cap_style=3)  ## buffer in degrees
         xy_coords = np.array(polygon.exterior.coords.xy).T 
@@ -63,19 +63,53 @@ def convert_bioclim_to_units(bioclim_dict):
     bioclim_dict = {f'bioclim_{k.lstrip("bio")}': float(v) for k, v in bioclim_dict.items()}
     return bioclim_dict
 
-def get_lc_from_coord(coords, patch_size=2000, year=2017):
+def get_gee_image_from_coord(coords, collection_name='corine', patch_size=2000, year=2017,
+                             sentinel_month_start=3, sentinel_month_end=9):
     aoi = create_aoi_from_coord_buffer(coords, buffer_m=patch_size // 2, bool_buffer_in_deg=False)
     lon, lat = coords
     epsg_code = get_epsg_from_latlon(lat=lat, lon=lon)
-    collection = ee.ImageCollection("COPERNICUS/CORINE/V20/100m")
-    im_gee = ee.Image(collection
-                      .filterBounds(aoi)
-                      .filterDate(f'{year}-01-01', f'{year}-12-31')
-                      .first()
-                      .reproject(f'EPSG:{epsg_code}', scale=10)
-                      .clip(aoi))
+    if collection_name == 'corine':
+        collection = ee.ImageCollection("COPERNICUS/CORINE/V20/100m")
+    elif collection_name == 'alphaearth':
+        collection = ee.ImageCollection("GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL")
+    elif collection_name == 'sentinel2':
+        collection = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+    elif collection == 'dynamic_world':
+        collection = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
+    else:
+        raise NotImplementedError(f"Unknown collection_name: {collection_name}")
+    if collection is None: raise ValueError(f"Could not access {collection_name} collection in GEE.")
+
+    if collection_name in ['corine', 'alphaearth']:
+        im_gee = ee.Image(collection
+                        .filterBounds(aoi)
+                        .filterDate(f'{year}-01-01', f'{year}-12-31')
+                        .first()
+                        .reproject(f'EPSG:{epsg_code}', scale=10)
+                        .clip(aoi))
+    elif collection_name in ['sentinel2']:
+        month_start_str = str(sentinel_month_start).zfill(2)
+        month_end_str = str(sentinel_month_end).zfill(2)    
+        im_gee = ee.Image(collection 
+                        .filterBounds(aoi) 
+                        .filterDate(ee.Date(f'{year}-{month_start_str}-01'), ee.Date(f'{year}-{month_end_str}-01')) 
+                        .select(['B4', 'B3', 'B2', 'B8'])  # 10m bands, RGB and NIR
+                        .sort('CLOUDY_PIXEL_PERCENTAGE')
+                        .first()  # get the least cloudy image
+                        .reproject(f'EPSG:{epsg_code}', scale=10)
+                        .clip(aoi))
+    elif collection_name == 'dynamic_world':
+        prob_bands = ["water", "trees", "grass", "flooded_vegetation",
+                      "crops", "shrub_and_scrub", "built", "bare", "snow_and_ice"]
+        im_gee = ee.Image(collection 
+                        .filterBounds(aoi) 
+                        .filterDate(ee.Date(f'{year}-01-01'), ee.Date(f'{year}-12-31'))
+                        .select(prob_bands)  # get all probability bands
+                        .mean()  # mean over the year
+                        .reproject(f'EPSG:{epsg_code}', scale=10)  # reproject to 10m
+                        .clip(aoi)) 
     return im_gee
-    
+
 def convert_corine_lc_im_to_tab(lc_im):
     """Convert a land cover image to a tabular format with pixel counts per class."""
     assert ONLINE_ACCESS_TO_GEE, "ONLINE_ACCESS_TO_GEE is set to False, so no access to GEE"
