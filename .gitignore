@@ -221,3 +221,4 @@ __marimo__/
 .DS_Store
 archive/content/api_keys.py
 notebooks/tmp.tif
+uv.lock
