@@ -7,7 +7,7 @@ defaults:
   - data: butterfly_coords_text
   - model: predictive_geoclip
   - callbacks: default
-  - logger: wandb # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
+  - logger:  ${oc.env:LOGGER,wandb} # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: ${oc.env:TRAINER_PROFILE,default}
   - paths: ${oc.env:STORAGE_MODE,local}
   - extras: default
