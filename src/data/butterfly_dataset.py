@@ -10,7 +10,7 @@ from src.utils.errors import IllegalArgumentCombination
 class ButterflyDataset(BaseDataset):
     def __init__(
         self,
-        path_csv: str,
+        path_csv: str = None,
         modalities: list[str] = ['coords'],
         use_target_data: bool = True,
         use_aux_data: bool = False,
@@ -19,6 +19,8 @@ class ButterflyDataset(BaseDataset):
         n_bands: int | None = None,
         zscore_im: bool | None = None,
     ) -> None:
+        if path_csv is None:
+            path_csv = os.path.join(os.environ['PROJECT_ROOT'], 'data/model_ready/s2bms_presence_with_aux_data.csv')
         super().__init__(path_csv, modalities, use_target_data, use_aux_data, 'Butterflies', random_state)
 
         # Placeholder for filtered columns
@@ -31,7 +33,8 @@ class ButterflyDataset(BaseDataset):
         if 'coords' in self.modalities:
             columns.extend(['lat', 'lon'])
         if 's2' in self.modalities:
-            self.path_s2_im = path_s2_im or IllegalArgumentCombination(f'Provide path_s2_im for if using s2 modality')
+            if path_s2_im is None: raise  IllegalArgumentCombination(f'Provide path_s2_im for if using s2 modality')
+            self.path_s2_im = path_s2_im
             self.path_s2_im = os.path.join(
                 self.path_s2_im, 'sentinel2_satellite-images/y-2018-2019_m-06-09'
             )  ## default path from S2BMS dataset (on Zotero). Assuming S2BMS_PATH points to the parent folder

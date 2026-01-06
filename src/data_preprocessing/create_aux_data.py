@@ -101,6 +101,8 @@ def create_butterfly_aux_data(
     assert type(prefix_aux) == str, "prefix_aux must be a string"
     assert type(prefix_target) == str, "prefix_target must be a string"
     df_s2bms_presence = du.load_s2bms_presence()
+
+    ## Download auxiliary data if needed:
     if download_aux_data:
         get_bioclim_lc_from_coords_list(
             coords_list=df_s2bms_presence.tuple_coords.values,
@@ -109,6 +111,7 @@ def create_butterfly_aux_data(
             save_filename=filename,
         )
 
+    ## Load auxiliary data:
     if data_dir is None:
         data_dir = os.path.join(os.environ['PROJECT_ROOT'], 'data')
     path_butterfly_aux_target = os.path.join(data_dir, 'source', 'butterflies', filename)
@@ -122,7 +125,7 @@ def create_butterfly_aux_data(
     df_bioclim_lc.rename(columns={'name': 'name_loc'}, inplace=True)
     if prefix_aux != '':
         for c in df_bioclim_lc.columns:
-            if c in ['name_loc']:
+            if c in ['name_loc'] or c[:len(prefix_aux)] == prefix_aux:  # because aux_top_5 already start with aux_
                 continue
             df_bioclim_lc.rename(columns={c: f'{prefix_aux}{c}'}, inplace=True)
 

@@ -138,7 +138,7 @@ class BaseDataModule(LightningDataModule):
                 }
 
         elif self.hparams.split_mode == "from_file":
-            assert self.hparams.filepath_split_indices is not None, IllegalArgumentCombination(
+            assert self.hparams.filepath_split_indices_load is not None, IllegalArgumentCombination(
                 f"filepath_split_indices must be provided when split_mode is 'from_file'"
             )
             self.hparams.save_split = False  ## don't save split when loading from file

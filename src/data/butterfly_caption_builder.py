@@ -3,7 +3,7 @@ from typing import override, Any, List
 import pandas as pd
 
 from src.data.base_dataset import BaseDataset
-from src.data.base_caption_builder import BaseCaptionBuilder
+from src.data.base_caption_builder import BaseCaptionBuilder, get_adjective_for_percentage
 from src.data_preprocessing.data_utils import process_corine_classes, process_bioclim_classes
 
 
@@ -20,7 +20,11 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         self.column_to_metadata_map = {}
 
         for id, key in enumerate(dataset.aux_names):
-            description, units = bioclim_columns.get(key) or corine_columns.get(key) or (None, None)
+            if key.startswith('aux_corine_frac_top'):  # to avoid assert statement
+                description, units = None, None  
+            else:
+                description, units = bioclim_columns.get(key) or corine_columns.get(key) or (None, None)
+                assert description is not None, f'Key {key} not found in bioclim or corine columns'
             self.column_to_metadata_map[key] = {"id": id, "description": description, "units": units}
 
     def get_corine_column_keys(self):
@@ -45,27 +49,37 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         df.sort_values(by=["name"], inplace=True)
         return dict(zip(df["name"], zip(df["description"], df["units"])))
 
-    def _build_from_template(self, template_idx: int, row: List[Any]) -> str:
-
+    def _build_from_template(self, template_idx: int, row: List[Any],
+                             convert_corine_perc: bool = False) -> str:
+        '''Create caption from template and row of auxiliary data.'''
         template = self.templates[template_idx]
         tokens = self.template_tokens[template_idx]
         replacements = {}
-
         for token in tokens:
-            values_dict = self.column_to_metadata_map[token]
+            if token.startswith('aux_corine_frac_top_'):
+                values_dict_top = self.column_to_metadata_map[token]
+                idx_top = values_dict_top["id"]
+                referral_token = row[idx_top]  # e.g., token 'aux_corine_frac_top_1' might refer to 'corine_frac_211' in this row
+                referral_token = 'aux_' + referral_token
+                values_dict = self.column_to_metadata_map[referral_token]
+            else:
+                values_dict = self.column_to_metadata_map[token]
             idx = values_dict["id"]
             value = row[idx]
-            if type(value) is str:
-                values_dict = self.column_to_metadata_map[value]
-                idx = values_dict["id"]
-                value = row[idx]
 
-            formated_desc = values_dict["description"].lower() or ""
+            formatted_desc = values_dict["description"].lower() or ""
             units = values_dict["units"]
             value = value * 100 if units == "%" else value
 
-            formated_desc = formated_desc + f' ({round(value, 1)}{units if units else ""})'
-            replacements[token] = formated_desc
+            if 'corine' in token:
+                if convert_corine_perc:
+                    adjective = get_adjective_for_percentage(value)
+                    formatted_desc = f'{adjective} {formatted_desc}'
+                else:   
+                    formatted_desc = formatted_desc + f' ({round(value)}{units if units else ""})'
+            elif 'bioclim' in token:
+                formatted_desc = formatted_desc + f' of {round(value)}{units if units else ""}'
+            replacements[token] = formatted_desc
 
         template = self._fill(template, replacements)
         return template

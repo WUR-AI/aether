@@ -65,3 +65,23 @@ class BaseCaptionBuilder(ABC):
             formatted_rows.append(descriptions)
 
         return formatted_rows
+    
+def get_adjective_for_percentage(value: float) -> str:
+    '''Get adjective for percentage value (for land cover etc.).'''
+    if value < 10:
+        return "little"
+    elif value < 20:
+        return 'some'
+    elif value < 30:
+        return 'quite some'
+    elif value < 40:
+        return 'a lot of'
+    elif value < 50:
+        return 'much'
+    elif value < 60:
+        return 'mostly'
+    elif value < 75:
+        return 'predominantly'
+    else:
+        return 'almost entirely'
+    
