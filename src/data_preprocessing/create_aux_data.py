@@ -145,7 +145,13 @@ def create_butterfly_aux_data(
         [c for c in df_merged.columns if c not in ['name_loc', 'lat', 'lon']]
     )
     df_merged = df_merged[columns_ordered]
-
+    n_rows = df_merged.shape[0]
+    df_merged = df_merged.dropna().reset_index(drop=True)
+    n_rows_after = df_merged.shape[0]
+    if n_rows != n_rows_after:
+        print(
+            f'Warning: dropped {n_rows - n_rows_after} rows with missing auxiliary data. New number of rows: {n_rows_after}'
+        )
     if save_file:
         os.makedirs('../data/model_ready/', exist_ok=True)
         df_merged.to_csv('../data/model_ready/s2bms_presence_with_aux_data.csv', index=False)
