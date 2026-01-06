@@ -1,5 +1,7 @@
 import os
 from typing import override, Any, List
+import math
+
 import pandas as pd
 
 from src.data.base_dataset import BaseDataset
@@ -60,7 +62,7 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                 values_dict_top = self.column_to_metadata_map[token]
                 idx_top = values_dict_top["id"]
                 referral_token = row[idx_top]  # e.g., token 'aux_corine_frac_top_1' might refer to 'corine_frac_211' in this row
-                referral_token = 'aux_' + referral_token
+                referral_token = 'aux_' + referral_token if 'aux_' not in referral_token else referral_token
                 values_dict = self.column_to_metadata_map[referral_token]
             else:
                 values_dict = self.column_to_metadata_map[token]
@@ -75,7 +77,11 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                 if convert_corine_perc:
                     adjective = get_adjective_for_percentage(value)
                     formatted_desc = f'{adjective} {formatted_desc}'
-                else:   
+                else:
+                    # TODO there are nans in the data
+                    if value is None or not math.isfinite(value):
+                        value = 0
+                    print(idx)
                     formatted_desc = formatted_desc + f' ({round(value)}{units if units else ""})'
             elif 'bioclim' in token:
                 formatted_desc = formatted_desc + f' of {round(value)}{units if units else ""}'

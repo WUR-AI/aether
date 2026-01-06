@@ -59,8 +59,10 @@ class BaseCaptionBuilder(ABC):
 
         formatted_rows = []
         for row in aux_values:
+            descriptions = []
             for template_idx in range(0, len(self)):
-                formatted_rows.append(self._build_from_template(template_idx, row))
+                descriptions.append(self._build_from_template(template_idx, row))
+            formatted_rows.append(descriptions)
 
         return formatted_rows
     

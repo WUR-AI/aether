@@ -6,7 +6,7 @@ eo_encoder:
 prediction_head:
   _target_: src.models.components.pred_heads.linear_pred_head.LinearPredictionHead
 
-freezing_strategy: [eo_encoder]
+trainable_modules: [prediction_head]
 
 optimizer:
   _target_: torch.optim.Adam
