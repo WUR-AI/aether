@@ -78,10 +78,6 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                     adjective = get_adjective_for_percentage(value)
                     formatted_desc = f'{adjective} {formatted_desc}'
                 else:
-                    # TODO there are nans in the data
-                    if value is None or not math.isfinite(value):
-                        value = 0
-                    print(idx)
                     formatted_desc = formatted_desc + f' ({round(value)}{units if units else ""})'
             elif 'bioclim' in token:
                 formatted_desc = formatted_desc + f' of {round(value)}{units if units else ""}'
