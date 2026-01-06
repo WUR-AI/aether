@@ -1,8 +1,8 @@
 from typing import Dict, override
-import os
 
 import torch
 from transformers import CLIPProcessor, CLIPModel
+from geoclip import GeoCLIP
 
 from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
 
@@ -23,29 +23,41 @@ class ClipTextEncoder(BaseTextEncoder):
             cache_dir=hf_cache_dir,
         )
 
-        self.output_dim = self.model.config.text_config.projection_dim
+        self.projector = GeoCLIP().image_encoder.mlp
+        self.output_dim = 512
 
     @override
     def forward(
             self,
-            batch: Dict[str, torch.Tensor]
+            batch: Dict[str, torch.Tensor],
+            mode: str
     ) -> torch.Tensor:
         # Get text inputs
         text_input = batch.get('text')
 
-        # Tokenize and embed
-        text_tokens = self.processor(text=text_input, return_tensors='pt', padding=True)
-        device = next(self.model.parameters()).device
-        text_tokens = {k: v.to(device) for k, v in text_tokens.items()}
+        if mode == 'train':
+            text_input = [text_input]
+        # Embed text and if not training loop average all templates
+        avr_embeds = []
+        for captions_per_row in text_input:
+            # Tokenize and embed
+            text_tokens = self.processor(text=captions_per_row, return_tensors='pt', padding=True)
+            device = next(self.model.parameters()).device
+            text_tokens = {k: v.to(device) for k, v in text_tokens.items()}
 
-        text_embeds = self.model.get_text_features(**text_tokens)
+            text_embeds = self.model.get_text_features(**text_tokens)
 
-        # Project
-        if self.extra_projector is not None:
-            text_embeds = self.extra_projector(text_embeds)
+            # Project
+            if self.projector is not None:
+                text_embeds = self.projector(text_embeds)
+
+            if self.extra_projector is not None:
+                text_embeds = self.extra_projector(text_embeds)
+
+            if mode != 'train':
+                avr_embeds.append(text_embeds.mean(dim=0))
+
+        if mode != 'train':
+            text_embeds = torch.stack(avr_embeds, dim=0)
 
         return text_embeds
-
-
-
-

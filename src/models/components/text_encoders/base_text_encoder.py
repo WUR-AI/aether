@@ -16,7 +16,8 @@ class BaseTextEncoder(nn.Module, ABC):
     @abstractmethod
     def forward(
             self,
-            batch: Dict[str, torch.Tensor]
+            batch: Dict[str, torch.Tensor],
+            mode: str
     ) -> torch.Tensor:
         pass
 

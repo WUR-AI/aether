@@ -38,6 +38,4 @@ def collate_fn(
     else:
         collected['text'] = caption_builder.all(collected['aux'])
 
-    collected.pop('aux')
-
     return collected

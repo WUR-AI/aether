@@ -1,7 +1,6 @@
 from typing import override, Dict, Tuple
 
 import torch
-from torch import nn
 
 from src.models.base_model import BaseModel
 from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
@@ -27,10 +26,11 @@ class TextAlignmentModel(BaseModel):
         # Encoders configuration
         self.eo_encoder = eo_encoder
         self.text_encoder = text_encoder
+        # TODO: if eo==geoclip_img pass on shared mlp
 
         # Extra projector for text encoder if eo and text dim not match
         if self.eo_encoder.output_dim != self.text_encoder.output_dim:
-            self.text_encoder.add_projector(self.eo_encoder.output_dim)
+            self.text_encoder.add_projector(projected_dim = self.eo_encoder.output_dim)
 
         # Prediction head
         self.prediction_head = prediction_head
@@ -44,10 +44,11 @@ class TextAlignmentModel(BaseModel):
     @override
     def forward(
             self,
-            batch: Dict[str, torch.Tensor]
+            batch: Dict[str, torch.Tensor],
+            mode: str = 'train',
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         eo_feats = self.eo_encoder(batch)
-        text_feats = self.text_encoder(batch)
+        text_feats = self.text_encoder(batch, mode)
         return eo_feats, text_feats
 
     @override
@@ -56,10 +57,7 @@ class TextAlignmentModel(BaseModel):
             batch: Dict[str, torch.Tensor],
             mode: str='train'
     ) -> torch.Tensor:
-        eo_feats, text_feats = self.forward(batch)
-        if mode != 'train':
-            n = text_feats.shape[0] // eo_feats.shape[0]  # number of repeats per row
-            eo_feats = eo_feats.repeat_interleave(n, dim=0)
+        eo_feats, text_feats = self.forward(batch, mode)
         loss = self.loss_fn(eo_feats, text_feats)
 
         self.log(f"{mode}_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
