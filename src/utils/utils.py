@@ -46,6 +46,10 @@ def extras(cfg: DictConfig) -> None:
         if os.environ.get("HF_HOME") != hf_cache:
             os.environ["HF_HOME"] = hf_cache
             log.info(f"Setting HF_HOME for huggingface cache: {hf_cache}")
+    
+    # disable tokenizers parallelism to avoid warnings when using multiprocessing
+    if os.environ.get("TOKENIZERS_PARALLELISM") is None:
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 def task_wrapper(task_func: Callable) -> Callable:

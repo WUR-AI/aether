@@ -13,6 +13,11 @@ from src.data.base_datamodule import BaseDataModule
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 load_dotenv()
 
+# Disable tokenizers parallelism to avoid warnings when using multiprocessing
+import os
+if os.environ.get("TOKENIZERS_PARALLELISM") is None:
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 from src.utils import (
     RankedLogger,
     extras,
@@ -92,7 +97,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     return metric_dict, object_dict
 
 
-@hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
+@hydra.main(version_base="1.3", config_path="../configs", config_name="train_alignment.yaml")
 def main(cfg: DictConfig) -> Optional[float]:
     """Main entry point for training.
 

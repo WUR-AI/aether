@@ -9,6 +9,8 @@ import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn.model_selection import GroupShuffleSplit
 from geopy.distance import distance as geodist  # avoid naming confusion
+
+from src.data_preprocessing.data_utils import create_timestamp
 from src.data.base_dataset import BaseDataset
 from src.data.base_caption_builder import BaseCaptionBuilder
 from src.data.collate_fns import collate_fn
@@ -23,11 +25,11 @@ class BaseDataModule(LightningDataModule):
         train_val_test_split: Tuple[float, float, float] = (0.7, 0.15, 0.15),
         num_workers: int = 0,
         pin_memory: bool = False,
+        dataset_name: str = 'base',
         split_mode: str = 'random',
         save_split: bool = False,
-        dataset_name: str = 'base',
-        filepath_split_indices_load: str | None = None,
-        filepath_split_indices_save: str | None = None,
+        split_dir: str = None,
+        saved_split_file_name: str | None = None,
         caption_builder: BaseCaptionBuilder = None,
     ) -> None:
         super().__init__()
@@ -62,7 +64,7 @@ class BaseDataModule(LightningDataModule):
     def split_data(self) -> None:
         '''Split data into train, val and test. Either calculated here or loaded from file (random or dbscan clustered).
         Can be saved to file.'''
-        split_data_from_inds = True
+        split_data_from_inds = True # TODO: what is this for?
 
         if self.hparams.split_mode == "random":
             self.data_train, self.data_val, self.data_test = random_split(
@@ -138,11 +140,14 @@ class BaseDataModule(LightningDataModule):
                 }
 
         elif self.hparams.split_mode == "from_file":
-            assert self.hparams.filepath_split_indices_load is not None, IllegalArgumentCombination(
-                f"filepath_split_indices must be provided when split_mode is 'from_file'"
-            )
+            if self.hparams.saved_split_file_name is None:
+                raise IllegalArgumentCombination(f"saved_split_file_name must be provided when split_mode is 'from_file'")
+
             self.hparams.save_split = False  ## don't save split when loading from file
-            split_indices = self.load_split_indices(self.hparams.filepath_split_indices_load)
+
+            # get indices from file
+            self.saved_split_file_path = os.path.join(self.hparams.split_dir, self.hparams.saved_split_file_name)
+            split_indices = self.load_split_indices(self.saved_split_file_path)
             train_indices = split_indices['train_indices']
             val_indices = split_indices['val_indices']
             test_indices = split_indices.get('test_indices', None)
@@ -153,12 +158,13 @@ class BaseDataModule(LightningDataModule):
                 raise NotImplementedError('Expected a pd series of ids for data splits.')
             if test_indices is not None and type(test_indices) != pd.Series:
                 raise NotImplementedError('Expected a pd series of ids for data splits.')
+
             train_indices = np.where(self.dataset.df['id'].isin(train_indices))[0]
             val_indices = np.where(self.dataset.df['id'].isin(val_indices))[0]
             if test_indices is not None:
                 test_indices = np.where(self.dataset.df['id'].isin(test_indices))[0]
 
-            print(f'Dataset was split using indices from file: {self.hparams.filepath_split_indices_load}')
+            print(f'Dataset was split using indices from file: {self.saved_split_file_path}')
         else:
             raise NotImplementedError(f'{self.hparams.train_val_test_split} split mode not implemented.')
 
@@ -175,23 +181,22 @@ class BaseDataModule(LightningDataModule):
                 self.data_test = None
 
         if self.hparams.save_split:
-            assert (
-                self.hparams.filepath_split_indices_save is not None
-            ), "filepath_split_indices_save must be provided when saving a new data split."
-            assert os.path.exists(
-                os.path.dirname(self.hparams.filepath_split_indices_save)
-            ), f"Directory to save split indices does not exist: {os.path.dirname(self.hparams.filepath_split_indices_save)}"
-            assert type(split_indices) == dict, "split_indices must be a dictionary to be saved."
+            self.save_split_indices(split_indices)
 
-            timestamp = du.create_timestamp()
-            torch.save(
-                split_indices,
-                os.path.join(
-                    self.hparams.filepath_split_indices_save,
-                    f'split_indices_{self.hparams.dataset_name}_{timestamp}.pth',
-                ),
-            )
-            print(f'Saved split indices to split_indices_{timestamp}.pth')
+    def save_split_indices(self, split_indices: dict[str, Any] | dict):
+        assert (self.hparams.split_dir is not None), "split_dir must be provided when saving a new data split."
+        assert os.path.exists(self.hparams.split_dir), f"Directory to save split indices does not exist: {self.hparams.split_dir}"
+        assert type(split_indices) == dict, "split_indices must be a dictionary to be saved."
+
+        timestamp = create_timestamp()
+        torch.save(
+            split_indices,
+            os.path.join(
+                self.hparams.split_dir,
+                f'split_indices_{self.hparams.dataset_name}_{timestamp}.pth',
+            ),
+        )
+        print(f'Saved split indices to split_indices_{timestamp}.pth')
 
     def load_split_indices(self, filepath: str = None) -> dict:
         """Load split indices from a file."""

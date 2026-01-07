@@ -5,7 +5,7 @@
 root_dir: ${oc.env:PROJECT_ROOT,./}
 
 # path to data directory
-data_dir: ${paths.root_dir}/data/
+data_dir: ${oc.env:DATA_DIR,${paths.root_dir}/data/}
 
 # path to data splits directory
 splits: ${paths.data_dir}/splits/

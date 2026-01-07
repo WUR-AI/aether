@@ -14,20 +14,24 @@ class TextAlignmentModel(BaseModel):
             self,
             eo_encoder: BaseEOEncoder,
             text_encoder: BaseTextEncoder,
-            num_classes: int,
-            freezing_strategy: list[str],
             optimizer: torch.optim.Optimizer,
             scheduler: torch.optim.lr_scheduler,
             loss_fn: BaseLossFn,
+            trainable_modules: list[str] | None = None,
             prediction_head: BasePredictionHead | None = None,
+            num_classes: int | None = None,
     ) -> None:
-        super().__init__(freezing_strategy, optimizer, scheduler, loss_fn)
-        for part in freezing_strategy:
-            assert part in ['eo_encoder', 'prediction_head'], ValueError(f"Unknown freezing strategy for {part} part")
+        super().__init__(trainable_modules, optimizer, scheduler, loss_fn, num_classes)
 
         # Encoders configuration
         self.eo_encoder = eo_encoder
         self.text_encoder = text_encoder
+        # TODO: if eo==geoclip_img pass on shared mlp
+
+        # Extra projector for text encoder if eo and text dim not match
+        if self.eo_encoder.output_dim != self.text_encoder.output_dim:
+            self.text_encoder.add_projector(projected_dim = self.eo_encoder.output_dim)
+            self.trainable_modules.append('text_encoder.extra_projector')
 
         # Prediction head
         self.prediction_head = prediction_head
@@ -41,10 +45,11 @@ class TextAlignmentModel(BaseModel):
     @override
     def forward(
             self,
-            batch: Dict[str, torch.Tensor]
+            batch: Dict[str, torch.Tensor],
+            mode: str = 'train',
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         eo_feats = self.eo_encoder(batch)
-        text_feats = self.text_encoder(batch)
+        text_feats = self.text_encoder(batch, mode)
         return eo_feats, text_feats
 
     @override
@@ -53,7 +58,7 @@ class TextAlignmentModel(BaseModel):
             batch: Dict[str, torch.Tensor],
             mode: str='train'
     ) -> torch.Tensor:
-        eo_feats, text_feats = self.forward(batch)
+        eo_feats, text_feats = self.forward(batch, mode)
         loss = self.loss_fn(eo_feats, text_feats)
 
         self.log(f"{mode}_loss", loss, on_step=False, on_epoch=True, prog_bar=True)

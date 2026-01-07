@@ -2,10 +2,10 @@
 # this requires PROJECT_ROOT environment variable to exist
 # falls back to "." if PROJECT_ROOT is not set
 
-root_dir: ${oc.env:PROJECT_ROOT,.}
+root_dir: ${oc.env:PROJECT_ROOT,./}
 
 # path to data directory
-data_dir: ${SHARED_ROOT}/data/
+data_dir: ${oc.env:DATA_DIR,oc.env:SHARED_ROOT/data/,${paths.root_dir}/data/}
 
 # path to data splits directory
 splits: ${paths.data_dir}/splits/
@@ -23,4 +23,4 @@ work_dir: ${hydra:runtime.cwd}
 
 # huggingface cache directory
 # can be overridden via HF_HOME environment variable
-huggingface_cache: ${oc.env:HF_HOME,${SHARED_CACHE}/huggingface}
+huggingface_cache: ${oc.env:HF_HOME,oc.env:SHARED_CACHE/huggingface}

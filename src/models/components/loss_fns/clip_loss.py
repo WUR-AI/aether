@@ -19,22 +19,22 @@ class ClipLoss(BaseLossFn):
     @override
     def forward(
             self,
-            mod_1: torch.Tensor,
-            mod_2: torch.Tensor
+            eo_mod: torch.Tensor,
+            text_mod: torch.Tensor,
     ) -> torch.Tensor:
+
         # Normalise inputs
-        mod_1 = F.normalize(mod_1, dim=-1)
-        mod_2 = F.normalize(mod_2, dim=-1)
+        eo_mod = F.normalize(eo_mod, dim=-1)
+        text_mod = F.normalize(text_mod, dim=-1)
 
         # Clip temperature to not exceed 100
         temperature =  torch.clamp(self.temperature.exp(), max=100)
 
         # Get cosine similarity
-        dot_product = (mod_1 @ mod_2.T) / temperature
+        dot_product = (eo_mod @ text_mod.T) / temperature
 
-        targets = np.arrange(mod_1.shape[0])
-
-        # Calculate losses per modality
+        # Handle targets for contrastive loss
+        targets = torch.arange(eo_mod.shape[0], device=eo_mod.device)
         loss1 = F.cross_entropy(dot_product, targets)
         loss2 = F.cross_entropy(dot_product.T, targets)
 

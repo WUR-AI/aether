@@ -10,15 +10,16 @@ from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 class BaseModel(LightningModule, ABC):
     def __init__(
             self,
-            freezing_strategy: list[str],
+            trainable_modules: list[str] | None,
             optimizer: torch.optim.Optimizer,
             scheduler: torch.optim.lr_scheduler,
             loss_fn: BaseLossFn,
-            num_classes: int=None
+            num_classes: int | None = None
     ) -> None:
         super().__init__()
         self.save_hyperparameters(ignore=['loss_fn', 'eo_encoder', 'prediction_head', 'text_encoder'])
 
+        self.trainable_modules = tuple(trainable_modules) or tuple()
         self.num_classes: int = num_classes
 
         # Loss
@@ -26,9 +27,25 @@ class BaseModel(LightningModule, ABC):
 
     @final
     def freezer(self) -> None:
-        for part in self.hparams.freezing_strategy:
-            for param in self.__getattr__(part).parameters():
+        """Freezes and unfreezes modules based on freezing strategy and freezing exceptions"""
+
+        trainable = set()
+        # Freeze modules
+        for name, param in self.named_parameters():
+            # Enable exceptions
+            if name.startswith(self.trainable_modules):
+                param.requires_grad = True
+                top_name = name.split(".", 2)[:2]
+                trainable.add('.'.join(top_name))
+            else:
+                # Freeze the rest
                 param.requires_grad = False
+
+        print('----------------------------')
+        print(f'Set to train')
+        for m in sorted(trainable):
+            print(f"  {m}")
+        print('----------------------------')
 
     @abstractmethod
     def forward(
