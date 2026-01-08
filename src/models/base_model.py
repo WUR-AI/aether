@@ -41,6 +41,13 @@ class BaseModel(LightningModule, ABC):
                 # Freeze the rest
                 param.requires_grad = False
 
+        # Set module modes correctly
+        for name, module in self.named_modules():
+            if any(t.startswith(name) for t in self.trainable_modules):
+                module.train()
+            else:
+                module.eval()
+
         print('----------------------------')
         print(f'Set to train')
         for m in sorted(trainable):
