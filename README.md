@@ -2,40 +2,24 @@
 
 # AETHER-xAI
 
-[![python](https://img.shields.io/badge/-Python_3.8_%7C_3.9_%7C_3.10-blue?logo=python&logoColor=white)](https://github.com/pre-commit/pre-commit)
+[![python](https://img.shields.io/badge/python-3.12%2B-blue)](https://github.com/pre-commit/pre-commit)
 [![pytorch](https://img.shields.io/badge/PyTorch_2.0+-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
-[![lightning](https://img.shields.io/badge/-Lightning_2.0+-792ee5?logo=pytorchlightning&logoColor=white)](https://pytorchlightning.ai/)
+[![lightning](https://img.shields.io/badge/PyTorch--Lightning-792EE5?style=flat&logo=lightning&logoColor=white)](https://pytorchlightning.ai/)
 [![hydra](https://img.shields.io/badge/Config-Hydra_1.3-89b8cd)](https://hydra.cc/)
-[![black](https://img.shields.io/badge/Code%20Style-Black-black.svg?labelColor=gray)](https://black.readthedocs.io/en/stable/)
-[![isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/) <br>
-[![tests](https://github.com/ashleve/lightning-hydra-template/actions/workflows/test.yml/badge.svg)](https://github.com/ashleve/lightning-hydra-template/actions/workflows/test.yml)
-[![code-quality](https://github.com/ashleve/lightning-hydra-template/actions/workflows/code-quality-main.yaml/badge.svg)](https://github.com/ashleve/lightning-hydra-template/actions/workflows/code-quality-main.yaml)
-[![codecov](https://codecov.io/gh/ashleve/lightning-hydra-template/branch/main/graph/badge.svg)](https://codecov.io/gh/ashleve/lightning-hydra-template) <br>
 [![license](https://img.shields.io/badge/License-MIT-green.svg?labelColor=gray)](https://github.com/ashleve/lightning-hydra-template#license)
 [![PRs](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/ashleve/lightning-hydra-template/pulls)
-[![contributors](https://img.shields.io/github/contributors/ashleve/lightning-hydra-template.svg)](https://github.com/ashleve/lightning-hydra-template/graphs/contributors)
-
-![Python](https://img.shields.io/badge/python-3.12+-blue)
-[![License](https://img.shields.io/github/license/vdplasthijs/aether.svg)](archive/LICENSE)
 ![Issues](https://img.shields.io/github/issues/vdplasthijs/aether)
 ![GitHub Tag](https://img.shields.io/github/v/tag/vdplasthijs/aether)
 </div>
 
 ## Description
 
+This project develops a self-interpretable multi-modal framework to translate satellite data into physically meaningful variables, for stake-holder oriented explanations. 
+
+
 Some code was adapted from [github.com/vdplasthijs/PECL/](github.com/vdplasthijs/PECL/). 
 
-## Installation
-
-To use Google Earth engine (GEE) utilities, you need [a GEE API key](https://developers.google.com/earth-engine/guides/app_key). To use that key here, create the file `content/api_keys.py` that contains one line `GEE_API = '<your_api_key>'`. 
-
-Data paths are automatically retrieved from `content/data_paths.json`. You can add your profile (login name) here, or alternatively the 'default' profile will be used.
-
-## Getting started
-Have a look at the Jupyter notebooks in `notebooks/` to see how the functions in `src/` are used. 
-
 ## Data:
-The S2BMS coordinates and species occurrence probabilities are stored in `content/`. All satellite images of the full S2-BMS data set are available on [Zenodo](https://zenodo.org/records/15198884). 
 
 
 
@@ -75,6 +59,7 @@ The directory structure of new project looks like this:
 │
 ├── src                    <- Source code
 │   ├── data                     <- Data scripts
+│   ├── data_prepocessing        <- Data preprocessing scripts
 │   ├── models                   <- Model scripts
 │   ├── utils                    <- Utility scripts
 │   │
@@ -89,9 +74,9 @@ The directory structure of new project looks like this:
 ├── .project-root             <- File for inferring the position of project root directory
 ├── environment.yaml          <- File for installing conda environment
 ├── Makefile                  <- Makefile with commands like `make train` or `make test`
-├── pyproject.toml            <- Configuration options for testing and linting
-├── requirements.txt          <- File for installing python dependencies
+├── pyproject.toml            <- Environment requirements, configuration options for testing and linting,
 ├── setup.py                  <- File for installing project as a package
+├── uv.lock                   <- A frozen snapshot of exact dependencies for the uv package manager.
 └── README.md
 ```
 
@@ -103,15 +88,13 @@ First, install dependencies
 # clone project   
 git clone https://github.com/WUR-AI/aether
 cd aether
-
-# install conda environment  
-conda create -n aether python=3.12
-conda activate aether
-
-# or venv 
+```
+```bash
+# Create venv 
 python3 -m venv .venv
 source .venv/bin/activate
-
+```
+```bash
 # install uv manager
 pip install uv
 
@@ -122,15 +105,38 @@ uv sync # reads pyproject.toml + uv.lock
 uv pip install -e .
 ```
 
-## Citation 
+## Training
+Define your experiment configurations in `configs/experiments/experiment_name.yaml`, for example to train predictive model with GeoCLIP coordinate encoder for the Butterfly UC:
+```yaml
+# @package _global_
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
 
+defaults:
+  - override /model: predictive_geoclip
+  - override /data: butterfly_coords
+
+
+tags: ["prediction", "geoclip_coords"]
+
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 100
+
+data:
+  batch_size: 64
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "predictive"
+  aim:
+    experiment: "predictive"
 ```
-@article
-{
-    YourName,
-    title = {Your Title},
-    author = {Your team},
-    journal = {Location},
-    year = {Year}
-}
+
+To execute this experiment run:
+```bash
+python train.py experiment=experiment_name
 ```
