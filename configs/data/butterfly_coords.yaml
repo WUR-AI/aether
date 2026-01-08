@@ -7,13 +7,11 @@ dataset:
   modalities: [ 'coords' ]
   use_target_data: true
   use_aux_data: false
-  path_s2_im: null
-  n_bands: null
-  zscore_im: null
 
 batch_size: 16
-train_val_test_split: [0.7, 0.15, 0.15]
-num_workers: 1
-pin_memory: false
-split_mode: 'random'
-filepath_split_indices: null
+num_workers: 8
+pin_memory: true
+split_mode: 'from_file'
+save_split: false
+split_dir: ${paths.splits}
+saved_split_file_name: 'split_indices_s2bms_2024-08-14-1459.pth'
