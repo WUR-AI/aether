@@ -107,5 +107,21 @@ class BaseModel(LightningModule, ABC):
         """Save only trainable parts of the model"""
         checkpoint['state_dict'] = {
             k: v for k, v in self.state_dict().items()
-            if any(k.startswith(part) for part in self.trainable_parts)
+            if any(k.startswith(part) for part in self.trainable_modules)
         }
+
+    def on_load_checkpoint(self, checkpoint):
+        """Load only trainable parts of the model"""
+        missing_keys, unexpected_keys =   self.load_state_dict(checkpoint["state_dict"], strict=False)
+        print(f'Model loaded from a checkpoint.')
+
+        if missing_keys:
+            missing_keys = set(['.'.join(i.split('.')[:3]) for i in missing_keys])
+            print(f"The following keys are missing from the pretrained model: {missing_keys}")
+        if unexpected_keys:
+            unexpected_keys = set(['.'.join(i.split('.')[:3]) for i in unexpected_keys])
+            print(f"The following keys are unexpected from the pretrained model:{unexpected_keys}")
+
+    # TODO feels illegal
+    def load_state_dict(self, state_dict, strict=True):
+        return super().load_state_dict(state_dict, strict=False)
