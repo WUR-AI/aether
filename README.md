@@ -109,7 +109,7 @@ conda create -n aether python=3.12
 conda activate aether
 
 # or venv 
-python3 -m .venv
+python3 -m venv .venv
 source .venv/bin/activate
 
 # install uv manager
