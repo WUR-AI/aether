@@ -32,18 +32,21 @@ jobs:
           pip install uv
           uv sync
           uv pip install -e .
+          
 
       - name: List uv dependencies
         run: |
+          source .venv/bin/activate
           python -m uv pip list
 
       - name: List dependencies
         run: |
+          source .venv/bin/activate
           python -m pip list
-
 
       - name: Run pytest
         run: |
+          source .venv/bin/activate
           pytest -v
 
   run_tests_macos:
