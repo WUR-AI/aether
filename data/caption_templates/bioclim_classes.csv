@@ -1,0 +1,20 @@
+name,units,min,max,scale,pixel_size,description
+aux_bioclim_01,°C,-29.0,32.0,0.1,meters,Annual mean temperature
+aux_bioclim_02,°C,0.9,21.4,0.1,meters,Mean diurnal range (mean of monthly (max temp - min temp))
+aux_bioclim_03,%,7.0,96.0,1.0,meters,Isothermality (bio02/bio07 * 100)
+aux_bioclim_04,°C,0.62,227.21,0.01,meters,Temperature seasonality (Standard deviation * 100)
+aux_bioclim_05,°C,-9.6,49.0,0.1,meters,Max temperature of warmest month
+aux_bioclim_06,°C,-57.3,25.8,0.1,meters,Min temperature of coldest month
+aux_bioclim_07,°C,5.3,72.5,0.1,meters,Temperature annual range (bio05 - bio06)
+aux_bioclim_08,°C,-28.5,37.8,0.1,meters,Mean temperature of wettest quarter
+aux_bioclim_09,°C,-52.1,36.6,0.1,meters,Mean temperature of driest quarter
+aux_bioclim_10,°C,-14.3,38.3,0.1,meters,Mean temperature of warmest quarter
+aux_bioclim_11,°C,-52.1,28.9,0.1,meters,Mean temperature of coldest quarter
+aux_bioclim_12,mm,0.0,11401.0,1.0,meters,Annual precipitation
+aux_bioclim_13,mm,0.0,2949.0,1.0,meters,Precipitation of wettest month
+aux_bioclim_14,mm,0.0,752.0,1.0,meters,Precipitation of driest month
+aux_bioclim_15,Coefficient of Variation,0.0,265.0,1.0,meters,Precipitation seasonality
+aux_bioclim_16,mm,0.0,8019.0,1.0,meters,Precipitation of wettest quarter
+aux_bioclim_17,mm,0.0,2495.0,1.0,meters,Precipitation of driest quarter
+aux_bioclim_18,mm,0.0,6090.0,1.0,meters,Precipitation of warmest quarter
+aux_bioclim_19,mm,0.0,5162.0,1.0,meters,Precipitation of coldest quarter

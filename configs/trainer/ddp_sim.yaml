@@ -4,4 +4,6 @@ defaults:
 # simulate DDP on CPU, useful for debugging
 accelerator: cpu
 devices: 2
-strategy: ddp_spawn
+strategy:
+  _target_: lightning.pytorch.strategies.DDPStrategy
+  find_unused_parameters: true

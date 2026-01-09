@@ -1,0 +1,2 @@
+class IllegalArgumentCombination(ValueError):
+    pass

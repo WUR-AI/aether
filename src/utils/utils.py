@@ -1,3 +1,4 @@
+import os
 import warnings
 from importlib.util import find_spec
 from typing import Any, Callable, Dict, Optional, Tuple
@@ -38,6 +39,17 @@ def extras(cfg: DictConfig) -> None:
     if cfg.extras.get("print_config"):
         log.info("Printing config tree with Rich! <cfg.extras.print_config=True>")
         rich_utils.print_config_tree(cfg, resolve=True, save_to_file=True)
+
+    # set huggingface cache directory if provided in paths config
+    if cfg.get("paths") and cfg.paths.get("huggingface_cache"):
+        hf_cache = str(cfg.paths.huggingface_cache)
+        if os.environ.get("HF_HOME") != hf_cache:
+            os.environ["HF_HOME"] = hf_cache
+            log.info(f"Setting HF_HOME for huggingface cache: {hf_cache}")
+    
+    # disable tokenizers parallelism to avoid warnings when using multiprocessing
+    if os.environ.get("TOKENIZERS_PARALLELISM") is None:
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 def task_wrapper(task_func: Callable) -> Callable:

@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Optional, Tuple
+from dotenv import load_dotenv
 
 import hydra
 import lightning as L
@@ -10,6 +11,12 @@ from omegaconf import DictConfig
 from src.data.base_datamodule import BaseDataModule
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+load_dotenv()
+
+# Disable tokenizers parallelism to avoid warnings when using multiprocessing
+import os
+if os.environ.get("TOKENIZERS_PARALLELISM") is None:
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from src.utils import (
     RankedLogger,

@@ -10,15 +10,16 @@ from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 class BaseModel(LightningModule, ABC):
     def __init__(
             self,
-            freezing_strategy: list[str],
+            trainable_modules: list[str] | None,
             optimizer: torch.optim.Optimizer,
             scheduler: torch.optim.lr_scheduler,
             loss_fn: BaseLossFn,
-            num_classes: int=None
+            num_classes: int | None = None
     ) -> None:
         super().__init__()
         self.save_hyperparameters(ignore=['loss_fn', 'eo_encoder', 'prediction_head', 'text_encoder'])
 
+        self.trainable_modules = tuple(trainable_modules) or tuple()
         self.num_classes: int = num_classes
 
         # Loss
@@ -26,9 +27,32 @@ class BaseModel(LightningModule, ABC):
 
     @final
     def freezer(self) -> None:
-        for part in self.hparams.freezing_strategy:
-            for param in self.__getattr__(part).parameters():
+        """Freezes and unfreezes modules based on freezing strategy and freezing exceptions"""
+
+        trainable = set()
+        # Freeze modules
+        for name, param in self.named_parameters():
+            # Enable exceptions
+            if name.startswith(self.trainable_modules):
+                param.requires_grad = True
+                top_name = name.split(".", 2)[:2]
+                trainable.add('.'.join(top_name))
+            else:
+                # Freeze the rest
                 param.requires_grad = False
+
+        # Set module modes correctly
+        for name, module in self.named_modules():
+            if any(t.startswith(name) for t in self.trainable_modules):
+                module.train()
+            else:
+                module.eval()
+
+        print('----------------------------')
+        print(f'Set to train')
+        for m in sorted(trainable):
+            print(f"  {m}")
+        print('----------------------------')
 
     @abstractmethod
     def forward(
@@ -85,3 +109,26 @@ class BaseModel(LightningModule, ABC):
                 },
             }
         return {"optimizer": optimizer}
+
+    def on_save_checkpoint(self, checkpoint):
+        """Save only trainable parts of the model"""
+        checkpoint['state_dict'] = {
+            k: v for k, v in self.state_dict().items()
+            if any(k.startswith(part) for part in self.trainable_modules)
+        }
+
+    def on_load_checkpoint(self, checkpoint):
+        """Load only trainable parts of the model"""
+        missing_keys, unexpected_keys =   self.load_state_dict(checkpoint["state_dict"], strict=False)
+        print(f'Model loaded from a checkpoint.')
+
+        if missing_keys:
+            missing_keys = set(['.'.join(i.split('.')[:3]) for i in missing_keys])
+            print(f"The following keys are missing from the pretrained model: {missing_keys}")
+        if unexpected_keys:
+            unexpected_keys = set(['.'.join(i.split('.')[:3]) for i in unexpected_keys])
+            print(f"The following keys are unexpected from the pretrained model:{unexpected_keys}")
+
+    # TODO feels illegal
+    def load_state_dict(self, state_dict, strict=True):
+        return super().load_state_dict(state_dict, strict=False)

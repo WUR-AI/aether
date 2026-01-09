@@ -1,0 +1,19 @@
+_target_: src.data.base_datamodule.BaseDataModule
+
+dataset:
+  _target_: src.data.butterfly_dataset.ButterflyDataset
+
+  path_csv: ${oc.env:PATH_CSV_BUTTERFLIES,${paths.data_dir}/model_ready/s2bms_presence_with_aux_data.csv}
+  modalities: [ 'coords', 's2' ] # default ['coords']
+  use_target_data: true # default true
+  use_aux_data: false # default false
+  path_s2_im: ${oc.env:S2BMS_PATH,${paths.data_dir}/S2BMS}
+  n_bands: 3
+  zscore_im: true
+
+batch_size: 16
+train_val_test_split: [0.7, 0.15, 0.15]
+num_workers: 1
+pin_memory: false
+split_mode: 'from_file' # default 'random'
+filepath_split_indices: ''
