@@ -16,12 +16,12 @@ from src.data_preprocessing.data_utils import (
 
 
 class ButterflyCaptionBuilder(BaseCaptionBuilder):
-    def __init__(self, templates_path: str, data_dir: str):
-        super().__init__(templates_path, data_dir)
+    def __init__(self, templates_path: str, data_dir: str, seed: int):
+        super().__init__(templates_path, data_dir, seed)
 
     @override
     def sync_with_dataset(self, dataset: BaseDataset) -> None:
-
+        """Synchronize the dataset with bioclimatic and corine column metadata."""
         bioclim_columns = self.get_bioclim_column_keys()
         corine_columns = self.get_corine_column_keys()
 
@@ -48,7 +48,7 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
             }
 
     def get_corine_column_keys(self):
-
+        """Returns metadata for corine columns."""
         if not os.path.isfile(
             os.path.join(self.data_dir, "caption_templates/corine_classes.csv")
         ):
@@ -72,6 +72,7 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         )
 
     def get_bioclim_column_keys(self):
+        """Returns metadata for bioclim columns."""
         if not os.path.isfile(
             os.path.join(
                 self.data_dir, "caption_templates/bioclim_classes.csv"
@@ -100,7 +101,7 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
     ) -> str:
         """Create caption from template and row of auxiliary data."""
         template = self.templates[template_idx]
-        tokens = self.template_tokens[template_idx]
+        tokens = self.tokens_in_template[template_idx]
         replacements = {}
         for token in tokens:
             if token.startswith("aux_corine_frac_top_"):

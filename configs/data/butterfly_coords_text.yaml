@@ -7,11 +7,13 @@ dataset:
   modalities: ["coords"]
   use_target_data: false
   use_aux_data: true
+  seed: ${seed}
 
 caption_builder:
   _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
   templates_path: ${paths.data_dir}/caption_templates/butterfly.json
   data_dir: ${paths.data_dir}
+  seed: ${seed}
 
 batch_size: 16
 num_workers: 8
@@ -20,3 +22,4 @@ split_mode: "from_file"
 save_split: false
 split_dir: ${paths.splits}
 saved_split_file_name: "split_indices_s2bms_2024-08-14-1459.pth"
+seed: ${seed}

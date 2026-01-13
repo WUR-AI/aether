@@ -33,16 +33,35 @@ class BaseDataModule(LightningDataModule):
         split_dir: str = None,
         saved_split_file_name: str | None = None,
         caption_builder: BaseCaptionBuilder = None,
+        seed: int = 12345,
     ) -> None:
+        """Datamodule class which handles dataset splits and batching.
+
+        :param dataset: a use case and model configuration specific dataset
+        :param batch_size: batch size for model training, validation and testing
+        :param train_val_test_split: proportion of dataset to use for training, validation and
+            testing
+        :param num_workers: number of workers for dataloader
+        :param pin_memory: pin memory for dataloader
+        :param dataset_name: dataset name
+        :param split_mode: data split mode: random/from_file
+        :param save_split: if to save split file
+        :param split_dir: directory to save split file
+        :param saved_split_file_name: file name to save split file
+        :param caption_builder: instance of BaseCaptionBuilder for generating textual captions
+        """
         super().__init__()
         self.save_hyperparameters(logger=False)
 
         self.dataset: BaseDataset = dataset
         self.batch_size_per_device: int = batch_size
-        self.use_collate_fn: bool = (
-            True if self.dataset.use_aux_data else False
-        )
+
+        # Caption generation
+        self.use_collate_fn: bool = self.dataset.use_aux_data
         if self.use_collate_fn:
+            assert (
+                caption_builder is not None
+            ), "Caption_builder cannot be None"
             self.caption_builder = caption_builder
             self.caption_builder.sync_with_dataset(self.dataset)
 
@@ -50,9 +69,11 @@ class BaseDataModule(LightningDataModule):
 
     @property
     def num_classes(self) -> int:
+        """Number of classes in the dataset."""
         return self.dataset.num_classes
 
     def setup(self, stage: str = "fit") -> None:
+        """Obtaining batch size and data splits."""
         self.setup_batch_size_per_device()
         self.split_data()
 
@@ -73,13 +94,13 @@ class BaseDataModule(LightningDataModule):
         Either calculated here or loaded from file (random or dbscan clustered). Can be saved to
         file.
         """
-        split_data_from_inds = True  # TODO: what is this for?
+        split_data_from_inds = True
 
         if self.hparams.split_mode == "random":
             self.data_train, self.data_val, self.data_test = random_split(
                 dataset=self.dataset,
                 lengths=self.hparams.train_val_test_split,
-                generator=torch.Generator().manual_seed(42),
+                generator=torch.Generator().manual_seed(self.hparams.seed),
             )
             split_data_from_inds = False  # already split data
             print(
@@ -120,7 +141,7 @@ class BaseDataModule(LightningDataModule):
             gss = GroupShuffleSplit(
                 n_splits=1,
                 test_size=self.hparams.train_val_test_split[2],
-                random_state=0,
+                random_state=self.hparams.seed,
             )
             train_val_indices, test_indices = next(
                 gss.split(np.arange(len(coords)), groups=clusters)
@@ -134,7 +155,7 @@ class BaseDataModule(LightningDataModule):
                         + self.hparams.train_val_test_split[1]
                     )
                 ),
-                random_state=0,
+                random_state=self.hparams.seed,
             )
             tmp_train_indices, tmp_val_indices = next(
                 gss_2.split(
@@ -250,6 +271,7 @@ class BaseDataModule(LightningDataModule):
             self.save_split_indices(split_indices)
 
     def save_split_indices(self, split_indices: dict[str, Any] | dict):
+        """Save split indices into file."""
         assert (
             self.hparams.split_dir is not None
         ), "split_dir must be provided when saving a new data split."

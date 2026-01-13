@@ -10,6 +10,7 @@ dataset:
   path_s2_im: ${oc.env:S2BMS_PATH,${paths.data_dir}/S2BMS}
   n_bands: 3
   zscore_im: true
+  seed: ${seed}
 
 batch_size: 16
 train_val_test_split: [0.7, 0.15, 0.15]
@@ -17,3 +18,4 @@ num_workers: 1
 pin_memory: false
 split_mode: "from_file" # default 'random'
 filepath_split_indices: ""
+seed: ${seed}
