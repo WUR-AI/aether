@@ -25,9 +25,11 @@ class BaseModel(LightningModule, ABC):
         :param num_classes:
         """
         super().__init__()
-        self.save_hyperparameters(ignore=["loss_fn"])
+        self.save_hyperparameters(
+            ignore=["loss_fn", "eo_encoder", "prediction_head", "text_encoder"]
+        )
 
-        self.trainable_modules = tuple(trainable_modules) or tuple()
+        self.trainable_modules = trainable_modules
         self.num_classes: int = num_classes
 
         # Loss
@@ -36,6 +38,7 @@ class BaseModel(LightningModule, ABC):
     @final
     def freezer(self) -> None:
         """Freezes modules based on provided trainable modules."""
+        self.trainable_modules = tuple(self.trainable_modules) or tuple()
 
         # Store higher level module names for printing of trainable parts
         trainable = set()
@@ -88,8 +91,6 @@ class BaseModel(LightningModule, ABC):
             self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0],
             prog_bar=False,
             on_step=True,
-            on_epoch=True,
-            prog_bar=True,
             sync_dist=True,
         )
         return self._step(batch, "train")
