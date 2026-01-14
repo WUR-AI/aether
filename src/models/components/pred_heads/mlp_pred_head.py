@@ -11,12 +11,9 @@ class MLPPredictionHead(BasePredictionHead):
         super().__init__()
         self.nn_layers = nn_layers
         self.hidden_dim = hidden_dim
-        
+
     @override
-    def forward(
-            self,
-            feats: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, feats: torch.Tensor) -> torch.Tensor:
         return torch.sigmoid(self.net(feats))
 
     @override
@@ -31,5 +28,6 @@ class MLPPredictionHead(BasePredictionHead):
         self.net = nn.Sequential(*layers)
         return
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     _ = MLPPredictionHead()

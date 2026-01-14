@@ -11,10 +11,7 @@ class LinearPredictionHead(BasePredictionHead):
         super().__init__()
 
     @override
-    def forward(
-            self,
-            feats: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, feats: torch.Tensor) -> torch.Tensor:
         return torch.sigmoid(self.net(feats))
 
     @override
@@ -22,5 +19,6 @@ class LinearPredictionHead(BasePredictionHead):
         self.net = nn.Linear(self.input_dim, self.output_dim)
         return
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     _ = LinearPredictionHead()

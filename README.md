@@ -10,18 +10,16 @@
 [![PRs](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/WUR-AI/aether/pulls)
 [![Issues](https://img.shields.io/github/issues/vdplasthijs/aether)](https://github.com/WUR-AI/aether/issues)
 ![GitHub Tag](https://img.shields.io/github/v/tag/vdplasthijs/aether)
+
 </div>
 
 ## Description
 
-This project develops a self-interpretable multi-modal framework to translate satellite data into physically meaningful variables, for stake-holder oriented explanations. 
+This project develops a self-interpretable multi-modal framework to translate satellite data into physically meaningful variables, for stake-holder oriented explanations.
 
-
-Some code was adapted from [github.com/vdplasthijs/PECL/](github.com/vdplasthijs/PECL/). 
+Some code was adapted from [github.com/vdplasthijs/PECL/](github.com/vdplasthijs/PECL/).
 
 ## Data:
-
-
 
 ## Project Structure
 
@@ -85,15 +83,17 @@ The directory structure of new project looks like this:
 First, install dependencies
 
 ```bash
-# clone project   
+# clone project
 git clone https://github.com/WUR-AI/aether
 cd aether
 ```
+
 ```bash
-# Create venv 
+# Create venv
 python3 -m venv .venv
 source .venv/bin/activate
 ```
+
 ```bash
 # install uv manager
 pip install uv
@@ -106,7 +106,9 @@ uv pip install -e .
 ```
 
 ## Training
+
 Define your experiment configurations in `configs/experiments/experiment_name.yaml`, for example to train predictive model with GeoCLIP coordinate encoder for the Butterfly UC:
+
 ```yaml
 # @package _global_
 # all parameters below will be merged with parameters from default configurations set above
@@ -137,6 +139,7 @@ logger:
 ```
 
 To execute this experiment run:
+
 ```bash
 python train.py experiment=experiment_name
 ```

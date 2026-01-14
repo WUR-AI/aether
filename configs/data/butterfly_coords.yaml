@@ -4,14 +4,16 @@ dataset:
   _target_: src.data.butterfly_dataset.ButterflyDataset
 
   path_csv: ${oc.env:PATH_CSV_BUTTERFLIES,${paths.data_dir}/model_ready/s2bms_presence_with_aux_data.csv}
-  modalities: [ 'coords' ]
+  modalities: ["coords"]
   use_target_data: true
   use_aux_data: false
+  seed: ${seed}
 
 batch_size: 16
 num_workers: 8
 pin_memory: true
-split_mode: 'from_file'
+split_mode: "from_file"
 save_split: false
 split_dir: ${paths.splits}
-saved_split_file_name: 'split_indices_s2bms_2024-08-14-1459.pth'
+saved_split_file_name: "split_indices_s2bms_2024-08-14-1459.pth"
+seed: ${seed}
