@@ -15,18 +15,14 @@ from omegaconf import OmegaConf
 
 # TODO: is this still used? works?
 def get_hydra_paths():
-    assert (
-        False
-    ), "Deprecated. Use hydra config or environment variables instead."
+    assert False, "Deprecated. Use hydra config or environment variables instead."
 
 
 def process_corine_classes(input_path, output_path):
     """Creates processed csv file with all corine classes."""
 
     if not os.path.exists(input_path):
-        raise FileNotFoundError(
-            f"File {input_path} for Corine classes does not exist"
-        )
+        raise FileNotFoundError(f"File {input_path} for Corine classes does not exist")
 
     # read-in org file
     with open(input_path) as f:
@@ -60,9 +56,7 @@ def process_bioclim_classes(input_path, output_path):
     """Creates processed csv file with all bioclim classes."""
 
     if not os.path.exists(input_path):
-        raise FileNotFoundError(
-            f"File {input_path} for bioclimatic scheme does not exist"
-        )
+        raise FileNotFoundError(f"File {input_path} for bioclimatic scheme does not exist")
 
     with open(input_path) as f:
         bioclim_classes = json.load(f)
@@ -78,16 +72,12 @@ def process_bioclim_classes(input_path, output_path):
 
 def corine_lc_schema(data_dir="data/"):
     """From https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_CORINE_V20_100m#bands"""
-    if not os.path.isfile(
-        os.path.join(data_dir, "caption_templates/corine_classes.csv")
-    ):
+    if not os.path.isfile(os.path.join(data_dir, "caption_templates/corine_classes.csv")):
         process_corine_classes(
             os.path.join(data_dir, "source/corine_classes.json"),
             os.path.join(data_dir, "caption_templates/corine_classes.csv"),
         )
-    df = pd.read_csv(
-        os.path.join(data_dir, ("caption_templates/corine_classes.csv"))
-    )
+    df = pd.read_csv(os.path.join(data_dir, ("caption_templates/corine_classes.csv")))
 
     corine_classes = df.to_dict("records")
     for c in corine_classes:
@@ -99,17 +89,13 @@ def corine_lc_schema(data_dir="data/"):
 def bioclim_schema(data_dir="data/"):
     """From https://developers.google.com/earth-engine/datasets/catalog/WORLDCLIM_V1_BIO"""
 
-    if not os.path.isfile(
-        os.path.join(data_dir, "caption_templates/bioclim_classes.csv")
-    ):
+    if not os.path.isfile(os.path.join(data_dir, "caption_templates/bioclim_classes.csv")):
         process_bioclim_classes(
             os.path.join(data_dir, "source/bioclim_classes.json"),
             os.path.join(data_dir, "caption_templates/bioclim_classes.csv"),
         )
 
-    df = pd.read_csv(
-        os.path.join(data_dir, "caption_templates/bioclim_classes.csv")
-    )
+    df = pd.read_csv(os.path.join(data_dir, "caption_templates/bioclim_classes.csv"))
     df.sort_values(by=["name"], inplace=True)
     bioclim_variables = df.to_dict("records")
     for v in bioclim_variables:
@@ -122,9 +108,7 @@ def get_path_s2bms():
     """Get the path to the Sentinel-2 BMS data directory."""
     if "S2BMS_IMAGES" in os.environ:
         im_path = os.environ.get("S2BMS_IMAGES")
-        assert os.path.exists(
-            im_path
-        ), f"Sentinel-2 BMS image path does not exist: {im_path}"
+        assert os.path.exists(im_path), f"Sentinel-2 BMS image path does not exist: {im_path}"
     else:
         im_path = None
     if "S2BMS_PRESENCE" in os.environ:
@@ -152,10 +136,7 @@ def load_s2bms_presence():
         tuple(
             [
                 ast.literal_eval(x)
-                for x in df_s2bms_presence.tuple_coor[ii]
-                .lstrip("(")
-                .rstrip(")")
-                .split(", ")
+                for x in df_s2bms_presence.tuple_coor[ii].lstrip("(").rstrip(")").split(", ")
             ]
         )
         for ii in range(len(df_s2bms_presence))
@@ -182,9 +163,7 @@ def load_tiff(tiff_file_path, datatype="np", verbose=0):
 
 def create_timestamp(include_seconds=False):
     dt = datetime.datetime.now()
-    timestamp = (
-        str(dt.date()) + "-" + str(dt.hour).zfill(2) + str(dt.minute).zfill(2)
-    )
+    timestamp = str(dt.date()) + "-" + str(dt.hour).zfill(2) + str(dt.minute).zfill(2)
     if include_seconds:
         timestamp += ":" + str(dt.second).zfill(2)
     return timestamp
@@ -195,9 +174,7 @@ def load_aux_data(
     col_identifier="name",
 ):
     """Load auxiliary bioclimatic and land cover data."""
-    assert os.path.exists(
-        filepath
-    ), f"Auxiliary data file does not exist: {filepath}"
+    assert os.path.exists(filepath), f"Auxiliary data file does not exist: {filepath}"
     df_aux = pd.read_csv(filepath)
     if col_identifier is not None:
         assert (
@@ -207,9 +184,7 @@ def load_aux_data(
 
 
 def get_article(str_follow):
-    assert isinstance(
-        str_follow, str
-    ), f"str_follow must be a string, but got {type(str_follow)}"
+    assert isinstance(str_follow, str), f"str_follow must be a string, but got {type(str_follow)}"
     vowels = ["a", "e", "i", "o", "u"]
     if str_follow[0].lower() in vowels:
         return "an " + str_follow

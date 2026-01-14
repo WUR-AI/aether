@@ -10,7 +10,5 @@ class BaseLossFn(nn.Module, ABC):
         self.criterion: nn.Module | None = None
 
     @abstractmethod
-    def forward(
-        self, pred: torch.Tensor, labels: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, pred: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
         pass

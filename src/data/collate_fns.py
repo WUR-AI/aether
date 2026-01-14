@@ -15,9 +15,7 @@ def collate_fn(
     # map of all keys present in the batch
     keys = batch[0].keys()
     eo_keys = batch[0].get("eo", {}).keys()
-    collected = {
-        k: ([] if k != "eo" else {k_1: [] for k_1 in eo_keys}) for k in keys
-    }
+    collected = {k: ([] if k != "eo" else {k_1: [] for k_1 in eo_keys}) for k in keys}
 
     # fill-in collected items into batch dict
     for item in batch:

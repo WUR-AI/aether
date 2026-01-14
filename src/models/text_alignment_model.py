@@ -26,9 +26,18 @@ class TextAlignmentModel(BaseModel):
         prediction_head: BasePredictionHead | None = None,
         num_classes: int | None = None,
     ) -> None:
-        super().__init__(
-            trainable_modules, optimizer, scheduler, loss_fn, num_classes
-        )
+        """Implementation of contrastive text-eo modality alignment model.
+
+        :param eo_encoder: eo encoder module (replaceable)
+        :param text_encoder: text encoder module (replaceable)
+        :param optimizer: optimizer to use for training
+        :param scheduler: scheduler to use for training
+        :param loss_fn: loss function to use (contrastive)
+        :param trainable_modules: list of modules to train (parts/modules or modules, modules)
+        :param prediction_head: optional prediction head module
+        :param num_classes: number of target classes
+        """
+        super().__init__(trainable_modules, optimizer, scheduler, loss_fn, num_classes)
 
         # Encoders configuration
         self.eo_encoder = eo_encoder
@@ -37,9 +46,7 @@ class TextAlignmentModel(BaseModel):
 
         # Extra projector for text encoder if eo and text dim not match
         if self.eo_encoder.output_dim != self.text_encoder.output_dim:
-            self.text_encoder.add_projector(
-                projected_dim=self.eo_encoder.output_dim
-            )
+            self.text_encoder.add_projector(projected_dim=self.eo_encoder.output_dim)
             self.trainable_modules.append("text_encoder.extra_projector")
 
         # Prediction head
@@ -60,15 +67,13 @@ class TextAlignmentModel(BaseModel):
         mode: str = "train",
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
-        # EMbed modalities
+        # Embed modalities
         eo_feats = self.eo_encoder(batch)
         text_feats = self.text_encoder(batch, mode)
         return eo_feats, text_feats
 
     @override
-    def _step(
-        self, batch: Dict[str, torch.Tensor], mode: str = "train"
-    ) -> torch.Tensor:
+    def _step(self, batch: Dict[str, torch.Tensor], mode: str = "train") -> torch.Tensor:
         # Embed
         eo_feats, text_feats = self.forward(batch, mode)
         local_batch_size = eo_feats.size(0)
@@ -109,11 +114,9 @@ class TextAlignmentModel(BaseModel):
         return loss
 
     def _cos_sim_calc(self, eo_feats, text_feats, mode, log=True):
-
-        # Similarity matrx
-        cos_sim_matrix = F.cosine_similarity(
-            eo_feats[:, None, :], text_feats[None, :, :], dim=-1
-        )
+        """Calculate cosine similarity between eo and text embeddings and logs it."""
+        # Similarity matrix
+        cos_sim_matrix = F.cosine_similarity(eo_feats[:, None, :], text_feats[None, :, :], dim=-1)
         local_batch_size = eo_feats.size(0)
 
         # Average for positive and negative pairs

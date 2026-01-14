@@ -26,9 +26,7 @@ class ClipTextEncoder(BaseTextEncoder):
         self.output_dim = 512
 
     @override
-    def forward(
-        self, batch: Dict[str, torch.Tensor], mode: str
-    ) -> torch.Tensor:
+    def forward(self, batch: Dict[str, torch.Tensor], mode: str) -> torch.Tensor:
         # Get text inputs
         text_input = batch.get("text")
 
@@ -38,9 +36,7 @@ class ClipTextEncoder(BaseTextEncoder):
         avr_embeds = []
         for captions_per_row in text_input:
             # Tokenize and embed
-            text_tokens = self.processor(
-                text=captions_per_row, return_tensors="pt", padding=True
-            )
+            text_tokens = self.processor(text=captions_per_row, return_tensors="pt", padding=True)
             device = next(self.model.parameters()).device
             text_tokens = {k: v.to(device) for k, v in text_tokens.items()}
 

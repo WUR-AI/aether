@@ -23,18 +23,25 @@ class PredictiveModel(BaseModel):
         loss_fn: BaseLossFn,
         num_classes: int,
     ) -> None:
-        super().__init__(
-            trainable_modules, optimizer, scheduler, loss_fn, num_classes
-        )
+        """Implementation of the predictive model with replaceable EO encoder, and prediction head.
+
+        :param eo_encoder: eo encoder module (replaceable)
+        :param prediction_head: prediction head module (replaceable)
+        :param trainable_modules: list of modules to train (parts/modules or modules, modules)
+        :param optimizer: optimizer to use for training
+        :param scheduler: scheduler to use for training
+        :param loss_fn: loss function to use
+        :param num_classes: number of target classes
+        """
+        super().__init__(trainable_modules, optimizer, scheduler, loss_fn, num_classes)
         # EO encoder configuration
         self.eo_encoder = eo_encoder
 
         # Prediction head
         self.prediction_head = prediction_head
-        self.prediction_head.set_dim(
-            input_dim=self.eo_encoder.output_dim, output_dim=num_classes
-        )
+        self.prediction_head.set_dim(input_dim=self.eo_encoder.output_dim, output_dim=num_classes)
         self.prediction_head.configure_nn()
+        self.trainable_modules.append("prediction_head")
 
         # Freezing requested parts
         self.freezer()
@@ -45,20 +52,14 @@ class PredictiveModel(BaseModel):
         return self.prediction_head(feats)
 
     @override
-    def _step(
-        self, batch: Dict[str, torch.Tensor], mode: str = "train"
-    ) -> torch.Tensor:
+    def _step(self, batch: Dict[str, torch.Tensor], mode: str = "train") -> torch.Tensor:
         feats = self.forward(batch)
         loss = self.loss_fn(feats, batch.get("target"))
 
-        self.log(
-            f"{mode}_loss", loss, on_step=False, on_epoch=True, prog_bar=True
-        )
+        self.log(f"{mode}_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         mse_loss = F.mse_loss(feats, batch.get("target"))
         self.log(f"{mode}_mse_loss", mse_loss, on_step=False, on_epoch=True)
-        top_k_accs = TopKAccuracy(k_list=[1, 5, 10])(
-            feats, batch.get("target")
-        )
+        top_k_accs = TopKAccuracy(k_list=[1, 5, 10])(feats, batch.get("target"))
         for k, acc in top_k_accs.items():
             self.log(f"{mode}_top_{k}_acc", acc, on_step=False, on_epoch=True)
         return loss

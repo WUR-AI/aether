@@ -27,9 +27,7 @@ def extras(cfg: DictConfig) -> None:
 
     # disable python warnings
     if cfg.extras.get("ignore_warnings"):
-        log.info(
-            "Disabling python warnings! <cfg.extras.ignore_warnings=True>"
-        )
+        log.info("Disabling python warnings! <cfg.extras.ignore_warnings=True>")
         warnings.filterwarnings("ignore")
 
     # prompt user to input tags from command line if none are provided in the config
@@ -39,9 +37,7 @@ def extras(cfg: DictConfig) -> None:
 
     # pretty print config tree using Rich library
     if cfg.extras.get("print_config"):
-        log.info(
-            "Printing config tree with Rich! <cfg.extras.print_config=True>"
-        )
+        log.info("Printing config tree with Rich! <cfg.extras.print_config=True>")
         rich_utils.print_config_tree(cfg, resolve=True, save_to_file=True)
 
     # set huggingface cache directory if provided in paths config
@@ -111,9 +107,7 @@ def task_wrapper(task_func: Callable) -> Callable:
     return wrap
 
 
-def get_metric_value(
-    metric_dict: Dict[str, Any], metric_name: Optional[str]
-) -> Optional[float]:
+def get_metric_value(metric_dict: Dict[str, Any], metric_name: Optional[str]) -> Optional[float]:
     """Safely retrieves value of the metric logged in LightningModule.
 
     :param metric_dict: A dict containing metric values.

@@ -20,9 +20,7 @@ class BaseCaptionBuilder(ABC):
         """
 
         self.templates = json.load(open(templates_path))
-        self.tokens_in_template = [
-            self._extract_tokens(t) for t in self.templates
-        ]
+        self.tokens_in_template = [self._extract_tokens(t) for t in self.templates]
 
         self.column_to_metadata_map: Dict[str] | None = None
         self.data_dir = data_dir
@@ -52,9 +50,7 @@ class BaseCaptionBuilder(ABC):
         return template
 
     @abstractmethod
-    def _build_from_template(
-        self, template_idx: int, row: torch.Tensor
-    ) -> str:
+    def _build_from_template(self, template_idx: int, row: torch.Tensor) -> str:
         """Build caption text from template and row of auxiliary data."""
         pass
 
@@ -77,9 +73,7 @@ class BaseCaptionBuilder(ABC):
         for row in aux_values:
             descriptions = []
             for template_idx in range(0, len(self)):
-                descriptions.append(
-                    self._build_from_template(template_idx, row)
-                )
+                descriptions.append(self._build_from_template(template_idx, row))
             formatted_rows.append(descriptions)
 
         return formatted_rows

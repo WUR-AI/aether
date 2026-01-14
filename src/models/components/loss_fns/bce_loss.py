@@ -13,9 +13,7 @@ class BCELoss(BaseLossFn):
         self.criterion = nn.BCELoss(reduction="mean")
 
     @override
-    def forward(
-        self, pred: torch.Tensor, labels: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, pred: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
         return self.criterion(pred, labels)
 
 

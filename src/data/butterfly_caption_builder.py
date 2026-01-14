@@ -28,19 +28,13 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         self.column_to_metadata_map = {}
 
         for id, key in enumerate(dataset.aux_names):
-            if key.startswith(
-                "aux_corine_frac_top"
-            ):  # to avoid assert statement
+            if key.startswith("aux_corine_frac_top"):  # to avoid assert statement
                 description, units = None, None
             else:
                 description, units = (
-                    bioclim_columns.get(key)
-                    or corine_columns.get(key)
-                    or (None, None)
+                    bioclim_columns.get(key) or corine_columns.get(key) or (None, None)
                 )
-                assert (
-                    description is not None
-                ), f"Key {key} not found in bioclim or corine columns"
+                assert description is not None, f"Key {key} not found in bioclim or corine columns"
             self.column_to_metadata_map[key] = {
                 "id": id,
                 "description": description,
@@ -49,47 +43,31 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
 
     def get_corine_column_keys(self):
         """Returns metadata for corine columns."""
-        if not os.path.isfile(
-            os.path.join(self.data_dir, "caption_templates/corine_classes.csv")
-        ):
+        if not os.path.isfile(os.path.join(self.data_dir, "caption_templates/corine_classes.csv")):
             process_corine_classes(
                 os.path.join(self.data_dir, "source/corine_classes.json"),
-                os.path.join(
-                    self.data_dir, "caption_templates/corine_classes.csv"
-                ),
+                os.path.join(self.data_dir, "caption_templates/corine_classes.csv"),
             )
-        df = pd.read_csv(
-            os.path.join(self.data_dir, "caption_templates/corine_classes.csv")
-        )
+        df = pd.read_csv(os.path.join(self.data_dir, "caption_templates/corine_classes.csv"))
 
         return dict(
             zip(
                 df["code"],
-                zip(
-                    df["category_level_3"], ["%"] * len(df["category_level_3"])
-                ),
+                zip(df["category_level_3"], ["%"] * len(df["category_level_3"])),
             )
         )
 
     def get_bioclim_column_keys(self):
         """Returns metadata for bioclim columns."""
         if not os.path.isfile(
-            os.path.join(
-                self.data_dir, "caption_templates/bioclim_classes.csv"
-            )
+            os.path.join(self.data_dir, "caption_templates/bioclim_classes.csv")
         ):
             process_bioclim_classes(
                 os.path.join(self.data_dir, "source/bioclim_classes.json"),
-                os.path.join(
-                    self.data_dir, "caption_templates/bioclim_classes.csv"
-                ),
+                os.path.join(self.data_dir, "caption_templates/bioclim_classes.csv"),
             )
 
-        df = pd.read_csv(
-            os.path.join(
-                self.data_dir, "caption_templates/bioclim_classes.csv"
-            )
-        )
+        df = pd.read_csv(os.path.join(self.data_dir, "caption_templates/bioclim_classes.csv"))
         df.sort_values(by=["name"], inplace=True)
         return dict(zip(df["name"], zip(df["description"], df["units"])))
 
@@ -111,9 +89,7 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                     idx_top
                 ]  # e.g., token 'aux_corine_frac_top_1' might refer to 'corine_frac_211' in this row
                 referral_token = (
-                    "aux_" + referral_token
-                    if "aux_" not in referral_token
-                    else referral_token
+                    "aux_" + referral_token if "aux_" not in referral_token else referral_token
                 )
                 values_dict = self.column_to_metadata_map[referral_token]
             else:
@@ -130,15 +106,9 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                     adjective = get_adjective_for_percentage(value)
                     formatted_desc = f"{adjective} {formatted_desc}"
                 else:
-                    formatted_desc = (
-                        formatted_desc
-                        + f' ({round(value)}{units if units else ""})'
-                    )
+                    formatted_desc = formatted_desc + f' ({round(value)}{units if units else ""})'
             elif "bioclim" in token:
-                formatted_desc = (
-                    formatted_desc
-                    + f' of {round(value)}{units if units else ""}'
-                )
+                formatted_desc = formatted_desc + f' of {round(value)}{units if units else ""}'
             replacements[token] = formatted_desc
 
         template = self._fill(template, replacements)

@@ -59,9 +59,7 @@ class BaseDataModule(LightningDataModule):
         # Caption generation
         self.use_collate_fn: bool = self.dataset.use_aux_data
         if self.use_collate_fn:
-            assert (
-                caption_builder is not None
-            ), "Caption_builder cannot be None"
+            assert caption_builder is not None, "Caption_builder cannot be None"
             self.caption_builder = caption_builder
             self.caption_builder.sync_with_dataset(self.dataset)
 
@@ -84,9 +82,7 @@ class BaseDataModule(LightningDataModule):
                 raise RuntimeError(
                     f"Batch size ({self.hparams.batch_size}) is not divisible by the number of devices ({self.trainer.world_size})."
                 )
-            self.batch_size_per_device = (
-                self.hparams.batch_size // self.trainer.world_size
-            )
+            self.batch_size_per_device = self.hparams.batch_size // self.trainer.world_size
 
     def split_data(self) -> None:
         """Split data into train, val and test.
@@ -114,9 +110,7 @@ class BaseDataModule(LightningDataModule):
                 }
 
         elif self.hparams.split_mode == "spatial_clusters":
-            print(
-                "Splitting dataset using spatial clusters. This can take a while..."
-            )
+            print("Splitting dataset using spatial clusters. This can take a while...")
             coords = np.array([self.dataset.df.lat, self.dataset.df.lon]).T
             if len(coords) > 2000:
                 print(
@@ -150,17 +144,12 @@ class BaseDataModule(LightningDataModule):
                 n_splits=1,
                 test_size=(
                     self.hparams.train_val_test_split[1]
-                    / (
-                        self.hparams.train_val_test_split[0]
-                        + self.hparams.train_val_test_split[1]
-                    )
+                    / (self.hparams.train_val_test_split[0] + self.hparams.train_val_test_split[1])
                 ),
                 random_state=self.hparams.seed,
             )
             tmp_train_indices, tmp_val_indices = next(
-                gss_2.split(
-                    train_val_indices, groups=clusters[train_val_indices]
-                )
+                gss_2.split(train_val_indices, groups=clusters[train_val_indices])
             )
             train_indices = train_val_indices[tmp_train_indices]
             val_indices = train_val_indices[tmp_val_indices]
@@ -168,26 +157,26 @@ class BaseDataModule(LightningDataModule):
             clusters_val = clusters[val_indices]
             clusters_test = clusters[test_indices]
             # assert no overlap in indices:
-            assert (
-                len(np.intersect1d(train_indices, val_indices)) == 0
-            ), np.intersect1d(train_indices, val_indices)
-            assert (
-                len(np.intersect1d(train_indices, test_indices)) == 0
-            ), np.intersect1d(train_indices, test_indices)
-            assert (
-                len(np.intersect1d(val_indices, test_indices)) == 0
-            ), np.intersect1d(val_indices, test_indices)
+            assert len(np.intersect1d(train_indices, val_indices)) == 0, np.intersect1d(
+                train_indices, val_indices
+            )
+            assert len(np.intersect1d(train_indices, test_indices)) == 0, np.intersect1d(
+                train_indices, test_indices
+            )
+            assert len(np.intersect1d(val_indices, test_indices)) == 0, np.intersect1d(
+                val_indices, test_indices
+            )
 
             # assert no overlap in clusters:
-            assert (
-                len(np.intersect1d(clusters_train, clusters_val)) == 0
-            ), np.intersect1d(clusters_train, clusters_val)
-            assert (
-                len(np.intersect1d(clusters_train, clusters_test)) == 0
-            ), np.intersect1d(clusters_train, clusters_test)
-            assert (
-                len(np.intersect1d(clusters_val, clusters_test)) == 0
-            ), np.intersect1d(clusters_val, clusters_test)
+            assert len(np.intersect1d(clusters_train, clusters_val)) == 0, np.intersect1d(
+                clusters_train, clusters_val
+            )
+            assert len(np.intersect1d(clusters_train, clusters_test)) == 0, np.intersect1d(
+                clusters_train, clusters_test
+            )
+            assert len(np.intersect1d(clusters_val, clusters_test)) == 0, np.intersect1d(
+                clusters_val, clusters_test
+            )
 
             print(
                 f"Created {len(train_indices)} train, {len(val_indices)} val, {len(test_indices)} test indices using DBSCAN spatial clustering with {min_dist} m minimum distance between clusters."
@@ -206,9 +195,7 @@ class BaseDataModule(LightningDataModule):
                     "saved_split_file_name must be provided when split_mode is 'from_file'"
                 )
 
-            self.hparams.save_split = (
-                False  # don't save split when loading from file
-            )
+            self.hparams.save_split = False  # don't save split when loading from file
 
             # get indices from file
             self.saved_split_file_path = os.path.join(
@@ -220,49 +207,31 @@ class BaseDataModule(LightningDataModule):
             test_indices = split_indices.get("test_indices", None)
 
             if not isinstance(train_indices, pd.Series):
-                raise NotImplementedError(
-                    "Expected a pd series of ids for data splits."
-                )
+                raise NotImplementedError("Expected a pd series of ids for data splits.")
             if not isinstance(val_indices, pd.Series):
-                raise NotImplementedError(
-                    "Expected a pd series of ids for data splits."
-                )
-            if test_indices is not None and not isinstance(
-                test_indices, pd.Series
-            ):
-                raise NotImplementedError(
-                    "Expected a pd series of ids for data splits."
-                )
+                raise NotImplementedError("Expected a pd series of ids for data splits.")
+            if test_indices is not None and not isinstance(test_indices, pd.Series):
+                raise NotImplementedError("Expected a pd series of ids for data splits.")
 
-            train_indices = np.where(
-                self.dataset.df["id"].isin(train_indices)
-            )[0]
+            train_indices = np.where(self.dataset.df["id"].isin(train_indices))[0]
             val_indices = np.where(self.dataset.df["id"].isin(val_indices))[0]
             if test_indices is not None:
-                test_indices = np.where(
-                    self.dataset.df["id"].isin(test_indices)
-                )[0]
+                test_indices = np.where(self.dataset.df["id"].isin(test_indices))[0]
 
-            print(
-                f"Dataset was split using indices from file: {self.saved_split_file_path}"
-            )
+            print(f"Dataset was split using indices from file: {self.saved_split_file_path}")
         else:
             raise NotImplementedError(
                 f"{self.hparams.train_val_test_split} split mode not implemented."
             )
 
         if split_data_from_inds:
-            self.data_train = torch.utils.data.Subset(
-                self.dataset, train_indices
-            )
+            self.data_train = torch.utils.data.Subset(self.dataset, train_indices)
             self.data_train.dataset.mode = "train"
             self.data_val = torch.utils.data.Subset(self.dataset, val_indices)
             self.data_val.dataset.mode = "val"
 
             if test_indices is not None:
-                self.data_test = torch.utils.data.Subset(
-                    self.dataset, test_indices
-                )
+                self.data_test = torch.utils.data.Subset(self.dataset, test_indices)
                 self.data_test.dataset.mode = "test"
             else:
                 self.data_test = None
@@ -278,9 +247,7 @@ class BaseDataModule(LightningDataModule):
         assert os.path.exists(
             self.hparams.split_dir
         ), f"Directory to save split indices does not exist: {self.hparams.split_dir}"
-        assert isinstance(
-            split_indices, dict
-        ), "split_indices must be a dictionary to be saved."
+        assert isinstance(split_indices, dict), "split_indices must be a dictionary to be saved."
 
         timestamp = create_timestamp()
         torch.save(
@@ -295,9 +262,7 @@ class BaseDataModule(LightningDataModule):
     def load_split_indices(self, filepath: str = None) -> dict:
         """Load split indices from a file."""
         if not os.path.exists(filepath):
-            raise FileNotFoundError(
-                "Split indices file does not exist: {filepath}"
-            )
+            raise FileNotFoundError("Split indices file does not exist: {filepath}")
 
         split_indices = torch.load(filepath, weights_only=False)
         assert (
@@ -305,9 +270,7 @@ class BaseDataModule(LightningDataModule):
         ), "Split indices file must contain 'train_indices' and 'val_indices'"
 
         # TODO: is this ever used?
-        n_in_splits = len(split_indices["train_indices"]) + len(
-            split_indices["val_indices"]
-        )
+        n_in_splits = len(split_indices["train_indices"]) + len(split_indices["val_indices"])
         if "test_indices" in split_indices:
             n_in_splits += len(split_indices["test_indices"])
 
@@ -383,6 +346,4 @@ class BaseDataModule(LightningDataModule):
 
 
 if __name__ == "__main__":
-    _ = BaseDataModule(
-        None, None, None, None, None, None, None, None, None, None, None
-    )
+    _ = BaseDataModule(None, None, None, None, None, None, None, None, None, None, None)

@@ -16,15 +16,11 @@ def cfg_train_global() -> DictConfig:
     :return: A DictConfig object containing a default Hydra configuration for training.
     """
     with initialize(version_base="1.3", config_path="../configs"):
-        cfg = compose(
-            config_name="train.yaml", return_hydra_config=True, overrides=[]
-        )
+        cfg = compose(config_name="train.yaml", return_hydra_config=True, overrides=[])
 
         # set defaults for all tests
         with open_dict(cfg):
-            cfg.paths.root_dir = str(
-                rootutils.find_root(indicator=".project-root")
-            )
+            cfg.paths.root_dir = str(rootutils.find_root(indicator=".project-root"))
             cfg.trainer.max_epochs = 1
             cfg.trainer.limit_train_batches = 0.01
             cfg.trainer.limit_val_batches = 0.1
@@ -55,9 +51,7 @@ def cfg_eval_global() -> DictConfig:
 
         # set defaults for all tests
         with open_dict(cfg):
-            cfg.paths.root_dir = str(
-                rootutils.find_root(indicator=".project-root")
-            )
+            cfg.paths.root_dir = str(rootutils.find_root(indicator=".project-root"))
             cfg.trainer.max_epochs = 1
             cfg.trainer.limit_test_batches = 0.1
             cfg.trainer.accelerator = "cpu"

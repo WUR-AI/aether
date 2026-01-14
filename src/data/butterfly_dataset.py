@@ -58,9 +58,7 @@ class ButterflyDataset(BaseDataset):
             columns.extend(["lat", "lon"])
         if "s2" in self.modalities:
             if path_s2_im is None:
-                raise IllegalArgumentCombination(
-                    "Provide path_s2_im for if using s2 modality"
-                )
+                raise IllegalArgumentCombination("Provide path_s2_im for if using s2 modality")
             self.path_s2_im = path_s2_im
             self.path_s2_im = os.path.join(
                 self.path_s2_im,
@@ -88,17 +86,13 @@ class ButterflyDataset(BaseDataset):
 
         self.records = self.df.loc[:, columns].to_dict("records")
 
-    def init_norm_stats(
-        self, means: list[float] = None, stds: list[float] = None
-    ):
+    def init_norm_stats(self, means: list[float] = None, stds: list[float] = None):
         if means is None or stds is None:
             print("Using S2BMS default zscore means and stds")
             means = np.array([661.1047, 770.6800, 531.8330, 3228.5588]).astype(
                 np.float32
             )  # computed across entire ds
-            stds = np.array([640.2482, 571.8545, 597.3570, 1200.7518]).astype(
-                np.float32
-            )
+            stds = np.array([640.2482, 571.8545, 597.3570, 1200.7518]).astype(np.float32)
         if self.n_bands == 3:
             means = means[:3]
             stds = stds[:3]
@@ -126,14 +120,10 @@ class ButterflyDataset(BaseDataset):
 
     def add_s2_paths(self):
         content_image_folder = os.listdir(self.path_s2_im)
-        suffix_images = list(
-            {"_".join(x.split("_")[3:]) for x in content_image_folder}
-        )
+        suffix_images = list({"_".join(x.split("_")[3:]) for x in content_image_folder})
         prefix_images = list({x.split("_")[0] for x in content_image_folder})
 
-        assert (
-            len(prefix_images) == 1
-        ), f"Multiple prefixes found in image folder: {prefix_images}"
+        assert len(prefix_images) == 1, f"Multiple prefixes found in image folder: {prefix_images}"
         prefix_images = prefix_images[0]
         list_paths = []
         for loc in self.df["id"].values:
@@ -166,9 +156,7 @@ class ButterflyDataset(BaseDataset):
         elif self.n_bands == 3:
             im = im[:3, :, :]
         else:
-            raise IllegalArgumentCombination(
-                f"Number of bands {self.n_bands} not implemented."
-            )
+            raise IllegalArgumentCombination(f"Number of bands {self.n_bands} not implemented.")
 
         if self.zscore_im:
             im = im.astype(np.int32)
@@ -186,9 +174,7 @@ class ButterflyDataset(BaseDataset):
 
         for modality in self.modalities:
             if modality in ["coords"]:
-                formatted_row["eo"][modality] = torch.tensor(
-                    [row["lat"], row["lon"]]
-                )
+                formatted_row["eo"][modality] = torch.tensor([row["lat"], row["lon"]])
             elif modality == "s2":
                 formatted_row["eo"][modality] = self.load_image(row["s2_path"])
                 # TODO: augmentations

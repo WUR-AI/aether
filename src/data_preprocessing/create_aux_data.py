@@ -22,9 +22,7 @@ def get_bioclim_lc_from_coords_list(
     coords_list,
     name_list=None,
     save_file=False,
-    save_folder=os.path.join(
-        os.environ["PROJECT_ROOT"], "data/source/butterflies/"
-    ),
+    save_folder=os.path.join(os.environ["PROJECT_ROOT"], "data/source/butterflies/"),
     save_filename="bioclim_lc_data.csv",
 ):
     """Get both bioclimatic and land cover data from a list of coordinates."""
@@ -34,9 +32,7 @@ def get_bioclim_lc_from_coords_list(
         ), "name_list and coords_list must have the same length"
     if save_file:
         save_path = os.path.join(save_folder, save_filename)
-        assert os.path.exists(
-            save_folder
-        ), f"Save folder does not exist: {save_folder}"
+        assert os.path.exists(save_folder), f"Save folder does not exist: {save_folder}"
         save_every_n = 100  # save every n samples to avoid data loss
         print(
             f"Will save bioclimatic and land cover data to {save_path} every {save_every_n} samples"
@@ -51,9 +47,7 @@ def get_bioclim_lc_from_coords_list(
                 result = get_bioclim_lc_from_coords(coords)
                 result_keys = list(result.keys())
             except Exception as e:
-                print(
-                    f"Error occurred while processing coordinates {i_coords}, {coords}: {e}"
-                )
+                print(f"Error occurred while processing coordinates {i_coords}, {coords}: {e}")
                 result = {k: np.nan for k in result_keys}
             if i_coords == 0:
                 for k in result.keys():
@@ -78,9 +72,7 @@ def get_bioclim_lc_from_coords_list(
     results = pd.DataFrame(results)
 
     # Add top-5 corine cols
-    target_cols = [
-        c for c in results.columns if ("corine" in c and "top" not in c)
-    ]
+    target_cols = [c for c in results.columns if ("corine" in c and "top" not in c)]
     target_cols.sort()
 
     sub_df = results[target_cols]
@@ -96,9 +88,7 @@ def get_bioclim_lc_from_coords_list(
     target_cols_np = np.array(target_cols)
 
     for i in range(5):
-        results[f"aux_corine_frac_top_{i + 1}"] = target_cols_np[
-            top_k_idx[:, i]
-        ]
+        results[f"aux_corine_frac_top_{i + 1}"] = target_cols_np[top_k_idx[:, i]]
 
     if save_file:
         results.to_csv(save_path, index=False)
@@ -137,16 +127,12 @@ def create_butterfly_aux_data(
     # Load auxiliary data:
     if data_dir is None:
         data_dir = os.path.join(os.environ["PROJECT_ROOT"], "data")
-    path_butterfly_aux_target = os.path.join(
-        data_dir, "source", "butterflies", filename
-    )
+    path_butterfly_aux_target = os.path.join(data_dir, "source", "butterflies", filename)
     assert os.path.exists(
         path_butterfly_aux_target
     ), f"Butterfly auxiliary data file does not exist: {path_butterfly_aux_target}"
     df_bioclim_lc = pd.read_csv(path_butterfly_aux_target)
-    corine_keys = [
-        k for k in df_bioclim_lc.iloc[0].index if "corine_frac_" in k
-    ]
+    corine_keys = [k for k in df_bioclim_lc.iloc[0].index if "corine_frac_" in k]
 
     # rename columns:
     df_bioclim_lc.rename(columns={"name": "name_loc"}, inplace=True)
@@ -192,9 +178,7 @@ def create_butterfly_aux_data(
         )
     if save_file:
         os.makedirs("../data/model_ready/", exist_ok=True)
-        df_merged.to_csv(
-            "../data/model_ready/s2bms_presence_with_aux_data.csv", index=False
-        )
+        df_merged.to_csv("../data/model_ready/s2bms_presence_with_aux_data.csv", index=False)
     return df_merged
 
 

@@ -20,9 +20,7 @@ ONLINE_ACCESS_TO_GEE = True
 if ONLINE_ACCESS_TO_GEE:
     gee_api_key = os.environ.get("GEE_API")
     if gee_api_key is None:
-        print(
-            "WARNING: GEE_API environment variable not set, not using GEE API"
-        )
+        print("WARNING: GEE_API environment variable not set, not using GEE API")
     else:
         ee.Authenticate()
         ee.Initialize(project=gee_api_key)
@@ -43,17 +41,13 @@ def get_epsg_from_latlon(lat, lon):
     return epsg_code
 
 
-def create_aoi_from_coord_buffer(
-    coords, buffer_deg=0.01, buffer_m=1000, bool_buffer_in_deg=False
-):
+def create_aoi_from_coord_buffer(coords, buffer_deg=0.01, buffer_m=1000, bool_buffer_in_deg=False):
     """Create an Earth Engine AOI (Geometry) from a coordinate and buffer in meters."""
     point = shapely.geometry.Point(coords)
     if (
         bool_buffer_in_deg
     ):  # not ideal https://gis.stackexchange.com/questions/304914/python-shapely-intersection-with-buffer-in-meter
-        print(
-            "WARNING: using buffer in degrees, which distorts images for large latitudes."
-        )
+        print("WARNING: using buffer in degrees, which distorts images for large latitudes.")
         point = shapely.geometry.Point(coords)
         polygon = point.buffer(buffer_deg, cap_style=3)  # buffer in degrees
         xy_coords = np.array(polygon.exterior.coords.xy).T
@@ -66,37 +60,24 @@ def create_aoi_from_coord_buffer(
 
 
 def get_bioclim_from_coord(coords):
-    assert (
-        ONLINE_ACCESS_TO_GEE
-    ), "ONLINE_ACCESS_TO_GEE is set to False, so no access to GEE"
-    aoi = create_aoi_from_coord_buffer(
-        coords, buffer_m=1000, bool_buffer_in_deg=False
-    )
+    assert ONLINE_ACCESS_TO_GEE, "ONLINE_ACCESS_TO_GEE is set to False, so no access to GEE"
+    aoi = create_aoi_from_coord_buffer(coords, buffer_m=1000, bool_buffer_in_deg=False)
     im_gee = ee.Image("WORLDCLIM/V1/BIO").clip(aoi)
     point = ee.Geometry.Point(coords)  # redefine point for sampling
-    values = (
-        im_gee.sample(region=point.buffer(1000), scale=1000)
-        .first()
-        .toDictionary()
-        .getInfo()
-    )
+    values = im_gee.sample(region=point.buffer(1000), scale=1000).first().toDictionary().getInfo()
     return values
 
 
 def convert_bioclim_to_units(bioclim_dict):
     assert len(bioclim_dict) == 19, "bioclim_dict should have 19 variables"
     for k in range(1, 20):
-        assert (
-            f"bio{str(k).zfill(2)}" in bioclim_dict
-        ), f"bio{str(k).zfill(2)} not in bioclim_dict"
+        assert f"bio{str(k).zfill(2)}" in bioclim_dict, f"bio{str(k).zfill(2)} not in bioclim_dict"
     _, df_bioclim = du.bioclim_schema()
     for k, v in bioclim_dict.items():
         scale = df_bioclim.loc[df_bioclim["name"] == k, "scale"].values[0]
         bioclim_dict[k] = v * scale
 
-    bioclim_dict = {
-        f'bioclim_{k.lstrip("bio")}': float(v) for k, v in bioclim_dict.items()
-    }
+    bioclim_dict = {f'bioclim_{k.lstrip("bio")}': float(v) for k, v in bioclim_dict.items()}
     return bioclim_dict
 
 
@@ -114,15 +95,11 @@ def get_gee_image_from_coord(
     Collections can have slightly different parameters/logic, hence they are split up in different
     if statements.
     """
-    aoi = create_aoi_from_coord_buffer(
-        coords, buffer_m=patch_size // 2, bool_buffer_in_deg=False
-    )
+    aoi = create_aoi_from_coord_buffer(coords, buffer_m=patch_size // 2, bool_buffer_in_deg=False)
     lon, lat = coords
     epsg_code = get_epsg_from_latlon(lat=lat, lon=lon)
     if collection_name == "corine":
-        assert (
-            year == 2017
-        ), "GEE CORINE collection only has data for year 2017 I believe"
+        assert year == 2017, "GEE CORINE collection only has data for year 2017 I believe"
         collection = ee.ImageCollection("COPERNICUS/CORINE/V20/100m")
     elif collection_name == "alphaearth":
         collection = ee.ImageCollection("GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL")
@@ -131,13 +108,9 @@ def get_gee_image_from_coord(
     elif collection_name == "dynamicworld":
         collection = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
     else:
-        raise NotImplementedError(
-            f"Unknown collection_name: {collection_name}"
-        )
+        raise NotImplementedError(f"Unknown collection_name: {collection_name}")
     if collection is None:
-        raise ValueError(
-            f"Could not access {collection_name} collection in GEE."
-        )
+        raise ValueError(f"Could not access {collection_name} collection in GEE.")
 
     if collection_name in ["corine", "alphaearth"]:
         im_gee = ee.Image(
@@ -193,9 +166,7 @@ def get_gee_image_from_coord(
 
 def convert_corine_lc_im_to_tab(lc_im):
     """Convert a land cover image to a tabular format with pixel counts per class."""
-    assert (
-        ONLINE_ACCESS_TO_GEE
-    ), "ONLINE_ACCESS_TO_GEE is set to False, so no access to GEE"
+    assert ONLINE_ACCESS_TO_GEE, "ONLINE_ACCESS_TO_GEE is set to False, so no access to GEE"
     pixel_counts = lc_im.reduceRegion(
         reducer=ee.Reducer.frequencyHistogram(),
         geometry=lc_im.geometry(),
@@ -203,15 +174,10 @@ def convert_corine_lc_im_to_tab(lc_im):
         maxPixels=1e9,
     )
     assert (
-        len(pixel_counts.getInfo()) == 1
-        and "landcover" in pixel_counts.getInfo()
+        len(pixel_counts.getInfo()) == 1 and "landcover" in pixel_counts.getInfo()
     ), "Land cover band not found in the image."
-    pixel_counts = pixel_counts.get(
-        "landcover"
-    ).getInfo()  # has str keys ('211', etc)
-    pixel_counts = {
-        int(k): v for k, v in pixel_counts.items()
-    }  # convert keys to int
+    pixel_counts = pixel_counts.get("landcover").getInfo()  # has str keys ('211', etc)
+    pixel_counts = {int(k): v for k, v in pixel_counts.items()}  # convert keys to int
 
     _, df_lc_classes = du.corine_lc_schema()
     for k, v in pixel_counts.items():
@@ -222,9 +188,7 @@ def convert_corine_lc_im_to_tab(lc_im):
     sum_counts = sum(pixel_counts.values())
     assert sum_counts > 0, "No pixels found in the land cover image."
     dict_lc_counts = {
-        f"corine_frac_{int(k)}": (
-            0 if k not in pixel_counts else pixel_counts[k] / sum_counts
-        )
+        f"corine_frac_{int(k)}": (0 if k not in pixel_counts else pixel_counts[k] / sum_counts)
         for k in df_lc_classes["code"].values
     }
     return dict_lc_counts
@@ -242,7 +206,9 @@ def create_filename(
     base_name should correspond to a unique identifier for the location/sample.
     """
     if collection_name == "sentinel2":
-        filename = f"{base_name}_sent2-4band_y-{year}_m-{sentinel_month_start}-{sentinel_month_end}.tif"
+        filename = (
+            f"{base_name}_sent2-4band_y-{year}_m-{sentinel_month_start}-{sentinel_month_end}.tif"
+        )
     elif collection_name == "alphaearth":
         filename = f"{base_name}_alphaearth_y-{year}.tif"
     elif collection_name == "worldclimbio":
@@ -254,9 +220,7 @@ def create_filename(
     elif collection_name == "corine":
         filename = f"{base_name}_corine_y-{year}.tif"
     else:
-        raise NotImplementedError(
-            f"Unknown collection_name: {collection_name}"
-        )
+        raise NotImplementedError(f"Unknown collection_name: {collection_name}")
     return filename
 
 
@@ -326,10 +290,10 @@ def download_gee_image(
         verbose=False,
     )
 
-    if (
-        resize_image
-    ):  # load & crop & save to size correctly (because of buffer):
-        remove_if_too_small = True  # deletes image entirely if too small (and hence not able to resize)
+    if resize_image:  # load & crop & save to size correctly (because of buffer):
+        remove_if_too_small = (
+            True  # deletes image entirely if too small (and hence not able to resize)
+        )
         im = du.load_tiff(filepath, datatype="da")
         if verbose:
             print("Original size: ", im.shape)
@@ -374,9 +338,7 @@ def download_list_coord(
     """For a list of coordinates (and optional names), download GEE images for each coordinate and
     save them locally."""
     assert isinstance(coord_list, list)
-    assert path_save is not None and isinstance(
-        path_save, str
-    ), "path_save must be provided"
+    assert path_save is not None and isinstance(path_save, str), "path_save must be provided"
     if not os.path.exists(path_save):
         os.makedirs(path_save)
         print(f"Created folder {path_save}")
@@ -416,9 +378,7 @@ def download_list_coord(
                     collection_name=im_collection,
                 )
             except Exception as e:
-                print(
-                    f"Image {name}, {im_collection} could not be downloaded, error: {e}"
-                )
+                print(f"Image {name}, {im_collection} could not be downloaded, error: {e}")
                 im = None
             if im is None:
                 inds_none.append(f"{i}_{im_collection}")

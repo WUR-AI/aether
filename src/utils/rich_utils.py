@@ -89,12 +89,8 @@ def enforce_tags(cfg: DictConfig, save_to_file: bool = False) -> None:
         if "id" in HydraConfig().cfg.hydra.job:
             raise ValueError("Specify tags before launching a multirun!")
 
-        log.warning(
-            "No tags provided in config. Prompting user to input tags..."
-        )
-        tags = Prompt.ask(
-            "Enter a list of comma separated tags", default="dev"
-        )
+        log.warning("No tags provided in config. Prompting user to input tags...")
+        tags = Prompt.ask("Enter a list of comma separated tags", default="dev")
         tags = [t.strip() for t in tags.split(",") if t != ""]
 
         with open_dict(cfg):

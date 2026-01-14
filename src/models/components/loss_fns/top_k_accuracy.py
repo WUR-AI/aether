@@ -12,9 +12,7 @@ class TopKAccuracy(BaseLossFn):
         self.k_list = k_list
 
     @override
-    def forward(
-        self, pred: torch.Tensor, labels: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, pred: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
         inds_sorted_preds = torch.argsort(
             pred, dim=1, descending=True
         )  # dim =1; sort along 2nd dimension (ie per sample)
@@ -31,12 +29,8 @@ class TopKAccuracy(BaseLossFn):
                 tmp_pred_greater_th[row, inds_sorted_preds[row, :k]] = 1
                 tmp_label_greater_th[row, inds_sorted_target[row, :k]] = 1
 
-            assert (
-                tmp_pred_greater_th.sum() <= k * len_batch
-            ), tmp_pred_greater_th.sum()
-            assert (
-                tmp_label_greater_th.sum() <= k * len_batch
-            ), tmp_label_greater_th.sum()
+            assert tmp_pred_greater_th.sum() <= k * len_batch, tmp_pred_greater_th.sum()
+            assert tmp_label_greater_th.sum() <= k * len_batch, tmp_label_greater_th.sum()
             tmp_joint = tmp_pred_greater_th * tmp_label_greater_th
             n_present = torch.sum(tmp_joint, dim=1)  # sum per batch sample
 

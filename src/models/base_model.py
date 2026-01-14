@@ -16,6 +16,14 @@ class BaseModel(LightningModule, ABC):
         loss_fn: BaseLossFn,
         num_classes: int | None = None,
     ) -> None:
+        """Interface for any model.
+
+        :param trainable_modules:
+        :param optimizer:
+        :param scheduler:
+        :param loss_fn:
+        :param num_classes:
+        """
         super().__init__()
         self.save_hyperparameters(ignore=["loss_fn"])
 
@@ -27,9 +35,11 @@ class BaseModel(LightningModule, ABC):
 
     @final
     def freezer(self) -> None:
-        """Freezes and unfreezes modules based on freezing strategy and freezing exceptions."""
+        """Freezes modules based on provided trainable modules."""
 
+        # Store higher level module names for printing of trainable parts
         trainable = set()
+
         # Freeze modules
         for name, param in self.named_parameters():
             # Enable exceptions
@@ -59,6 +69,7 @@ class BaseModel(LightningModule, ABC):
         self,
         batch: Dict[str, torch.Tensor],
     ) -> torch.Tensor:
+        """Forward computation of the model."""
         pass
 
     @abstractmethod
@@ -67,31 +78,34 @@ class BaseModel(LightningModule, ABC):
         batch: Dict[str, torch.Tensor],
         mode: str = "train",
     ) -> torch.Tensor:
+        """Step forward computation of the model."""
         pass
 
     @final
-    def training_step(
-        self, batch: Dict[str, torch.Tensor], batch_idx: int
-    ) -> torch.Tensor:
+    def training_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> torch.Tensor:
+        self.log(
+            "lr",
+            self.hparams.lr,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            sync_dist=True,
+        )
         return self._step(batch, "train")
 
     @final
-    def validation_step(
-        self, batch: Dict[str, torch.Tensor], batch_idx: int
-    ) -> torch.Tensor:
+    def validation_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> torch.Tensor:
         return self._step(batch, "val")
 
     @final
-    def test_step(
-        self, batch: Dict[str, torch.Tensor], batch_idx: int
-    ) -> torch.Tensor:
+    def test_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> torch.Tensor:
         return self._step(batch, "test")
 
     @final
     def configure_optimizers(self) -> Dict[str, Any]:
-        optimizer = self.hparams.optimizer(
-            params=self.trainer.model.parameters()
-        )
+        """Configure optimizer and learning rate scheduler."""
+
+        optimizer = self.hparams.optimizer(params=self.trainer.model.parameters())
 
         if self.hparams.scheduler is not None:
             scheduler = self.hparams.scheduler(optimizer=optimizer)
@@ -123,16 +137,10 @@ class BaseModel(LightningModule, ABC):
 
         if missing_keys:
             missing_keys = {".".join(i.split(".")[:3]) for i in missing_keys}
-            print(
-                f"The following keys are missing from the pretrained model: {missing_keys}"
-            )
+            print(f"The following keys are missing from the pretrained model: {missing_keys}")
         if unexpected_keys:
-            unexpected_keys = {
-                ".".join(i.split(".")[:3]) for i in unexpected_keys
-            }
-            print(
-                f"The following keys are unexpected from the pretrained model:{unexpected_keys}"
-            )
+            unexpected_keys = {".".join(i.split(".")[:3]) for i in unexpected_keys}
+            print(f"The following keys are unexpected from the pretrained model:{unexpected_keys}")
 
     # TODO feels illegal
     def load_state_dict(self, state_dict, strict=True):
