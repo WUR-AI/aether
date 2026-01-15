@@ -1,83 +1,112 @@
+import json
+
+import pandas as pd
 import pytest
+import torch
 
+from src.data.base_caption_builder import BaseCaptionBuilder
 from src.data.base_datamodule import BaseDataModule
-from src.data.components.butterfly_dataset import ButterflyDataset
+from src.data.butterfly_dataset import ButterflyDataset
 
 
-@pytest.mark.parametrize(
-    "modalities, use_target_data, use_aux_data",
-    [
-        (['coords'], True, False),
-        (['coords'], True, True),
-        (['coords'], False, False)
-    ]
-)
-def test_butterfly_dataset(modalities, use_target_data, use_aux_data):
-    df_path = 'data/model_ready/s2bms_presence_with_aux_data.csv'
-
-    dataset = ButterflyDataset(df_path, modalities, use_target_data, use_aux_data)
-
-    assert dataset.modalities == modalities
-    assert dataset.use_target_data == use_target_data
-    assert dataset.use_aux_data == use_aux_data
-    data_point = dataset[0]
-
-    if use_target_data:
-        assert dataset.target_names is not None
-        assert len(dataset.target_names) > 0
-        assert data_point.get('target') is not None
-    else:
-        assert dataset.target_names is None
-
-    if use_aux_data:
-        assert dataset.aux_names is not None
-        assert len(dataset.aux_names) > 0
-        assert data_point.get('aux') is not None
-    else:
-        assert dataset.aux_names is None
-
-    for modality in modalities:
-        assert data_point.get('eo', {}).get(modality) is not None
-
-        if modality == 'coords':
-            assert len(data_point.get('eo', {}).get(modality)) == 2
+@pytest.fixture
+def sample_csv(tmp_path) -> str:
+    df = pd.DataFrame(
+        {
+            "name_loc": [f"loc_{i}" for i in range(6)],
+            "lat": [50.0, 50.5, 51.0, 51.5, 52.0, 52.5],
+            "lon": [4.0, 4.5, 5.0, 5.5, 6.0, 6.5],
+            "target_a": [1, 0, 1, 0, 1, 0],
+            "target_b": [0, 1, 0, 1, 0, 1],
+            "aux_temp": [10, 11, 12, 13, 14, 15],
+        }
+    )
+    path = tmp_path / "butterflies.csv"
+    df.to_csv(path, index=False)
+    return str(path)
 
 
+class DummyCaptionBuilder(BaseCaptionBuilder):
+    def __init__(self, templates_path: str, data_dir: str):
+        super().__init__(templates_path, data_dir)
+
+    def sync_with_dataset(self, dataset) -> None:
+        self.dataset = dataset
+
+    def _build_from_template(self, template_idx: int, row: torch.Tensor) -> str:
+        first_val = row[0].item() if torch.is_tensor(row) else row[0]
+        return f"aux-{first_val}"
 
 
-@pytest.mark.parametrize(
-    "modalities, use_target_data, use_aux_data, batch_size",
-    [
-        (['coords'], True, False, 32),
-        (['coords'], True, True, 16),
-        (['coords'], False, False, 4)
-    ]
-)
-def test_butterfly_datamodule(modalities, use_target_data, use_aux_data, batch_size):
-    df_path = 'data/model_ready/s2bms_presence_with_aux_data.csv'
+def test_base_datamodule_random_split_and_loaders(sample_csv):
+    dataset = ButterflyDataset(
+        path_csv=sample_csv,
+        modalities=["coords"],
+        use_target_data=True,
+        use_aux_data=False,
+        seed=0,
+    )
 
-    dataset = ButterflyDataset(df_path, modalities, use_target_data, use_aux_data)
+    dm = BaseDataModule(
+        dataset,
+        batch_size=2,
+        train_val_test_split=(4, 1, 1),
+        num_workers=0,
+        pin_memory=False,
+        split_mode="random",
+        save_split=False,
+    )
 
-    dm = BaseDataModule(dataset, batch_size=batch_size)
-
-    dm.setup()
-    assert dm.data_train and dm.data_val and dm.data_test
-    assert dm.train_dataloader() and dm.val_dataloader() and dm.test_dataloader()
-
-    num_datapoints = len(dm.data_train) + len(dm.data_val) + len(dm.data_test)
-    assert num_datapoints == len(dataset)
+    assert len(dm.data_train) == 4
+    assert len(dm.data_val) == 1
+    assert len(dm.data_test) == 1
 
     batch = next(iter(dm.train_dataloader()))
-    for modality in modalities:
-        assert len(batch.get('eo', {}).get(modality)) == batch_size
-    if use_target_data:
-        assert batch.get('target') is not None
-        assert len(batch.get('target')) == batch_size
-    else:
-        assert batch.get('target') is None
+    assert batch["eo"]["coords"].shape == (2, 2)
+    assert batch["target"].shape == (2, 2)
 
-    if use_aux_data:
-        assert batch.get('aux') is not None
-        assert len(batch.get('aux')) == batch_size
-    else:
-        assert batch.get('aux') is None
+
+def test_random_split_is_deterministic(sample_csv):
+    kwargs = dict(
+        modalities=["coords"],
+        use_target_data=True,
+        use_aux_data=False,
+        random_state=0,
+    )
+    ds1 = ButterflyDataset(path_csv=sample_csv, **kwargs)
+    ds2 = ButterflyDataset(path_csv=sample_csv, **kwargs)
+
+    dm1 = BaseDataModule(ds1, batch_size=2, train_val_test_split=(4, 1, 1), split_mode="random")
+    dm2 = BaseDataModule(ds2, batch_size=2, train_val_test_split=(4, 1, 1), split_mode="random")
+
+    assert dm1.data_train.indices == dm2.data_train.indices
+    assert dm1.data_val.indices == dm2.data_val.indices
+    assert dm1.data_test.indices == dm2.data_test.indices
+
+
+def test_datamodule_uses_collate_when_aux_data(sample_csv, tmp_path):
+    templates_path = tmp_path / "templates.json"
+    templates_path.write_text(json.dumps(["<name_loc> text"]))
+    caption_builder = DummyCaptionBuilder(str(templates_path), data_dir=str(tmp_path))
+
+    dataset = ButterflyDataset(
+        path_csv=sample_csv,
+        modalities=["coords"],
+        use_target_data=True,
+        use_aux_data=True,
+        seed=0,
+    )
+
+    dm = BaseDataModule(
+        dataset,
+        batch_size=2,
+        train_val_test_split=(4, 2, 0),
+        split_mode="random",
+        caption_builder=caption_builder,
+        num_workers=0,
+        pin_memory=False,
+    )
+
+    batch = next(iter(dm.train_dataloader()))
+    assert "text" in batch
+    assert len(batch["text"]) == dm.batch_size_per_device

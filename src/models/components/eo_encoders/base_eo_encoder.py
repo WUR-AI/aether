@@ -12,8 +12,5 @@ class BaseEOEncoder(nn.Module, ABC):
         self.output_dim: int | None = None
 
     @abstractmethod
-    def forward(
-            self,
-            batch: Dict[str, torch.Tensor]
-    ) -> torch.Tensor:
+    def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         pass

@@ -13,18 +13,11 @@ class BasePredictionHead(nn.Module, ABC):
         self.output_dim: int | None = None
 
     @abstractmethod
-    def forward(
-            self,
-            feats: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, feats: torch.Tensor) -> torch.Tensor:
         pass
 
     @final
-    def set_dim(
-            self,
-            input_dim: int,
-            output_dim: int
-    ) -> None:
+    def set_dim(self, input_dim: int, output_dim: int) -> None:
         self.input_dim = input_dim
         self.output_dim = output_dim
 

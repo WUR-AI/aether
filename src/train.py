@@ -1,9 +1,9 @@
 from typing import Any, Dict, List, Optional, Tuple
-from dotenv import load_dotenv
 
 import hydra
 import lightning as L
 import rootutils
+from dotenv import load_dotenv
 from lightning import Callback, LightningModule, Trainer
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig
@@ -15,6 +15,7 @@ load_dotenv()
 
 # Disable tokenizers parallelism to avoid warnings when using multiprocessing
 import os
+
 if os.environ.get("TOKENIZERS_PARALLELISM") is None:
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -86,7 +87,12 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         if ckpt_path == "":
             log.warning("Best ckpt not found! Using current weights for testing...")
             ckpt_path = None
-        trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path, weights_only=False)
+        trainer.test(
+            model=model,
+            datamodule=datamodule,
+            ckpt_path=ckpt_path,
+            weights_only=False,
+        )
         log.info(f"Best ckpt path: {ckpt_path}")
 
     test_metrics = trainer.callback_metrics
