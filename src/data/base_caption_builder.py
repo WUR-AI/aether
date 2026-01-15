@@ -78,6 +78,17 @@ class BaseCaptionBuilder(ABC):
 
         return formatted_rows
 
+class DummyCaptionBuilder(BaseCaptionBuilder):
+    '''Dummy caption builder for testing purposes.'''
+    def __init__(self, templates_path: str, data_dir: str, seed: int) -> None:
+        super().__init__(templates_path, data_dir, seed)
+
+    def sync_with_dataset(self, dataset) -> None:
+        self.dataset = dataset
+
+    def _build_from_template(self, template_idx: int, row: torch.Tensor) -> str:
+        first_val = row[0].item() if torch.is_tensor(row) else row[0]
+        return f"aux-{first_val}"
 
 def get_adjective_for_percentage(value: float) -> str:
     """Get adjective for percentage value (for land cover etc.)."""

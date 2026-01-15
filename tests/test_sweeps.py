@@ -23,6 +23,22 @@ def test_prediction_experiment(tmp_path: Path) -> None:
     ] + overrides
     run_sh_command(command)
 
+@RunIf(sh=True)
+@pytest.mark.slow
+def test_alignment_experiment(tmp_path: Path) -> None:
+    """Test running all available experiment configs with `fast_dev_run=True.`
+
+    :param tmp_path: The temporary logging path.
+    """
+    command = [
+        "-m",
+        "src.train",
+        'experiment=alignment',
+        "hydra.sweep.dir=" + str(tmp_path),
+        "++trainer.fast_dev_run=true",
+    ] + overrides
+    run_sh_command(command)
+
 
 @RunIf(sh=True)
 @pytest.mark.slow

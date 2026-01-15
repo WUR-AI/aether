@@ -7,7 +7,15 @@ import rootutils
 from hydra import compose, initialize
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, open_dict
+import pandas as pd
+import torch
+from src.data.base_caption_builder import BaseCaptionBuilder
+from src.data.base_datamodule import BaseDataModule
+from src.data.butterfly_dataset import ButterflyDataset
 
+
+def pytest_addoption(parser):
+    parser.addoption("--use-mock", action="store_true", help="Use mock data instead of real data")
 
 @pytest.fixture(scope="package")
 def cfg_train_global() -> DictConfig:
@@ -28,6 +36,7 @@ def cfg_train_global() -> DictConfig:
             cfg.trainer.limit_test_batches = 0.1
             cfg.trainer.accelerator = "cpu"
             cfg.trainer.devices = 1
+            cfg.trainer.strategy = "single_device"
             cfg.data.num_workers = 0
             cfg.data.pin_memory = False
             cfg.extras.print_config = False
@@ -110,3 +119,47 @@ def cfg_train(cfg_train_global: DictConfig, tmp_path: Path) -> DictConfig:
 #     yield cfg
 
 #     GlobalHydra.instance().clear()
+
+@pytest.fixture
+def sample_csv(tmp_path) -> str:
+    df = pd.DataFrame(
+        {
+            "name_loc": [f"loc_{i}" for i in range(6)],
+            "lat": [50.0, 50.5, 51.0, 51.5, 52.0, 52.5],
+            "lon": [4.0, 4.5, 5.0, 5.5, 6.0, 6.5],
+            "target_a": [1, 0, 1, 0, 1, 0],
+            "target_b": [0, 1, 0, 1, 0, 1],
+            "aux_temp": [10, 11, 12, 13, 14, 15],
+        }
+    )
+    path = tmp_path / "butterflies.csv"
+    df.to_csv(path, index=False)
+    return str(path)
+
+@pytest.fixture()
+def create_butterfly_dataset(request, sample_csv):
+    """A pytest fixture for creating a ButterflyDataset instance."""
+    use_mock = request.config.getoption("--use-mock")
+    if use_mock:
+        path_csv = sample_csv
+    else:
+        assert False, "Real data not available in test environment."
+    dataset = ButterflyDataset(
+        path_csv=path_csv,
+        modalities=["coords"],
+        use_target_data=True,
+        use_aux_data=False,
+        seed=0,
+    )
+
+    dm = BaseDataModule(
+        dataset,
+        batch_size=2,
+        train_val_test_split=(4, 1, 1),
+        num_workers=0,
+        pin_memory=False,
+        split_mode="random",
+        save_split=False,
+    )
+
+    return (dataset, dm)
