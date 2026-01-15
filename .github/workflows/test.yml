@@ -55,19 +55,20 @@ jobs:
 
       - name: Set up Python
         uses: actions/setup-python@v6
+        with:
+          python-version: 3.12
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-
-      - name: Install project
+      - name: Create virtual environment
         run: |
-          uv sync
-          uv pip install -e . --python python3.12
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install -e .
 
       - name: Run pytest
         run: |
           source .venv/bin/activate
-          uv run pytest -v
+          pytest -v
 
   run_tests_windows:
     runs-on: ${{ matrix.os }}
