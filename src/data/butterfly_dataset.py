@@ -58,7 +58,7 @@ class ButterflyDataset(BaseDataset):
             columns.extend(["lat", "lon"])
         if "s2" in self.modalities:
             if path_s2_im is None:
-                raise IllegalArgumentCombination("Provide path_s2_im for if using s2 modality")
+                raise IllegalArgumentCombination("Provide path_s2_im if using s2 modality")
             self.path_s2_im = path_s2_im
             self.path_s2_im = os.path.join(
                 self.path_s2_im,
@@ -70,6 +70,7 @@ class ButterflyDataset(BaseDataset):
 
             columns.append("s2_path")
             self.add_s2_paths()
+            assert n_bands is not None, "Specify n_bands if using s2 modality"
             self.n_bands = n_bands
             self.zscore_im = zscore_im
             if self.zscore_im:

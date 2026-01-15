@@ -16,6 +16,8 @@ class LinearPredictionHead(BasePredictionHead):
 
     @override
     def configure_nn(self) -> None:
+        assert type(self.input_dim) is int, self.input_dim
+        assert type(self.output_dim) is int, self.output_dim
         self.net = nn.Linear(self.input_dim, self.output_dim)
         return
 

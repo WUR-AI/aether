@@ -18,6 +18,8 @@ class MLPPredictionHead(BasePredictionHead):
 
     @override
     def configure_nn(self) -> None:
+        assert type(self.input_dim) is int, self.input_dim
+        assert type(self.output_dim) is int, self.output_dim
         layers = []
         input_dim = self.input_dim
         for i in range(self.nn_layers - 1):
