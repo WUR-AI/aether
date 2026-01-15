@@ -5,7 +5,7 @@ name: Code Quality Main
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/tests]
 
 jobs:
   code-quality:
@@ -13,10 +13,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: "pyproject.toml"
 
       - name: Run pre-commits
-        uses: pre-commit/action@v2.0.3
+        uses: pre-commit/action@v3.0.1
