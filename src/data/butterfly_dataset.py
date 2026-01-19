@@ -4,12 +4,10 @@ import shutil
 from typing import Any, Dict, override
 
 import numpy as np
-import pooch
 import torch
 
 import src.data_preprocessing.data_utils as du
 from src.data.base_dataset import BaseDataset
-from src.data_preprocessing.tessera_embeds import tessera_from_df
 from src.utils.errors import IllegalArgumentCombination
 
 
@@ -67,6 +65,8 @@ class ButterflyDataset(BaseDataset):
         if len(self.modalities.keys()) == 1 and self.modalities.get("coords", None) is not None:
             return
 
+        import pooch
+
         # Initialise pooch client
         self.pooch_cli = pooch.create(
             path=os.path.join(self.cache_dir, "s2bms"),
@@ -82,6 +82,7 @@ class ButterflyDataset(BaseDataset):
             if mod == "s2":
                 self.setup_s2bms()
             elif mod == "tessera":
+
                 self.setup_tessera(year=params["year"], size=params["size"])
 
     def setup_tessera(self, year: int, size: int) -> None:
@@ -98,6 +99,8 @@ class ButterflyDataset(BaseDataset):
 
         # TODO: if we compile the dataset and use zenodo (or sth else) then change to pooch downloading/loading
         # Now it downloads from function calls
+        from src.data_preprocessing.tessera_embeds import tessera_from_df
+
         tessera_from_df(
             self.df,
             data_dir=os.path.join(self.data_dir, "eo/tessera"),
@@ -108,6 +111,7 @@ class ButterflyDataset(BaseDataset):
 
     def setup_s2bms(self) -> None:
         """Prepares (downloads, renames and moves) data from S2BMS study."""
+        import pooch
 
         # Check if data is already available
         dst_dir = os.path.join(self.data_dir, "eo/s2")
