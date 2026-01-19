@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import pytest
 
 from tests.helpers.run_if import RunIf
@@ -17,11 +18,12 @@ def test_prediction_experiment(tmp_path: Path) -> None:
     command = [
         "-m",
         "src.train",
-        'experiment=prediction',
+        "experiment=prediction",
         "hydra.sweep.dir=" + str(tmp_path),
         "++trainer.fast_dev_run=true",
     ] + overrides
     run_sh_command(command)
+
 
 @RunIf(sh=True)
 @pytest.mark.slow
@@ -33,7 +35,7 @@ def test_alignment_experiment(tmp_path: Path) -> None:
     command = [
         "-m",
         "src.train",
-        'experiment=alignment',
+        "experiment=alignment",
         "hydra.sweep.dir=" + str(tmp_path),
         "++trainer.fast_dev_run=true",
     ] + overrides

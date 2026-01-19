@@ -19,7 +19,9 @@ class BaseTextEncoder(nn.Module, ABC):
         pass
 
     def add_projector(self, projected_dim: int) -> None:
-        '''Adds an extra linear projection layer to the text encoder. 
-        NB: is not used by default, needs to be called explicitly in forward().'''
+        """Adds an extra linear projection layer to the text encoder.
+
+        NB: is not used by default, needs to be called explicitly in forward().
+        """
         self.extra_projector = nn.Linear(self.output_dim, projected_dim)
         self.output_dim = projected_dim

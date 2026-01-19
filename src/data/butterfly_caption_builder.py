@@ -16,8 +16,8 @@ from src.data_preprocessing.data_utils import (
 
 
 class ButterflyCaptionBuilder(BaseCaptionBuilder):
-    def __init__(self, templates_path: str, data_dir: str, seed: int):
-        super().__init__(templates_path, data_dir, seed)
+    def __init__(self, templates_fname: str, data_dir: str, seed: int):
+        super().__init__(templates_fname, data_dir, seed)
 
     @override
     def sync_with_dataset(self, dataset: BaseDataset) -> None:
@@ -43,12 +43,12 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
 
     def get_corine_column_keys(self):
         """Returns metadata for corine columns."""
-        if not os.path.isfile(os.path.join(self.data_dir, "caption_templates/corine_classes.csv")):
+        if not os.path.isfile(os.path.join(self.data_dir, "corine_classes.csv")):
             process_corine_classes(
                 os.path.join(self.data_dir, "source/corine_classes.json"),
-                os.path.join(self.data_dir, "caption_templates/corine_classes.csv"),
+                os.path.join(self.data_dir, "corine_classes.csv"),
             )
-        df = pd.read_csv(os.path.join(self.data_dir, "caption_templates/corine_classes.csv"))
+        df = pd.read_csv(os.path.join(self.data_dir, "corine_classes.csv"))
 
         return dict(
             zip(
@@ -59,15 +59,13 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
 
     def get_bioclim_column_keys(self):
         """Returns metadata for bioclim columns."""
-        if not os.path.isfile(
-            os.path.join(self.data_dir, "caption_templates/bioclim_classes.csv")
-        ):
+        if not os.path.isfile(os.path.join(self.data_dir, "bioclim_classes.csv")):
             process_bioclim_classes(
                 os.path.join(self.data_dir, "source/bioclim_classes.json"),
-                os.path.join(self.data_dir, "caption_templates/bioclim_classes.csv"),
+                os.path.join(self.data_dir, "bioclim_classes.csv"),
             )
 
-        df = pd.read_csv(os.path.join(self.data_dir, "caption_templates/bioclim_classes.csv"))
+        df = pd.read_csv(os.path.join(self.data_dir, "bioclim_classes.csv"))
         df.sort_values(by=["name"], inplace=True)
         return dict(zip(df["name"], zip(df["description"], df["units"])))
 

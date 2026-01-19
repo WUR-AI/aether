@@ -177,8 +177,8 @@ def create_butterfly_aux_data(
             f"Warning: dropped {n_rows - n_rows_after} rows with missing auxiliary data. New number of rows: {n_rows_after}"
         )
     if save_file:
-        os.makedirs("../data/model_ready/", exist_ok=True)
-        df_merged.to_csv("../data/model_ready/s2bms_presence_with_aux_data.csv", index=False)
+        os.makedirs("../data/s2bms/", exist_ok=True)
+        df_merged.to_csv("../data/s2bms/model_ready_s2bms.csv", index=False)
     return df_merged
 
 

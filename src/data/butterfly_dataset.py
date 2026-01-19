@@ -1,4 +1,6 @@
 import os
+import re
+import shutil
 from typing import Any, Dict, override
 
 import numpy as np
@@ -12,14 +14,12 @@ from src.utils.errors import IllegalArgumentCombination
 class ButterflyDataset(BaseDataset):
     def __init__(
         self,
-        path_csv: str | None = None,
-        modalities: list[str] = ["coords"],
+        data_dir: str,
+        modalities: dict,
         use_target_data: bool = True,
         use_aux_data: bool = False,
         seed: int = 12345,
-        path_s2_im: str | None = None,
-        n_bands: int | None = None,
-        zscore_im: bool | None = None,
+        cache_dir: str = None,
     ) -> None:
         """A dataset implementation for the Butterfly diversity use case.
 
@@ -28,53 +28,25 @@ class ButterflyDataset(BaseDataset):
         :param use_target_data: if target values should be returned
         :param use_aux_data: if auxiliary values should be returned
         :param seed: random seed
-        :param path_s2_im: path to S2 image directory
-        :param n_bands: number of bands of s2 images
-        :param zscore_im: if images should be zscored
+        :param data_dir: path to data dir
         """
 
-        if path_csv is None:
-            path_csv = os.path.join(
-                os.environ["PROJECT_ROOT"],
-                "data/model_ready/s2bms_presence_with_aux_data.csv",
-            )
         super().__init__(
-            path_csv,
-            modalities,
-            use_target_data,
-            use_aux_data,
-            "Butterflies",
-            seed,
+            data_dir, modalities, use_target_data, use_aux_data, "s2bms", seed, cache_dir
         )
 
         # Placeholder for filtered columns
-        columns = ["id"]
-        self.df.rename(columns={"name_loc": "id"}, inplace=True)
+        columns = ["name_loc"]
 
-        for m in self.modalities:
-            assert m in ["s2", "coords"], f"Unsupported modality: {m}"
-
-        if "coords" in self.modalities:
-            columns.extend(["lat", "lon"])
-        if "s2" in self.modalities:
-            if path_s2_im is None:
-                raise IllegalArgumentCombination("Provide path_s2_im if using s2 modality")
-            self.path_s2_im = path_s2_im
-            self.path_s2_im = os.path.join(
-                self.path_s2_im,
-                "sentinel2_satellite-images/y-2018-2019_m-06-09",
-            )  # default path from S2BMS dataset (on Zotero). Assuming S2BMS_PATH points to the parent folder
-            assert os.path.exists(path_s2_im), FileNotFoundError(
-                f"S2BMS path does not exist: {path_s2_im}"
-            )
-
-            columns.append("s2_path")
-            self.add_s2_paths()
-            assert n_bands is not None, "Specify n_bands if using s2 modality"
-            self.n_bands = n_bands
-            self.zscore_im = zscore_im
-            if self.zscore_im:
-                self.init_norm_stats()
+        for modality, params in self.modalities.items():
+            if modality == "coords":
+                columns.extend(["lat", "lon"])
+            else:
+                self.add_modality_paths_to_df(modality, params["format"])
+                columns.append(f"{modality}_path")
+                if modality == "s2":
+                    if params["preprocessing"] == "zscored":
+                        self.init_norm_stats()
 
         if self.use_target_data:
             self.target_names = [c for c in self.df.columns if "target_" in c]
@@ -87,6 +59,117 @@ class ButterflyDataset(BaseDataset):
 
         self.records = self.df.loc[:, columns].to_dict("records")
 
+    def setup(self):
+        """Setups the whole dataset, makes available data of requested modalities."""
+
+        if len(self.modalities.keys()) == 1 and self.modalities.get("coords", None) is not None:
+            return
+
+        import pooch
+
+        # Initialise pooch client
+        self.pooch_cli = pooch.create(
+            path=os.path.join(self.cache_dir, "s2bms"),
+            base_url="",
+            registry=None,
+        )
+
+        # Add registry with all datasets, hashes and urls
+        self.pooch_cli.load_registry(os.path.join(self.data_dir, "registry.txt"))
+
+        # Set up each requested modality
+        for mod, params in self.modalities.items():
+            if mod == "s2":
+                self.setup_s2bms()
+            elif mod == "tessera":
+
+                self.setup_tessera(year=params["year"], size=params["size"])
+
+    def setup_tessera(self, year: int, size: int) -> None:
+        """Prepares (downloads, places)"""
+        # Check if data is already available
+        dst_dir = os.path.join(self.data_dir, "eo/tessera")
+        if os.path.exists(dst_dir):
+            for p in self.df.tessera_path:
+                if not os.path.basename(p) in os.listdir(dst_dir):
+                    raise FileNotFoundError(f"Missing S2 data: {p}")
+            return
+        else:
+            os.makedirs(dst_dir, exist_ok=True)
+
+        # TODO: if we compile the dataset and use zenodo (or sth else) then change to pooch downloading/loading
+        # Now it downloads from function calls
+        from src.data_preprocessing.tessera_embeds import tessera_from_df
+
+        tessera_from_df(
+            self.df,
+            data_dir=os.path.join(self.data_dir, "eo/tessera"),
+            year=year,
+            tile_size=size,
+            cache_dir=self.cache_dir,
+        )
+
+    def setup_s2bms(self) -> None:
+        """Prepares (downloads, renames and moves) data from S2BMS study."""
+        import pooch
+
+        # Check if data is already available
+        dst_dir = os.path.join(self.data_dir, "eo/s2")
+        if os.path.exists(dst_dir):
+            for p in self.df.s2_path:
+                if not os.path.basename(p) in os.listdir(dst_dir):
+                    raise FileNotFoundError(f"Missing S2 data: {p}")
+            return
+        else:
+            os.makedirs(dst_dir, exist_ok=True)
+
+        # Download data through pooch
+        fnames = self.pooch_cli.fetch("S2BMS.zip", processor=pooch.Unzip())
+
+        # Copy ukbms_species-presence
+        # df_dir = os.path.dirname([n for n in fnames if 'ukbms_species-presence' in n and 'MACOSX' not in n and '.DS_Store' not in n][0])
+        # shutil.move(df_dir, 'source/ukbms_species-presence')
+
+        # Move files to data dir
+        LOC_PATTERN = re.compile(r"([A-Z0-9]+_loc-\d+)")
+        for fname in fnames:
+            if ("__MACOSX" in fname or "DS_Store" in fname) or "tif" not in fname:
+                continue
+
+            # Get name_loc from the file name
+            m = LOC_PATTERN.search(fname)
+            if not m:
+                raise ValueError(f"Could not extract name_loc from filename: {fname}")
+
+            # Move
+            new_name = "s2_<name_loc>.tif".replace("<name_loc>", m.group(1))
+            dst_path = os.path.join(dst_dir, new_name)
+            shutil.move(fname, dst_path)
+
+        with open(os.path.join(dst_dir, "meta.tx"), "w") as f:
+            f.writelines("Data from S2BMS study\n")
+            f.writelines("Containing 4 channel S2 256x256px imagery.\n")
+            # TODO: add more
+
+    def add_modality_paths_to_df(self, modality: str, extension: str) -> None:
+        """Add modality path column to df.
+
+        :param modality: modality name
+        :param extension: file extension
+        :return: None
+        """
+        # Directory path
+        path = f"{self.data_dir}/eo/{modality}/"
+
+        # Df column name
+        col = f"{modality}_path"
+
+        # Write paths
+        self.df[col] = None
+        for i, row in self.df.iterrows():
+            file_path = path + f"{modality}_{row.name_loc}.{extension}"
+            self.df.loc[i, col] = file_path
+
     def init_norm_stats(self, means: list[float] = None, stds: list[float] = None):
         if means is None or stds is None:
             print("Using S2BMS default zscore means and stds")
@@ -94,51 +177,11 @@ class ButterflyDataset(BaseDataset):
                 np.float32
             )  # computed across entire ds
             stds = np.array([640.2482, 571.8545, 597.3570, 1200.7518]).astype(np.float32)
-        if self.n_bands == 3:
+        if self.modalities["s2"]["channels"] == "rgb":
             means = means[:3]
             stds = stds[:3]
-        self.norm_means = means[:, None, None]
-        self.norm_std = stds[:, None, None]
-
-    def find_image_path(
-        self,
-        name_loc,
-        prefix_images: str = "",
-        suffix_images: list[str] = [""],
-    ):
-        if len(suffix_images) == 1:
-            im_file_name = f"{prefix_images}_{name_loc}_{suffix_images[0]}"
-            im_file_path = os.path.join(self.path_s2_im, im_file_name)
-            if os.path.exists(im_file_path):
-                return im_file_path
-        else:
-            for s in suffix_images:
-                im_file_name = f"{prefix_images}_{name_loc}_{s}"
-                im_file_path = os.path.join(self.path_s2_im, im_file_name)
-                if os.path.exists(im_file_path):
-                    return im_file_path
-        return None
-
-    def add_s2_paths(self):
-        content_image_folder = os.listdir(self.path_s2_im)
-        suffix_images = list({"_".join(x.split("_")[3:]) for x in content_image_folder})
-        prefix_images = list({x.split("_")[0] for x in content_image_folder})
-
-        assert len(prefix_images) == 1, f"Multiple prefixes found in image folder: {prefix_images}"
-        prefix_images = prefix_images[0]
-        list_paths = []
-        for loc in self.df["id"].values:
-            im_path = self.find_image_path(
-                loc, prefix_images=prefix_images, suffix_images=suffix_images
-            )
-            if im_path is None:
-                # could be changed to a warning instead of error, if downstream code can handle missing images
-                raise FileNotFoundError(
-                    f"No image found for location {loc} in folder {self.path_s2_im}"
-                )
-            else:
-                list_paths.append(im_path)
-        self.df["s2_path"] = list_paths
+        self.s2_norm_means = means[:, None, None]
+        self.s2_norm_std = stds[:, None, None]
 
     def zscore_image(self, im: np.ndarray):
         """Apply preprocessing function to a single image.
@@ -146,26 +189,32 @@ class ButterflyDataset(BaseDataset):
         raw_sent2_means = torch.tensor([661.1047,  770.6800,  531.8330, 3228.5588]) raw_sent2_stds
         = torch.tensor([640.2482,  571.8545,  597.3570, 1200.7518])
         """
-        im = (im - self.norm_means) / self.norm_std
+        im = (im - self.s2_norm_means) / self.s2_norm_std
         return im
 
-    def load_image(self, filepath: str):
+    def load_s2bms(self, filepath: str):
         im = du.load_tiff(filepath, datatype="np")
 
-        if self.n_bands == 4:
+        if self.modalities["s2"]["channels"] == "4c":
             pass
-        elif self.n_bands == 3:
+        elif self.modalities["s2"]["channels"] == "rgb":
             im = im[:3, :, :]
         else:
-            raise IllegalArgumentCombination(f"Number of bands {self.n_bands} not implemented.")
+            raise IllegalArgumentCombination(
+                f"Channel specification {self.n_bands} is not implemented."
+            )
 
-        if self.zscore_im:
+        if self.modalities["s2"]["preprocessing"] == "zscored":
             im = im.astype(np.int32)
             im = self.zscore_image(im)
         else:
             im = np.clip(im, 0, 2000)
             im = im / 2000.0
         return torch.tensor(im).float()
+
+    def load_npy(self, filepath: str):
+        im = np.load(filepath).transpose(2, 0, 1)
+        return torch.from_numpy(im).float()
 
     @override
     def __getitem__(self, idx: int) -> Dict[str, Any]:
@@ -177,8 +226,11 @@ class ButterflyDataset(BaseDataset):
             if modality in ["coords"]:
                 formatted_row["eo"][modality] = torch.tensor([row["lat"], row["lon"]])
             elif modality == "s2":
-                formatted_row["eo"][modality] = self.load_image(row["s2_path"])
+                formatted_row["eo"][modality] = self.load_s2bms(row["s2_path"])
                 # TODO: augmentations
+            elif modality == "tessera":
+                formatted_row["eo"][modality] = self.load_npy(row["tessera_path"])
+                # TODO any normalisation needed
 
         if self.use_target_data:
             formatted_row["target"] = torch.tensor(
