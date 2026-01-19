@@ -1,7 +1,7 @@
 """This file prepares config fixtures for other tests."""
 
 from pathlib import Path
-
+import os
 import pytest
 import rootutils
 from hydra import compose, initialize
@@ -9,7 +9,7 @@ from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, open_dict
 import pandas as pd
 import torch
-from src.data.base_caption_builder import BaseCaptionBuilder
+from src.data.base_caption_builder import BaseCaptionBuilder, DummyCaptionBuilder
 from src.data.base_datamodule import BaseDataModule
 from src.data.butterfly_dataset import ButterflyDataset
 
@@ -137,20 +137,28 @@ def sample_csv(tmp_path) -> str:
     return str(path)
 
 @pytest.fixture()
-def create_butterfly_dataset(request, sample_csv):
+def create_butterfly_dataset(request, sample_csv, tmp_path):
     """A pytest fixture for creating a ButterflyDataset instance."""
     use_mock = request.config.getoption("--use-mock")
     if use_mock:
         path_csv = sample_csv
     else:
         assert False, "Real data not available in test environment."
+
     dataset = ButterflyDataset(
         path_csv=path_csv,
         modalities=["coords"],
         use_target_data=True,
-        use_aux_data=False,
+        use_aux_data=True,
         seed=0,
     )
+
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    templates_path = os.path.join(repo_root, 'data', 'caption_templates', 'butterfly.json')
+    caption_builder = DummyCaptionBuilder(
+            templates_path=str(templates_path),
+            data_dir=str(tmp_path),
+            seed=0,)
 
     dm = BaseDataModule(
         dataset,
@@ -160,6 +168,7 @@ def create_butterfly_dataset(request, sample_csv):
         pin_memory=False,
         split_mode="random",
         save_split=False,
+        caption_builder=caption_builder,
     )
 
     return (dataset, dm)

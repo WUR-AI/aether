@@ -9,7 +9,7 @@ class BaseTextEncoder(nn.Module, ABC):
     def __init__(self) -> None:
         super().__init__()
         self.processor: nn.Module | None = None
-        self.text_model: nn.Module = None
+        self.model: nn.Module = None
         self.projector: nn.Module | None = None
         self.output_dim: int | None = None
         self.extra_projector: nn.Module | None = None
@@ -19,5 +19,7 @@ class BaseTextEncoder(nn.Module, ABC):
         pass
 
     def add_projector(self, projected_dim: int) -> None:
+        '''Adds an extra linear projection layer to the text encoder. 
+        NB: is not used by default, needs to be called explicitly in forward().'''
         self.extra_projector = nn.Linear(self.output_dim, projected_dim)
         self.output_dim = projected_dim
