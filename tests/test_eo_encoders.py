@@ -6,7 +6,7 @@ import torch
 from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
 from src.models.components.eo_encoders.geoclip import GeoClipCoordinateEncoder
 
-@pytest.mark.slow
+# @pytest.mark.slow
 def test_eo_encoder_generic_properties(create_butterfly_dataset):
     '''This test checks that all EO encoders implement the basic properties and methods'''
     list_eo_encoders = [GeoClipCoordinateEncoder]

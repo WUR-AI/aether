@@ -8,7 +8,7 @@ from src.models.components.pred_heads.linear_pred_head import LinearPredictionHe
 from src.models.components.pred_heads.mlp_pred_head import MLPPredictionHead
 from src.models.components.eo_encoders.geoclip import GeoClipCoordinateEncoder
 
-@pytest.mark.slow
+# @pytest.mark.slow
 def test_pred_head_generic_properties(create_butterfly_dataset):
     ds, dm = create_butterfly_dataset
     batch = next(iter(dm.train_dataloader()))

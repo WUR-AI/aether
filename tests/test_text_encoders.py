@@ -6,7 +6,7 @@ import torch
 from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
 from src.models.components.text_encoders.clip_text_encoder import ClipTextEncoder
 
-@pytest.mark.slow
+# @pytest.mark.slow
 def test_text_encoder_generic_properties(create_butterfly_dataset):
     '''This test checks that all text encoders implement the basic properties and methods'''
     list_text_encoders = [ClipTextEncoder]
