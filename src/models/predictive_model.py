@@ -21,7 +21,7 @@ class PredictiveModel(BaseModel):
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
         loss_fn: BaseLossFn,
-        num_classes: int,
+        num_classes: int | None = None,
     ) -> None:
         """Implementation of the predictive model with replaceable EO encoder, and prediction head.
 

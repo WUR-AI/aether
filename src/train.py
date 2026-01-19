@@ -77,7 +77,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
 
     if cfg.get("train"):
         log.info("Starting training!")
-        trainer.fit(model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"))
+        trainer.fit(model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"), weights_only=False)  # using weights_only=False here because torch lightning also saves optimizer and scheduler states etc which otherwise leads to an error when loading with weights_only=True
 
     train_metrics = trainer.callback_metrics
 
