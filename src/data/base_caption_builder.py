@@ -1,4 +1,5 @@
 import json
+import os
 import random
 import re
 from abc import ABC, abstractmethod
@@ -10,20 +11,21 @@ from src.data.base_dataset import BaseDataset
 
 
 class BaseCaptionBuilder(ABC):
-    def __init__(self, templates_path: str, data_dir: str, seed: int) -> None:
+    def __init__(self, templates_fname: str, data_dir: str, seed: int) -> None:
         """Interface of caption builder class for converting numerical auxiliary data values into
         textual descriptions from provided caption templates.
 
-        :param templates_path: path to a json file with caption templates.
+        :param templates_fname: path to a json file with caption templates.
         :param data_dir: directory where data is stored.
         :param seed: random seed.
         """
 
+        self.data_dir = data_dir
+        templates_path = os.path.join(self.data_dir, templates_fname)
         self.templates = json.load(open(templates_path))
         self.tokens_in_template = [self._extract_tokens(t) for t in self.templates]
 
         self.column_to_metadata_map: Dict[str] | None = None
-        self.data_dir = data_dir
         self.seed = seed
         random.seed(self.seed)
 
