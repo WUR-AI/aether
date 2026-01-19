@@ -1,12 +1,15 @@
 import math
+import os
 
 import numpy as np
 import pandas as pd
 import rasterio
 from geotessera import GeoTessera
 from rasterio import MemoryFile
+from rasterio.crs import CRS
 from rasterio.merge import merge
 from rasterio.transform import from_origin
+from rasterio.warp import Resampling, calculate_default_transform, reproject
 
 from src.data_preprocessing.crs_utils import (
     create_bbox_with_radius,
@@ -16,10 +19,45 @@ from src.data_preprocessing.crs_utils import (
 )
 
 
+def reproject_dataset(src_raster, dst_crs):
+
+    dst_crs = CRS.from_user_input(dst_crs)
+    if src_raster.crs == dst_crs:
+        return src_raster, None
+
+    # Reprojection dim
+    transform, width, height = calculate_default_transform(
+        src_raster.crs, dst_crs, src_raster.width, src_raster.height, *src_raster.bounds
+    )
+
+    # Update metadata
+    metadata = src_raster.meta.copy()
+    metadata.update(
+        crs=dst_crs,
+        transform=transform,
+        width=width,
+        height=height,
+    )
+
+    memfile = MemoryFile()
+    dst = memfile.open(**metadata)
+    for i in range(1, src_raster.count + 1):
+        reproject(
+            source=rasterio.band(src_raster, i),
+            destination=rasterio.band(dst, i),
+            src_transform=src_raster.transform,
+            src_crs=src_raster.crs,
+            dst_transform=transform,
+            dst_crs=dst_crs,
+            resampling=Resampling.nearest,
+        )
+    return dst, memfile
+
+
 def get_tessera_embeds(
     lon: float,
     lat: float,
-    id: str,
+    name_loc: str,
     year: int,
     save_dir: str,
     tile_size: int,
@@ -29,7 +67,7 @@ def get_tessera_embeds(
 
     :param lon: longitude in WGS84
     :param lat: latitude in WGS84
-    :param id: data entry id used to reference back to model ready csv
+    :param name_loc: data entry id used to reference back to model ready csv
     :param year: year of the embeddings
     :param save_dir: data directory to save embeddings
     :param tile_size: tile size in pixels
@@ -37,7 +75,7 @@ def get_tessera_embeds(
     :return: None
     """
 
-    embed_tile_name = f"{save_dir}/tessera_{id}_{year}.npy"
+    embed_tile_name = os.path.join(save_dir, f"tessera_{name_loc}.npy")
     if os.path.exists(embed_tile_name):
         return
 
@@ -50,7 +88,9 @@ def get_tessera_embeds(
     bbox = create_bbox_with_radius(lon, lat, radius=radius, utm_crs=utm_crs, return_wgs=True)
 
     # Request to tessera
-    tiles_to_fetch = tessera_con.registry.load_blocks_for_region(bounds=bbox.bounds, year=year)
+    tiles_to_fetch = tessera_con.registry.load_blocks_for_region(
+        bounds=bbox.bounds, year=int(year)
+    )
 
     # Mosaic returned tiles for the bbox
     tiles = []
@@ -69,9 +109,14 @@ def get_tessera_embeds(
             crs=crs,
             transform=transform,
         )
+
         for c in range(embedding.shape[2]):
             tile.write(embedding[:, :, c], c + 1)
-        tiles.append(tile)
+
+        reproject_tile, reproject_memfile = reproject_dataset(tile, utm_crs)
+        tiles.append(reproject_tile)
+        if reproject_memfile:
+            memfiles.append(reproject_memfile)
 
     mosaic, mosaic_transform = merge(tiles)
     mosaic = mosaic.transpose(1, 2, 0)
@@ -97,7 +142,7 @@ def get_tessera_embeds(
 
     # Log its metadata
     meta_df = pd.DataFrame(
-        {"id": [id], "year": [year], "lon": [lon], "lat": [lat], "crs": [utm_crs]}
+        {"id": [name_loc], "year": [year], "lon": [lon], "lat": [lat], "crs": [utm_crs]}
     )
 
     meta_file = f"{save_dir}/meta.csv"
@@ -107,6 +152,31 @@ def get_tessera_embeds(
 
     meta_df.to_csv(meta_file, index=False)
     print(f"Meta data logged to {meta_file}")
+
+
+def tessera_from_df(
+    model_ready_df: str, data_dir: str, year: int, tile_size: int = 256, cache_dir: str = "temp/"
+) -> None:
+    """Obtains Tessera embeddings from a CSV file for each (lon, lat).
+
+    :param model_ready_df: pandas dataframe with model ready rentries
+    :param data_dir: path to data directory
+    :param year: year for the embeddings
+    :param tile_size: tile size in meters
+    :param cache_dir: path to cache directory
+    :return: None
+    """
+
+    # Tessera connection
+    cache_dir = os.path.join(cache_dir, "tessera")
+    gt = GeoTessera(cache_dir=cache_dir)
+
+    # Iter each coord
+    n = len(model_ready_df)
+    for i, row in model_ready_df.iterrows():
+        print(f"{i}/{n}")
+        # Get tessera embeds
+        get_tessera_embeds(row.lon, row.lat, row.name_loc, year, f"{data_dir}/", tile_size, gt)
 
 
 def inspect_np_arr_as_tiff(
@@ -163,56 +233,7 @@ def inspect_np_arr_as_tiff(
         crs=utm_crs,
         transform=transform,
     ) as dst:
-        dst.write(arr_to_write[0], 1)
+        for i in range(0, count):
+            dst.write(arr_to_write[i], i + 1)
 
     print(f"Tiff version of np array saved to {file_path}")
-
-
-def tessera_from_df(
-    model_ready_csv_path: str, data_dir: str, year: int, tile_size: float = 256
-) -> None:
-    """Obtains Tessera embeddings from a CSV file for each (lon, lat).
-
-    :param model_ready_csv_path: path to model ready csv file
-    :param data_dir: path to data directory
-    :param year: year for the embeddings
-    :param tile_size: tile size in meters
-    :return: None
-    """
-    if not os.path.exists(model_ready_csv_path):
-        raise FileNotFoundError(f"File {model_ready_csv_path} does not exist")
-
-    # Tessera connection
-    gt = GeoTessera()
-
-    # Data frame for coords
-    df = pd.read_csv(model_ready_csv_path)
-
-    # Iter each coord
-    n = len(df)
-    for i, row in df.iterrows():
-        print(f"{i}/{n}")
-        lon, lat = row.lon, row.lat
-        id = row.name_loc  # TODO standardise col names across UC
-
-        # Get tessera embeds
-        get_tessera_embeds(
-            lon, lat, id, year, f"{data_dir}/S2BMS/tessera_{tile_size}", tile_size, gt
-        )
-
-
-if __name__ == "__main__":
-    import os
-
-    from dotenv import dotenv_values
-
-    config = dotenv_values("../../.env")
-    os.chdir(config.get("PROJECT_ROOT", "../"))
-
-    # Obtain all tiles
-    tessera_from_df(
-        f'{config.get("DATA_DIR", 'data')}/model_ready/s2bms_presence_with_aux_data.csv',
-        data_dir=config.get("DATA_DIR", "data"),
-        year=2019,
-        tile_size=256,
-    )
