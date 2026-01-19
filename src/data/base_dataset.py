@@ -10,13 +10,14 @@ from torch.utils.data import Dataset
 class BaseDataset(Dataset, ABC):
     def __init__(
         self,
-        path_csv: str,
+        data_dir: str,
         modalities: list[str],
         use_target_data: bool = True,
         use_aux_data: bool = False,
         dataset_name: str = "BaseDataset",
         seed: int = 12345,
         mode: str = "train",
+        cache_dir: str = None,
     ) -> None:
         """Interface for any use case dataset.
 
@@ -38,16 +39,22 @@ class BaseDataset(Dataset, ABC):
         :param mode: train/val/test mode of the dataset
         """
 
+        # Set attributes
+        self.data_dir = os.path.join(data_dir, dataset_name)
+        self.cache_dir = cache_dir or os.path.join(data_dir, "cache")
+
         # read and shuffle df
+        path_csv = os.path.join(self.data_dir, f"model_ready_{dataset_name}.csv")
         assert os.path.exists(path_csv), f"{path_csv} does not exist."
         self.df: pd.DataFrame = pd.read_csv(path_csv)
         self.df = shuffle(self.df, random_state=seed)
         self.seed = seed
 
-        # Set attributes
+        # more precise dataset name (with modalities)
         self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
 
-        self.modalities: list[str] = modalities
+        self.modalities: dict = modalities
+
         self.use_target_data: bool = use_target_data
         self.use_aux_data: bool = use_aux_data
 
@@ -66,4 +73,7 @@ class BaseDataset(Dataset, ABC):
     @abstractmethod
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         """Returns a single item from the dataset."""
+        pass
+
+    def setup(self):
         pass
