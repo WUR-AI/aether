@@ -11,7 +11,7 @@ class BaseDataset(Dataset, ABC):
     def __init__(
         self,
         data_dir: str,
-        modalities: list[str],
+        modalities: dict,
         use_target_data: bool = True,
         use_aux_data: bool = False,
         dataset_name: str = "BaseDataset",

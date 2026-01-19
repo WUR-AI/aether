@@ -17,7 +17,7 @@ class ButterflyDataset(BaseDataset):
     def __init__(
         self,
         data_dir: str,
-        modalities: list[str] = ["coords"],
+        modalities: dict,
         use_target_data: bool = True,
         use_aux_data: bool = False,
         seed: int = 12345,
@@ -64,10 +64,13 @@ class ButterflyDataset(BaseDataset):
     def setup(self):
         """Setups the whole dataset, makes available data of requested modalities."""
 
+        if len(self.modalities.keys()) == 1 and self.modalities.get("coords", None) is not None:
+            return
+
         # Initialise pooch client
         self.pooch_cli = pooch.create(
             path=os.path.join(self.cache_dir, "s2bms"),
-            base_url="doi:10.5281/zenodo.15198883",
+            base_url="",
             registry=None,
         )
 
@@ -193,7 +196,9 @@ class ButterflyDataset(BaseDataset):
         elif self.modalities["s2"]["channels"] == "rgb":
             im = im[:3, :, :]
         else:
-            raise IllegalArgumentCombination(f"Channel specification {self.n_bands} is not implemented.")
+            raise IllegalArgumentCombination(
+                f"Channel specification {self.n_bands} is not implemented."
+            )
 
         if self.modalities["s2"]["preprocessing"] == "zscored":
             im = im.astype(np.int32)

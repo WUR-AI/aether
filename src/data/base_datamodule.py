@@ -61,7 +61,7 @@ class BaseDataModule(LightningDataModule):
             self.caption_builder = caption_builder
             self.caption_builder.sync_with_dataset(self.dataset)
 
-        self.setup()
+        self.split_data()
 
     @property
     def num_classes(self) -> int:
@@ -73,9 +73,7 @@ class BaseDataModule(LightningDataModule):
 
         # Set up the dataset (download requested modalities)
         self.dataset.setup()
-
         self.setup_batch_size_per_device()
-        self.split_data()
 
     def setup_batch_size_per_device(self) -> None:
         """Divide batch size by the number of devices."""
