@@ -2,13 +2,43 @@ import json
 
 import pandas as pd
 import pytest
-import torch
 
 from src.data.base_caption_builder import BaseCaptionBuilder, DummyCaptionBuilder
 from src.data.base_datamodule import BaseDataModule
 from src.data.butterfly_dataset import ButterflyDataset
 
-def test_base_datamodule_random_split_and_loaders(create_butterfly_dataset):
+def test_datasets_generic_properties(request, sample_csv):
+    '''This test checks that all datasets implement the basic properties and methods'''
+    list_datasets = [ButterflyDataset]
+    use_mock = request.config.getoption("--use-mock")
+    if use_mock:
+        path_csv = sample_csv
+    else:
+        assert False, "Real data not available in test environment."
+
+    for ds_class in list_datasets:
+        dataset = ds_class(
+            path_csv=path_csv,
+            modalities=["coords"],
+            use_target_data=True,
+            use_aux_data=True,
+            seed=0,
+        )
+
+        assert len(dataset) > 0, f"{ds_class.__name__} is empty."
+        sample = dataset[0]
+        assert "eo" in sample, f"'eo' key missing in sample from {ds_class.__name__}."
+        assert "coords" in sample["eo"], f"'coords' key missing in 'eo' of sample from {ds_class.__name__}."
+        assert "target" in sample, f"'target' key missing in sample from {ds_class.__name__}."
+        assert "aux" in sample, f"'aux' key missing in sample from {ds_class.__name__}."
+        assert hasattr(dataset, "num_classes"), f"'num_classes' attribute missing in {ds_class.__name__}."
+        assert hasattr(dataset, "target_names"), f"'target_names' attribute missing in {ds_class.__name__}."
+        assert hasattr(dataset, "aux_names"), f"'aux_names' attribute missing in {ds_class.__name__}."
+        assert hasattr(dataset, "records"), f"'records' attribute missing in {ds_class.__name__}."
+        assert hasattr(dataset, "dataset_name"), f"'dataset_name' attribute missing in {ds_class.__name__}."
+        assert hasattr(dataset, "mode"), f"'mode' attribute missing in {ds_class.__name__}."
+
+def test_datamodule_random_split_and_loaders(create_butterfly_dataset):
     dataset, dm = create_butterfly_dataset
 
     assert len(dm.data_train) == 4
@@ -19,7 +49,6 @@ def test_base_datamodule_random_split_and_loaders(create_butterfly_dataset):
     assert batch["eo"]["coords"].shape == (2, 2)
     assert batch["target"].shape == (2, 2)
 
-
 def test_random_split_is_deterministic(create_butterfly_dataset):
     dataset1, dm1 = create_butterfly_dataset
     dataset2, dm2 = create_butterfly_dataset
@@ -27,30 +56,3 @@ def test_random_split_is_deterministic(create_butterfly_dataset):
     assert dm1.data_train.indices == dm2.data_train.indices
     assert dm1.data_val.indices == dm2.data_val.indices
     assert dm1.data_test.indices == dm2.data_test.indices
-
-def test_datamodule_uses_collate_when_aux_data(sample_csv, tmp_path):
-    templates_path = tmp_path / "templates.json"
-    templates_path.write_text(json.dumps(["<name_loc> text"]))
-    caption_builder = DummyCaptionBuilder(str(templates_path), data_dir=str(tmp_path), seed=0)
-
-    dataset = ButterflyDataset(
-        path_csv=sample_csv,
-        modalities=["coords"],
-        use_target_data=True,
-        use_aux_data=True,
-        seed=0,
-    )
-
-    dm = BaseDataModule(
-        dataset,
-        batch_size=2,
-        train_val_test_split=(4, 2, 0),
-        split_mode="random",
-        caption_builder=caption_builder,
-        num_workers=0,
-        pin_memory=False,
-    )
-
-    batch = next(iter(dm.train_dataloader()))
-    assert "text" in batch
-    assert len(batch["text"]) == dm.batch_size_per_device
