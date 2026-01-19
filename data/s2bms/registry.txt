@@ -1,0 +1,2 @@
+# S2BMS dataset (butterfly UC)
+S2BMS.zip md5:af98bf3d1d0c4645c3c5787d49f59a70 doi:10.5281/zenodo.15198883

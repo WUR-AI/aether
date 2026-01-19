@@ -30,7 +30,6 @@ class BaseDataModule(LightningDataModule):
         dataset_name: str = "base",
         split_mode: str = "random",
         save_split: bool = False,
-        split_dir: str = None,
         saved_split_file_name: str | None = None,
         caption_builder: BaseCaptionBuilder = None,
         seed: int = 12345,
@@ -46,7 +45,6 @@ class BaseDataModule(LightningDataModule):
         :param dataset_name: dataset name
         :param split_mode: data split mode: random/from_file
         :param save_split: if to save split file
-        :param split_dir: directory to save split file
         :param saved_split_file_name: file name to save split file
         :param caption_builder: instance of BaseCaptionBuilder for generating textual captions
         """
@@ -72,6 +70,10 @@ class BaseDataModule(LightningDataModule):
 
     def setup(self, stage: str = "fit") -> None:
         """Obtaining batch size and data splits."""
+
+        # Set up the dataset (download requested modalities)
+        self.dataset.setup()
+
         self.setup_batch_size_per_device()
         self.split_data()
 
@@ -104,9 +106,9 @@ class BaseDataModule(LightningDataModule):
             )
             if self.hparams.save_split:
                 split_indices = {
-                    "train_indices": self.data_train.dataset.df.id,
-                    "val_indices": self.data_val.dataset.df.id,
-                    "test_indices": self.data_test.dataset.df.id,
+                    "train_indices": self.data_train.dataset.df.name_loc,
+                    "val_indices": self.data_val.dataset.df.name_loc,
+                    "test_indices": self.data_test.dataset.df.name_loc,
                 }
 
         elif self.hparams.split_mode == "spatial_clusters":
@@ -183,9 +185,9 @@ class BaseDataModule(LightningDataModule):
             )
             if self.hparams.save_split:
                 split_indices = {
-                    "train_indices": self.dataset.df.id[train_indices],
-                    "val_indices": self.dataset.df.id[val_indices],
-                    "test_indices": self.dataset.df.id[test_indices],
+                    "train_indices": self.dataset.df.name_loc[train_indices],
+                    "val_indices": self.dataset.df.name_loc[val_indices],
+                    "test_indices": self.dataset.df.name_loc[test_indices],
                     "clusters": clusters,
                 }
 
@@ -199,7 +201,7 @@ class BaseDataModule(LightningDataModule):
 
             # get indices from file
             self.saved_split_file_path = os.path.join(
-                self.hparams.split_dir, self.hparams.saved_split_file_name
+                self.hparams.dataset.data_dir, "splits", self.hparams.saved_split_file_name
             )
             split_indices = self.load_split_indices(self.saved_split_file_path)
             train_indices = split_indices["train_indices"]
@@ -207,16 +209,16 @@ class BaseDataModule(LightningDataModule):
             test_indices = split_indices.get("test_indices", None)
 
             if not isinstance(train_indices, pd.Series):
-                raise NotImplementedError("Expected a pd series of ids for data splits.")
+                raise NotImplementedError("Expected a pd series of name_locs for data splits.")
             if not isinstance(val_indices, pd.Series):
-                raise NotImplementedError("Expected a pd series of ids for data splits.")
+                raise NotImplementedError("Expected a pd series of name_locs for data splits.")
             if test_indices is not None and not isinstance(test_indices, pd.Series):
-                raise NotImplementedError("Expected a pd series of ids for data splits.")
+                raise NotImplementedError("Expected a pd series of name_locs for data splits.")
 
-            train_indices = np.where(self.dataset.df["id"].isin(train_indices))[0]
-            val_indices = np.where(self.dataset.df["id"].isin(val_indices))[0]
+            train_indices = np.where(self.dataset.df["name_loc"].isin(train_indices))[0]
+            val_indices = np.where(self.dataset.df["name_loc"].isin(val_indices))[0]
             if test_indices is not None:
-                test_indices = np.where(self.dataset.df["id"].isin(test_indices))[0]
+                test_indices = np.where(self.dataset.df["name_loc"].isin(test_indices))[0]
 
             print(f"Dataset was split using indices from file: {self.saved_split_file_path}")
         else:
