@@ -1,14 +1,17 @@
 """This file prepares config fixtures for other tests."""
 
-from pathlib import Path
+import json
 import os
+from pathlib import Path
+
+import pandas as pd
 import pytest
 import rootutils
+import torch
 from hydra import compose, initialize
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, open_dict
-import pandas as pd
-import torch
+
 from src.data.base_caption_builder import BaseCaptionBuilder, DummyCaptionBuilder
 from src.data.base_datamodule import BaseDataModule
 from src.data.butterfly_dataset import ButterflyDataset
@@ -17,6 +20,7 @@ from src.data.butterfly_dataset import ButterflyDataset
 def pytest_addoption(parser):
     parser.addoption("--use-mock", action="store_true", help="Use mock data instead of real data")
 
+
 @pytest.fixture(scope="package")
 def cfg_train_global() -> DictConfig:
     """A pytest fixture for setting up a default Hydra DictConfig for training.
@@ -24,8 +28,11 @@ def cfg_train_global() -> DictConfig:
     :return: A DictConfig object containing a default Hydra configuration for training.
     """
     with initialize(version_base="1.3", config_path="../configs"):
-        cfg = compose(config_name="train.yaml", return_hydra_config=True, 
-                      overrides=["data=butterfly_coords", "hydra.job.chdir=false"])
+        cfg = compose(
+            config_name="train.yaml",
+            return_hydra_config=True,
+            overrides=["data=butterfly_coords", "hydra.job.chdir=false"],
+        )
 
         # set defaults for all tests
         with open_dict(cfg):
@@ -120,6 +127,7 @@ def cfg_train(cfg_train_global: DictConfig, tmp_path: Path) -> DictConfig:
 
 #     GlobalHydra.instance().clear()
 
+
 @pytest.fixture
 def sample_csv(tmp_path) -> str:
     df = pd.DataFrame(
@@ -132,33 +140,37 @@ def sample_csv(tmp_path) -> str:
             "aux_temp": [10, 11, 12, 13, 14, 15],
         }
     )
-    path = tmp_path / "butterflies.csv"
+    path = tmp_path / "s2bms/model_ready_s2bms.csv"
+    os.makedirs(str(tmp_path / "s2bms"), exist_ok=True)
     df.to_csv(path, index=False)
-    return str(path)
+    return str(tmp_path)
+
 
 @pytest.fixture()
 def create_butterfly_dataset(request, sample_csv, tmp_path):
     """A pytest fixture for creating a ButterflyDataset instance."""
     use_mock = request.config.getoption("--use-mock")
     if use_mock:
-        path_csv = sample_csv
+        csv_dir = sample_csv
     else:
         assert False, "Real data not available in test environment."
 
     dataset = ButterflyDataset(
-        path_csv=path_csv,
-        modalities=["coords"],
+        data_dir=csv_dir,
+        modalities={"coords": None},
         use_target_data=True,
         use_aux_data=True,
         seed=0,
     )
 
-    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    templates_path = os.path.join(repo_root, 'data', 'caption_templates', 'butterfly.json')
+    templates_path = tmp_path / "caption_templates.json"
+    templates_path.write_text(json.dumps(["<name_loc> text"]))
+
     caption_builder = DummyCaptionBuilder(
-            templates_path=str(templates_path),
-            data_dir=str(tmp_path),
-            seed=0,)
+        templates_fname="caption_templates.json",
+        data_dir=str(tmp_path),
+        seed=0,
+    )
 
     dm = BaseDataModule(
         dataset,

@@ -8,6 +8,7 @@ from omegaconf import DictConfig, open_dict
 from src.train import train
 from tests.helpers.run_if import RunIf
 
+
 @pytest.mark.slow
 def test_train_fast_dev_run(cfg_train: DictConfig) -> None:
     """Run for 1 train, val and test step.
@@ -19,6 +20,7 @@ def test_train_fast_dev_run(cfg_train: DictConfig) -> None:
         cfg_train.trainer.fast_dev_run = True
         cfg_train.trainer.accelerator = "cpu"
     train(cfg_train)
+
 
 @RunIf(min_gpus=1)
 @pytest.mark.slow
