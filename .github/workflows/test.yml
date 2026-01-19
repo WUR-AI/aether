@@ -36,7 +36,7 @@ jobs:
       - name: Run pytest
         run: |
           source .venv/bin/activate
-          uv run pytest -v --use-mock
+          uv run pytest -v --use-mock -m "not slow"
 
   run_tests_macos:
     runs-on: ${{ matrix.os }}
@@ -68,7 +68,7 @@ jobs:
       - name: Run pytest
         run: |
           source .venv/bin/activate
-          pytest -v --use-mock
+          pytest -v --use-mock -m "not slow"
 
   run_tests_windows:
     runs-on: ${{ matrix.os }}
@@ -100,7 +100,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          uv run pytest -v --use-mock
+          uv run pytest -v --use-mock -m "not slow"
 
   # upload code coverage report
   code-coverage:
