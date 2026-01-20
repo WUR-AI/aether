@@ -32,7 +32,13 @@ class ButterflyDataset(BaseDataset):
         """
 
         super().__init__(
-            data_dir, modalities, use_target_data, use_aux_data, "s2bms", seed, cache_dir
+            data_dir=data_dir,
+            modalities=modalities,
+            use_target_data=use_target_data,
+            use_aux_data=use_aux_data,
+            dataset_name="s2bms",
+            seed=seed,
+            cache_dir=cache_dir,
         )
         self.create_records()
         self.setup()  # needs to be called here in case number of data points changes, so that self._len is correctly set before dataloaders are created.
@@ -75,17 +81,18 @@ class ButterflyDataset(BaseDataset):
         if len(self.modalities.keys()) == 1 and self.modalities.get("coords", None) is not None:
             return
 
-        import pooch
+        if "s2" in self.modalities.keys():
+            import pooch
 
-        # Initialise pooch client
-        self.pooch_cli = pooch.create(
-            path=os.path.join(self.cache_dir, "s2bms"),
-            base_url="",
-            registry=None,
-        )
+            # Initialise pooch client
+            self.pooch_cli = pooch.create(
+                path=os.path.join(self.cache_dir, "s2bms"),
+                base_url="",
+                registry=None,
+            )
 
-        # Add registry with all datasets, hashes and urls
-        self.pooch_cli.load_registry(os.path.join(self.data_dir, "registry.txt"))
+            # Add registry with all datasets, hashes and urls
+            self.pooch_cli.load_registry(os.path.join(self.data_dir, "registry.txt"))
 
         # Set up each requested modality
         for mod, params in self.modalities.items():

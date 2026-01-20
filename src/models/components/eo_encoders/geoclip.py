@@ -7,8 +7,9 @@ from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
 
 
 class GeoClipCoordinateEncoder(BaseEOEncoder):
-    def __init__(self) -> None:
+    def __init__(self, eo_data_name="coords") -> None:
         super().__init__()
+        self.eo_data_name = eo_data_name
         self.eo_encoder = LocationEncoder()
         self.output_dim = self.eo_encoder.LocEnc0.head[0].out_features
 
@@ -23,4 +24,4 @@ class GeoClipCoordinateEncoder(BaseEOEncoder):
 
 
 if __name__ == "__main__":
-    _ = GeoClipCoordinateEncoder()
+    _ = GeoClipCoordinateEncoder(None)
