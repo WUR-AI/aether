@@ -41,7 +41,8 @@ class PredictiveModel(BaseModel):
         self.prediction_head = prediction_head
         self.prediction_head.set_dim(input_dim=self.eo_encoder.output_dim, output_dim=num_classes)
         self.prediction_head.configure_nn()
-        self.trainable_modules.append("prediction_head")
+        if "prediction_head" not in self.trainable_modules:
+            self.trainable_modules.append("prediction_head")
 
         # Freezing requested parts
         self.freezer()
