@@ -43,6 +43,8 @@ class BaseDataset(Dataset, ABC):
         self.data_dir = os.path.join(data_dir, dataset_name)
         assert os.path.exists(self.data_dir), f"{self.data_dir} does not exist."
         self.cache_dir = cache_dir or os.path.join(data_dir, "cache")
+        if not os.path.exists(self.cache_dir):
+            os.makedirs(self.cache_dir, exist_ok=True)
         assert os.path.exists(self.cache_dir), f"{self.cache_dir} does not exist."
 
         # read and shuffle df
