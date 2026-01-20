@@ -4,13 +4,13 @@
 # python train.py experiment=example
 
 defaults:
-  - override /model: predictive_geoclip
-  - override /data: butterfly_coords
+  - override /model: predictive_cnn_aef
+  - override /data: butterfly_aef
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-tags: ["prediction", "geoclip_coords"]
+tags: ["prediction", "cnn_aef"]
 
 seed: 12345
 

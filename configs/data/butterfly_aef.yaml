@@ -6,11 +6,9 @@ dataset:
   data_dir: ${paths.data_dir}
   modalities:
     coords:
-    s2:
+    aef:
       size: 256
       format: tif
-      channels: rgb
-      preprocessing: zscored
   use_target_data: true # default true
   use_aux_data: false # default false
   seed: ${seed}
