@@ -171,4 +171,5 @@ We follow the directory structure from the [Hydra-Lightning template](https://gi
 
 ## Attribution
 
+This repo is based on the [Hydra-Lightning template](https://github.com/ashleve/lightning-hydra-template).
 Some code was adapted from [github.com/vdplasthijs/PECL/](github.com/vdplasthijs/PECL/).
