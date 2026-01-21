@@ -14,3 +14,7 @@ class BaseEOEncoder(nn.Module, ABC):
     @abstractmethod
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         pass
+
+
+if __name__ == "__main__":
+    _ = BaseEOEncoder(None)

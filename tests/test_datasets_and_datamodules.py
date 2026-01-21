@@ -8,7 +8,7 @@ from src.data.base_datamodule import BaseDataModule
 from src.data.butterfly_dataset import ButterflyDataset
 
 
-def test_datasets_generic_properties(request, sample_csv):
+def test_datasets_generic_properties(request, tmp_path, sample_csv):
     """This test checks that all datasets implement the basic properties and methods."""
     list_datasets = [ButterflyDataset]
     use_mock = request.config.getoption("--use-mock")
@@ -20,6 +20,7 @@ def test_datasets_generic_properties(request, sample_csv):
     for ds_class in list_datasets:
         dataset = ds_class(
             data_dir=csv_dir,
+            cache_dir=str(tmp_path),
             modalities={"coords": None},
             use_target_data=True,
             use_aux_data=True,

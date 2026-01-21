@@ -17,6 +17,7 @@ def test_datamodule_uses_collate_when_aux_data(sample_csv, tmp_path):
 
     dataset = ButterflyDataset(
         data_dir=sample_csv,
+        cache_dir=str(tmp_path),
         modalities={"coords": None},
         use_target_data=True,
         use_aux_data=True,

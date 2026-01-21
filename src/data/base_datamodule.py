@@ -69,7 +69,10 @@ class BaseDataModule(LightningDataModule):
         return self.dataset.num_classes
 
     def setup(self, stage: str = "fit") -> None:
-        """Obtaining batch size and data splits."""
+        """Obtaining batch size and data splits.
+
+        Called by model trainer (trainer.fit()).
+        """
 
         # Set up the dataset (download requested modalities)
         self.dataset.setup()
