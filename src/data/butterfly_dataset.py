@@ -195,26 +195,7 @@ class ButterflyDataset(BaseDataset):
             f.writelines("Containing 4 channel S2 256x256px imagery.\n")
             # TODO: add more
 
-    def add_modality_paths_to_df(self, modality: str, extension: str) -> None:
-        """Add modality path column to df.
-
-        :param modality: modality name
-        :param extension: file extension
-        :return: None
-        """
-        # Directory path
-        path = f"{self.data_dir}/eo/{modality}/"
-
-        # Df column name
-        col = f"{modality}_path"
-
-        # Write paths
-        self.df[col] = None
-        for i, row in self.df.iterrows():
-            file_path = path + f"{modality}_{row.name_loc}.{extension}"
-            self.df.loc[i, col] = file_path
-
-    def init_s2_norm_stats(self, means: list[float] = None, stds: list[float] = None):
+    def init_norm_stats(self, means: list[float] = None, stds: list[float] = None):
         if means is None or stds is None:
             print("Using S2BMS default zscore means and stds")
             means = np.array([661.1047, 770.6800, 531.8330, 3228.5588]).astype(
@@ -268,9 +249,6 @@ class ButterflyDataset(BaseDataset):
 
     @override
     def __getitem__(self, idx: int) -> Dict[str, Any]:
-        assert idx < len(
-            self.records
-        ), f"Index {idx} out of bounds for dataset of size {len(self.records)} while len ds is {self._len} and {self.__len__()}."
         row = self.records[idx]
 
         formatted_row = {"eo": {}}

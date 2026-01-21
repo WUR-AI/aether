@@ -41,17 +41,14 @@ class BaseDataset(Dataset, ABC):
 
         # Set attributes
         self.data_dir = os.path.join(data_dir, dataset_name)
-        assert os.path.exists(self.data_dir), f"{self.data_dir} does not exist."
         self.cache_dir = cache_dir or os.path.join(data_dir, "cache")
-        if not os.path.exists(self.cache_dir):
-            os.makedirs(self.cache_dir, exist_ok=True)
-        assert os.path.exists(self.cache_dir), f"{self.cache_dir} does not exist."
+        for d in [self.data_dir, self.cache_dir]:
+            os.makedirs(d, exist_ok=True)
 
         # read and shuffle df
         path_csv = os.path.join(self.data_dir, f"model_ready_{dataset_name}.csv")
         assert os.path.exists(path_csv), f"{path_csv} does not exist."
         self.df: pd.DataFrame = pd.read_csv(path_csv)
-        # self.df = shuffle(self.df, random_state=seed)  # shuffling is already done in datamodules
         self.seed = seed
 
         # more precise dataset name (with modalities)
@@ -81,3 +78,23 @@ class BaseDataset(Dataset, ABC):
 
     def setup(self):
         pass
+
+    @final
+    def add_modality_paths_to_df(self, modality: str, extension: str) -> None:
+        """Add modality path column to df.
+
+        :param modality: modality name
+        :param extension: file extension
+        :return: None
+        """
+        # Directory path
+        path = f"{self.data_dir}/eo/{modality}/"
+
+        # Df column name
+        col = f"{modality}_path"
+
+        # Write paths
+        self.df[col] = None
+        for i, row in self.df.iterrows():
+            file_path = path + f"{modality}_{row.name_loc}.{extension}"
+            self.df.loc[i, col] = file_path
