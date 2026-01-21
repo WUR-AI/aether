@@ -23,6 +23,8 @@ class GeoClipCoordinateEncoder(BaseEOEncoder):
         feats = self.eo_encoder(coords)
         if self.output_normalization == "l2":
             feats = F.normalize(feats, p=2, dim=-1)  # L2 normalization (per feature vector)
+        elif self.output_normalization == "none":
+            pass
         else:
             raise ValueError(f"Unsupported output_normalization: {self.output_normalization}")
         return feats

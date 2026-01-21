@@ -61,6 +61,8 @@ class ClipTextEncoder(BaseTextEncoder):
             text_embeds = F.normalize(
                 text_embeds, p=2, dim=-1
             )  # L2 normalization (per feature vector)
+        elif self.output_normalization == "none":
+            pass
         else:
             raise ValueError(f"Unsupported output_normalization: {self.output_normalization}")
 
