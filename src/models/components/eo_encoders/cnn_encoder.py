@@ -3,6 +3,7 @@ from typing import Dict, override
 import torch
 import torchvision.models as models
 from torch import nn
+from torch.nn import functional as F
 
 from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
 
@@ -149,12 +150,7 @@ class CNNEncoder(BaseEOEncoder):
             n_nans == 0
         ), f"CNNEncoder output contains {n_nans}/{feats.numel()} NaNs PRIOR to normalization with data min {eo_data[self.eo_data_name].min()} and max {eo_data[self.eo_data_name].max()}."
         if self.output_normalization == "l2":
-            feats = torch.nn.functional.normalize(
-                feats, p=2, dim=1
-            )  # L2 normalization (per feature vector)
-            assert not torch.any(
-                torch.isnan(feats)
-            ), "CNNEncoder output contains NaNs AFTER L2 normalization."
+            feats = F.normalize(feats, p=2, dim=1)  # L2 normalization (per feature vector)
         else:
             raise ValueError(f"Unsupported output_normalization: {self.output_normalization}")
 
