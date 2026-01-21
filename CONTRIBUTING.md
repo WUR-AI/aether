@@ -4,7 +4,7 @@ Thank you very much for contributing to the AETHER! Below are some guidelines to
 
 When contributing to this repository, please first discuss the change you wish to make, preferably via an Issue, with the administrators of this repository before making a change.
 
-In general, all contributions should be made via Pull Requests.
+In general, all contributions should be made via Pull Requests (see below).
 
 Please note we have a [code of conduct](https://github.com/WUR-AI/aether/blob/main/CODE_OF_CONDUCT.md), please follow it in all your interactions with the project.
 
