@@ -160,4 +160,4 @@ class CNNEncoder(BaseEOEncoder):
 
 
 if __name__ == "__main__":
-    _ = CNNEncoder(None, None, None, None, None, None, None)
+    _ = CNNEncoder(None, None, None, None, None, None, None, None)
