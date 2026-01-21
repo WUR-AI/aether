@@ -44,6 +44,15 @@ class TextAlignmentModel(BaseModel):
         self.text_encoder = text_encoder
         # TODO: if eo==geoclip_img pass on shared mlp
 
+        # Assert normalization compatibility
+        desired_norm = "l2"
+        assert (
+            self.eo_encoder.output_normalization == desired_norm
+        ), self.eo_encoder.output_normalization
+        assert (
+            self.text_encoder.output_normalization == desired_norm
+        ), self.text_encoder.output_normalization
+
         # Extra projector for text encoder if eo and text dim not match
         if self.eo_encoder.output_dim != self.text_encoder.output_dim:
             self.text_encoder.add_projector(projected_dim=self.eo_encoder.output_dim)

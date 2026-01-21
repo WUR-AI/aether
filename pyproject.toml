@@ -27,6 +27,7 @@ dependencies = [
     "pytest-cov>=7.0.0",
     "pre-commit>=4.5.1",
     "pooch>=1.8.2",
+    "torchinfo>=1.8.0",
 ]
 
 [project.optional-dependencies]

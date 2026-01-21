@@ -32,32 +32,48 @@ class ButterflyDataset(BaseDataset):
         """
 
         super().__init__(
-            data_dir, modalities, use_target_data, use_aux_data, "s2bms", seed, cache_dir
+            data_dir=data_dir,
+            modalities=modalities,
+            use_target_data=use_target_data,
+            use_aux_data=use_aux_data,
+            dataset_name="s2bms",
+            seed=seed,
+            cache_dir=cache_dir,
         )
+        self.create_records()
+        self.setup()  # needs to be called here in case number of data points changes, so that self._len is correctly set before dataloaders are created.
 
+    def create_records(self, columns: list[str] = None) -> None:
         # Placeholder for filtered columns
-        columns = ["name_loc"]
+        if columns is None:
+            columns = ["name_loc"]
 
-        for modality, params in self.modalities.items():
-            if modality == "coords":
-                columns.extend(["lat", "lon"])
-            else:
-                self.add_modality_paths_to_df(modality, params["format"])
-                columns.append(f"{modality}_path")
-                if modality == "s2":
-                    if params["preprocessing"] == "zscored":
-                        self.init_norm_stats()
+            for modality, params in self.modalities.items():
+                if modality == "coords":
+                    columns.extend(["lat", "lon"])
+                else:
+                    self.add_modality_paths_to_df(modality, params["format"])
+                    columns.append(f"{modality}_path")
+                    if modality == "s2":
+                        if params["preprocessing"] == "zscored":
+                            self.init_s2_norm_stats()
+                    elif modality == "aef" or modality == "tessera":
+                        pass
+                    else:
+                        raise ValueError(f"Unsupported modality: {modality}")
 
-        if self.use_target_data:
-            self.target_names = [c for c in self.df.columns if "target_" in c]
-            columns.extend(self.target_names)
-            self.num_classes = len(self.target_names)
+            if self.use_target_data:
+                self.target_names = [c for c in self.df.columns if "target_" in c]
+                columns.extend(self.target_names)
+                self.num_classes = len(self.target_names)
 
-        if self.use_aux_data:
-            self.aux_names = [c for c in self.df.columns if "aux_" in c]
-            columns.extend(self.aux_names)
+            if self.use_aux_data:
+                self.aux_names = [c for c in self.df.columns if "aux_" in c]
+                columns.extend(self.aux_names)
 
+            self.columns = columns
         self.records = self.df.loc[:, columns].to_dict("records")
+        self._len = len(self.records)
 
     def setup(self):
         """Setups the whole dataset, makes available data of requested modalities."""
@@ -65,28 +81,31 @@ class ButterflyDataset(BaseDataset):
         if len(self.modalities.keys()) == 1 and self.modalities.get("coords", None) is not None:
             return
 
-        import pooch
+        if "s2" in self.modalities.keys():
+            import pooch
 
-        # Initialise pooch client
-        self.pooch_cli = pooch.create(
-            path=os.path.join(self.cache_dir, "s2bms"),
-            base_url="",
-            registry=None,
-        )
+            # Initialise pooch client
+            self.pooch_cli = pooch.create(
+                path=os.path.join(self.cache_dir, "s2bms"),
+                base_url="",
+                registry=None,
+            )
 
-        # Add registry with all datasets, hashes and urls
-        self.pooch_cli.load_registry(os.path.join(self.data_dir, "registry.txt"))
+            # Add registry with all datasets, hashes and urls
+            self.pooch_cli.load_registry(os.path.join(self.data_dir, "registry.txt"))
 
         # Set up each requested modality
         for mod, params in self.modalities.items():
             if mod == "s2":
                 self.setup_s2bms()
             elif mod == "tessera":
-
                 self.setup_tessera(year=params["year"], size=params["size"])
+            elif mod == "aef":
+                self.setup_aef()
 
     def setup_tessera(self, year: int, size: int) -> None:
         """Prepares (downloads, places)"""
+        print("\n\nSetting up Tessera data...\n\n")
         # Check if data is already available
         dst_dir = os.path.join(self.data_dir, "eo/tessera")
         if os.path.exists(dst_dir):
@@ -109,17 +128,42 @@ class ButterflyDataset(BaseDataset):
             cache_dir=self.cache_dir,
         )
 
+    def setup_aef(self) -> None:
+        print("\n\nSetting up AEF data...\n\n")
+
+        dst_dir = os.path.join(self.data_dir, "eo/aef")
+        assert os.path.exists(dst_dir), f"AEF data directory {dst_dir} does not exist."
+
+        inds_keep = []
+        for i_row, row in self.df.iterrows():
+            p = row.aef_path
+            if os.path.exists(p):
+                inds_keep.append(i_row)
+        inds_keep = np.array(inds_keep)
+        print(f"Keeping {len(inds_keep)}/{len(self.df)} entries with available AEF data.")
+        self.df = self.df.iloc[inds_keep].reset_index(drop=True)
+        self.create_records(columns=self.columns)  # recreate records after filtering df
+
     def setup_s2bms(self) -> None:
         """Prepares (downloads, renames and moves) data from S2BMS study."""
+        print("\n\nSetting up S2BMS data...\n\n")
         import pooch
 
         # Check if data is already available
         dst_dir = os.path.join(self.data_dir, "eo/s2")
         if os.path.exists(dst_dir):
-            for p in self.df.s2_path:
-                if not os.path.basename(p) in os.listdir(dst_dir):
-                    raise FileNotFoundError(f"Missing S2 data: {p}")
-            return
+            n_files = len(os.listdir(dst_dir))
+            if n_files == 0:
+                print("Warning: S2 data directory exists but is empty, re-downloading data.")
+            elif n_files < len(self.df):
+                print(
+                    f"Warning: S2 data directory exists but has only {n_files} files, expected {len(self.df)}. Re-downloading data."
+                )
+            else:
+                for p in self.df.s2_path:
+                    if not os.path.basename(p) in os.listdir(dst_dir):
+                        raise FileNotFoundError(f"Missing S2 data: {p}")
+                return
         else:
             os.makedirs(dst_dir, exist_ok=True)
 
@@ -170,7 +214,7 @@ class ButterflyDataset(BaseDataset):
             file_path = path + f"{modality}_{row.name_loc}.{extension}"
             self.df.loc[i, col] = file_path
 
-    def init_norm_stats(self, means: list[float] = None, stds: list[float] = None):
+    def init_s2_norm_stats(self, means: list[float] = None, stds: list[float] = None):
         if means is None or stds is None:
             print("Using S2BMS default zscore means and stds")
             means = np.array([661.1047, 770.6800, 531.8330, 3228.5588]).astype(
@@ -192,7 +236,7 @@ class ButterflyDataset(BaseDataset):
         im = (im - self.s2_norm_means) / self.s2_norm_std
         return im
 
-    def load_s2bms(self, filepath: str):
+    def load_s2(self, filepath: str):
         im = du.load_tiff(filepath, datatype="np")
 
         if self.modalities["s2"]["channels"] == "4c":
@@ -216,8 +260,17 @@ class ButterflyDataset(BaseDataset):
         im = np.load(filepath).transpose(2, 0, 1)
         return torch.from_numpy(im).float()
 
+    def load_aef(self, filepath: str):
+        im = du.load_tiff(filepath, datatype="np")
+        if np.isinf(im).any():
+            im = np.clip(im, a_min=-0.5, a_max=0.5)
+        return torch.tensor(im).float()
+
     @override
     def __getitem__(self, idx: int) -> Dict[str, Any]:
+        assert idx < len(
+            self.records
+        ), f"Index {idx} out of bounds for dataset of size {len(self.records)} while len ds is {self._len} and {self.__len__()}."
         row = self.records[idx]
 
         formatted_row = {"eo": {}}
@@ -226,11 +279,13 @@ class ButterflyDataset(BaseDataset):
             if modality in ["coords"]:
                 formatted_row["eo"][modality] = torch.tensor([row["lat"], row["lon"]])
             elif modality == "s2":
-                formatted_row["eo"][modality] = self.load_s2bms(row["s2_path"])
+                formatted_row["eo"][modality] = self.load_s2(row["s2_path"])
                 # TODO: augmentations
             elif modality == "tessera":
                 formatted_row["eo"][modality] = self.load_npy(row["tessera_path"])
                 # TODO any normalisation needed
+            elif modality == "aef":
+                formatted_row["eo"][modality] = self.load_aef(row["aef_path"])
 
         if self.use_target_data:
             formatted_row["target"] = torch.tensor(

@@ -41,13 +41,17 @@ class BaseDataset(Dataset, ABC):
 
         # Set attributes
         self.data_dir = os.path.join(data_dir, dataset_name)
+        assert os.path.exists(self.data_dir), f"{self.data_dir} does not exist."
         self.cache_dir = cache_dir or os.path.join(data_dir, "cache")
+        if not os.path.exists(self.cache_dir):
+            os.makedirs(self.cache_dir, exist_ok=True)
+        assert os.path.exists(self.cache_dir), f"{self.cache_dir} does not exist."
 
         # read and shuffle df
         path_csv = os.path.join(self.data_dir, f"model_ready_{dataset_name}.csv")
         assert os.path.exists(path_csv), f"{path_csv} does not exist."
         self.df: pd.DataFrame = pd.read_csv(path_csv)
-        self.df = shuffle(self.df, random_state=seed)
+        # self.df = shuffle(self.df, random_state=seed)  # shuffling is already done in datamodules
         self.seed = seed
 
         # more precise dataset name (with modalities)

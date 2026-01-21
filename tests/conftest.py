@@ -157,6 +157,7 @@ def create_butterfly_dataset(request, sample_csv, tmp_path):
 
     dataset = ButterflyDataset(
         data_dir=csv_dir,
+        cache_dir=str(tmp_path),
         modalities={"coords": None},
         use_target_data=True,
         use_aux_data=True,
