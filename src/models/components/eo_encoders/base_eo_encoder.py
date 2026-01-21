@@ -6,9 +6,8 @@ from torch import nn
 
 
 class BaseEOEncoder(nn.Module, ABC):
-    def __init__(self, eo_data_name="") -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.eo_data_name = eo_data_name
         self.eo_encoder: nn.Module | None = None
         self.output_dim: int | None = None
 

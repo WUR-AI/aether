@@ -26,6 +26,7 @@ class CNNEncoder(BaseEOEncoder):
         resnet_version=18,
         freezing_strategy="all",
         eo_data_name="s2",
+        input_n_bands: int | None = None,
         output_dim=512,
         output_normalization="l2",
     ) -> None:
@@ -36,7 +37,7 @@ class CNNEncoder(BaseEOEncoder):
         self.resnet_version = resnet_version
         self.freezing_strategy = freezing_strategy
         self.eo_data_name = eo_data_name
-        self.set_n_input_bands(None)
+        self.set_n_input_bands(input_n_bands)
         assert (
             self.input_n_bands >= 3 and type(self.input_n_bands) is int
         ), f"input_n_bands must be int >=3, got {self.input_n_bands}"
@@ -58,6 +59,9 @@ class CNNEncoder(BaseEOEncoder):
                 self.input_n_bands = 64
             elif self.eo_data_name == "tessera":
                 self.input_n_bands = 128
+            print(
+                f"[CNNEncoder] Inferred input_n_bands={self.input_n_bands} for eo_data_name='{self.eo_data_name}'"
+            )
         else:
             self.input_n_bands = n_bands
         return None
