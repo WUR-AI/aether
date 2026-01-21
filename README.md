@@ -11,7 +11,6 @@
 [![Issues](https://img.shields.io/github/issues/vdplasthijs/aether)](https://github.com/WUR-AI/aether/issues)
 ![GitHub Tag](https://img.shields.io/github/v/tag/vdplasthijs/aether)
 [![test-main](https://github.com/WUR-AI/aether/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/WUR-AI/aether/actions/workflows/test.yml)
-[![test-develop](https://github.com/WUR-AI/aether/actions/workflows/test.yml/badge.svg?branch=develop)](https://github.com/WUR-AI/aether/actions/workflows/test.yml)
 [![contributors](https://img.shields.io/github/contributors/WUR-AI/aether.svg)](https://github.com/WUR-AI/aether//graphs/contributors)
 
 </div>
