@@ -8,6 +8,8 @@ In general, all contributions should be made via Pull Requests (see below).
 
 Please note we have a [code of conduct](https://github.com/WUR-AI/aether/blob/main/CODE_OF_CONDUCT.md), please follow it in all your interactions with the project.
 
+Finally, we would appreciate it if you install [pre-commit](https://pre-commit.com/) for this repo so all contributors use the same pre-commit hooks. Thank you!
+
 ## Pull Request Process
 
 1. Create a new feature branch from `develop`, called `feature/my_feature`. Implement your changes here. When you're done, create a PR with `develop`. (If `develop` has been updated in the meanwhile, merge `develop` into your feature branch `feature/my_feature` first to get the updates).
