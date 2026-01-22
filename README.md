@@ -6,24 +6,115 @@
 [![pytorch](https://img.shields.io/badge/PyTorch_2.0+-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
 [![lightning](https://img.shields.io/badge/PyTorch--Lightning-792EE5?style=flat&logo=lightning&logoColor=white)](https://pytorchlightning.ai/)
 [![hydra](https://img.shields.io/badge/Config-Hydra_1.3-89b8cd)](https://hydra.cc/)
-[![license](https://img.shields.io/badge/License-MIT-green.svg?labelColor=gray)](https://github.com/WUR-AI/aether/blob/main/LICENSE)
+[![license](https://img.shields.io/badge/License-MIT-green.svg?labelColor=gray)](https://github.com/WUR-AI/aether/blob/main/LICENSE) <br>
 [![PRs](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/WUR-AI/aether/pulls)
 [![Issues](https://img.shields.io/github/issues/vdplasthijs/aether)](https://github.com/WUR-AI/aether/issues)
 ![GitHub Tag](https://img.shields.io/github/v/tag/vdplasthijs/aether)
+[![test-main](https://github.com/WUR-AI/aether/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/WUR-AI/aether/actions/workflows/test.yml)
+[![contributors](https://img.shields.io/github/contributors/WUR-AI/aether.svg)](https://github.com/WUR-AI/aether//graphs/contributors)
 
 </div>
 
 ## Description
 
-This project develops a self-interpretable multi-modal framework to translate satellite data into physically meaningful variables, for stake-holder oriented explanations.
+This project develops an EO embedding/language model that can be used for explainable predictions from EO data.
 
-Some code was adapted from [github.com/vdplasthijs/PECL/](github.com/vdplasthijs/PECL/).
+## Getting Started
 
-## Data:
+### Virtual environment
 
-## Project Structure
+First, install dependencies in a venv using [uv](https://docs.astral.sh/uv/getting-started/installation/)
 
-The directory structure of new project looks like this:
+```bash
+# clone project
+git clone https://github.com/WUR-AI/aether
+cd aether
+```
+
+```bash
+# Create venv
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+```bash
+# install uv manager
+pip install uv
+
+# install all Python dependencies
+uv sync # reads pyproject.toml + uv.lock
+
+# install project locally (editable)
+uv pip install -e .
+```
+
+Note, running `uv sync` in the venv will always update the package to the most up-to-date version (as defined by the repo's `pyproject.toml` file).
+
+### Set paths
+
+Next, create a file in your local repo parent folder `aether/` called `.env`. Copy the contents of `aether/env.example` and adjust the paths to your local system. **Important**: `DATA_DIR` should either point to `aether/data/` OR if it points to another folder (e.g., `my/local/data/`) then copy the contents of `aether/data/` to `my/local/data/` to ensure the butterfly use case runs using the provided example data. Other data will automatically be downloaded and organised by `pooch` if possible, or should be copied manually.
+
+Data folders should follow the following directory structure:
+
+```
+├── registry.txt                         <- Pooch config file, don't change.
+├── s2bms/                               <- Dataset folder.
+│   ├── model_ready_s2bms.csv            <- Csv file with "name_loc" id, locations, aux data and target data.
+│   ├── aux_classes.csv                  <- Csv file with explanations for aux data class names.
+│   ├── caption_templates.json           <- Json file with list of caption templates (referencing aux column names).
+│   ├── splits/                          <- Torch data splits
+│   ├── source/                          <- Optional: source data used to create model_ready csv.
+│   ├── eo/                              <- EO data modalities
+│       ├── s2/                          <- Modality 1: (e.g. sentinel-2)
+│           ├── s2_<NAME_LOC_1>.tif      <- EO modality data for a single location (indexed by unique <NAME_LOC>)
+│           ├── s2_<NAME_LOC_2>.tif
+│       ├── aef/                         <- Modality 2: (e.g. AEF)
+│       ├── other_modality/
+├── other_dataset/
+```
+
+### Training
+
+Experiment configurations (such as choosing data, encoders, hyperparameters etc.) are managed through [Hydra](https://hydra.cc/) configurations. Define your experiment configurations in `configs/experiments/experiment_name.yaml`, for example to train predictive model with GeoCLIP coordinate encoder for the Butterfly data using `configs/experiments/prediction.yaml` (copied below)
+
+```yaml
+# @package _global_
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+defaults:
+  - override /model: predictive_geoclip
+  - override /data: butterfly_coords
+
+
+tags: ["prediction", "geoclip_coords"]
+
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 100
+
+data:
+  batch_size: 64
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "predictive"
+  aim:
+    experiment: "predictive"
+```
+
+To execute this experiment run (inside your venv):
+
+```bash
+python train.py experiment=prediction
+```
+
+## Directory structure
+
+We follow the directory structure from the [Hydra-Lightning template](https://github.com/ashleve/lightning-hydra-template), which looks like:
 
 ```
 ├── .github                   <- Github Actions workflows
@@ -78,68 +169,7 @@ The directory structure of new project looks like this:
 └── README.md
 ```
 
-## Getting Started
+## Attribution
 
-First, install dependencies
-
-```bash
-# clone project
-git clone https://github.com/WUR-AI/aether
-cd aether
-```
-
-```bash
-# Create venv
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-```bash
-# install uv manager
-pip install uv
-
-# install all Python dependencies
-uv sync # reads pyproject.toml + uv.lock
-
-# install project locally (editable)
-uv pip install -e .
-```
-
-## Training
-
-Define your experiment configurations in `configs/experiments/experiment_name.yaml`, for example to train predictive model with GeoCLIP coordinate encoder for the Butterfly UC:
-
-```yaml
-# @package _global_
-# all parameters below will be merged with parameters from default configurations set above
-# this allows you to overwrite only specified parameters
-
-defaults:
-  - override /model: predictive_geoclip
-  - override /data: butterfly_coords
-
-
-tags: ["prediction", "geoclip_coords"]
-
-seed: 12345
-
-trainer:
-  min_epochs: 1
-  max_epochs: 100
-
-data:
-  batch_size: 64
-
-logger:
-  wandb:
-    tags: ${tags}
-    group: "predictive"
-  aim:
-    experiment: "predictive"
-```
-
-To execute this experiment run:
-
-```bash
-python train.py experiment=experiment_name
-```
+This repo is based on the [Hydra-Lightning template](https://github.com/ashleve/lightning-hydra-template).
+Some code was adapted from [github.com/vdplasthijs/PECL/](github.com/vdplasthijs/PECL/).
