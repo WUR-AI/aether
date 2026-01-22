@@ -41,6 +41,7 @@ class ButterflyDataset(BaseDataset):
             cache_dir=cache_dir,
         )
         self.create_records()
+        self.setup()  # needs to be called here in case number of data points changes, so that self._len is correctly set before dataloaders are created.
 
     def create_records(self, columns: list[str] = None) -> None:
         # Placeholder for filtered columns
@@ -80,17 +81,18 @@ class ButterflyDataset(BaseDataset):
         if len(self.modalities.keys()) == 1 and self.modalities.get("coords", None) is not None:
             return
 
-        import pooch
+        if "s2" in self.modalities.keys():
+            import pooch
 
-        # Initialise pooch client
-        self.pooch_cli = pooch.create(
-            path=os.path.join(self.cache_dir, "s2bms"),
-            base_url="",
-            registry=None,
-        )
+            # Initialise pooch client
+            self.pooch_cli = pooch.create(
+                path=os.path.join(self.cache_dir, "s2bms"),
+                base_url="",
+                registry=None,
+            )
 
-        # Add registry with all datasets, hashes and urls
-        self.pooch_cli.load_registry(os.path.join(self.data_dir, "registry.txt"))
+            # Add registry with all datasets, hashes and urls
+            self.pooch_cli.load_registry(os.path.join(self.data_dir, "registry.txt"))
 
         # Set up each requested modality
         for mod, params in self.modalities.items():
@@ -109,7 +111,7 @@ class ButterflyDataset(BaseDataset):
         if os.path.exists(dst_dir):
             for p in self.df.tessera_path:
                 if not os.path.basename(p) in os.listdir(dst_dir):
-                    raise FileNotFoundError(f"Missing tessera data: {p}")
+                    raise FileNotFoundError(f"Missing S2 data: {p}")
             return
         else:
             os.makedirs(dst_dir, exist_ok=True)
@@ -132,10 +134,15 @@ class ButterflyDataset(BaseDataset):
         dst_dir = os.path.join(self.data_dir, "eo/aef")
         assert os.path.exists(dst_dir), f"AEF data directory {dst_dir} does not exist."
 
+        inds_keep = []
         for i_row, row in self.df.iterrows():
             p = row.aef_path
-            if not os.path.exists(p):
-                raise FileNotFoundError(f"Missing AEF data: {p}")
+            if os.path.exists(p):
+                inds_keep.append(i_row)
+        inds_keep = np.array(inds_keep)
+        print(f"Keeping {len(inds_keep)}/{len(self.df)} entries with available AEF data.")
+        self.df = self.df.iloc[inds_keep].reset_index(drop=True)
+        self.create_records(columns=self.columns)  # recreate records after filtering df
 
     def setup_s2bms(self) -> None:
         """Prepares (downloads, renames and moves) data from S2BMS study."""
