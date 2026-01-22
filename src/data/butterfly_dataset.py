@@ -80,18 +80,17 @@ class ButterflyDataset(BaseDataset):
         if len(self.modalities.keys()) == 1 and self.modalities.get("coords", None) is not None:
             return
 
-        if "s2" in self.modalities.keys():
-            import pooch
+        import pooch
 
-            # Initialise pooch client
-            self.pooch_cli = pooch.create(
-                path=os.path.join(self.cache_dir, "s2bms"),
-                base_url="",
-                registry=None,
-            )
+        # Initialise pooch client
+        self.pooch_cli = pooch.create(
+            path=os.path.join(self.cache_dir, "s2bms"),
+            base_url="",
+            registry=None,
+        )
 
-            # Add registry with all datasets, hashes and urls
-            self.pooch_cli.load_registry(os.path.join(self.data_dir, "registry.txt"))
+        # Add registry with all datasets, hashes and urls
+        self.pooch_cli.load_registry(os.path.join(self.data_dir, "registry.txt"))
 
         # Set up each requested modality
         for mod, params in self.modalities.items():
