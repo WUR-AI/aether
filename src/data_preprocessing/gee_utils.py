@@ -83,21 +83,28 @@ def convert_bioclim_to_units(bioclim_dict):
 
 def get_gee_image_from_coord(
     coords,
+    aoi=None,
     collection_name="corine",
     patch_size=2000,
     year=2017,
     sentinel_month_start=3,
     sentinel_month_end=9,
     threshold_size: int | None = None,
+    verbose=0,
 ):
     """Get a GEE image from coordinates, for a given collection.
 
     Collections can have slightly different parameters/logic, hence they are split up in different
     if statements.
     """
-    aoi = create_aoi_from_coord_buffer(coords, buffer_m=patch_size // 2, bool_buffer_in_deg=False)
+    if aoi is None:
+        aoi = create_aoi_from_coord_buffer(
+            coords, buffer_m=patch_size // 2, bool_buffer_in_deg=False
+        )
     lon, lat = coords
     epsg_code = get_epsg_from_latlon(lat=lat, lon=lon)
+    if verbose:
+        print(f"Using EPSG:{epsg_code} for coords: {coords}")
     if collection_name == "corine":
         assert year == 2017, "GEE CORINE collection only has data for year 2017 I believe"
         collection = ee.ImageCollection("COPERNICUS/CORINE/V20/100m")
@@ -116,7 +123,7 @@ def get_gee_image_from_coord(
         im_gee = ee.Image(
             collection.filterBounds(aoi)
             .filterDate(f"{year}-01-01", f"{year}-12-31")
-            .first()
+            .mosaic()  # use mosaic to get full coverage when multiple non-overlapping images
             .reproject(f"EPSG:{epsg_code}", scale=10)
             .clip(aoi)
         )
@@ -156,10 +163,14 @@ def get_gee_image_from_coord(
             .clip(aoi)
         )
 
+    if verbose:
+        im_dims = im_gee.getInfo()["bands"][0]["dimensions"]
+        print(f"Downloaded image dimensions: {im_dims}")
+
     if threshold_size is not None:
         im_dims = im_gee.getInfo()["bands"][0]["dimensions"]
         if im_dims[0] < threshold_size or im_dims[1] < threshold_size:
-            print("WARNING: image too small, returning None")
+            print(f"WARNING: image too small before downloading, returning None ({im_dims})")
             return None
     return im_gee
 
@@ -265,6 +276,7 @@ def download_gee_image(
         sentinel_month_end=sentinel_month_end,
         collection_name=collection_name,
         threshold_size=pixel_patch_size,
+        verbose=verbose,
     )
     if im_gee is None:  # if image was too small it was discarded
         if verbose:
@@ -282,6 +294,9 @@ def download_gee_image(
     )
     filepath = os.path.join(path_save, filename)
 
+    if verbose:
+        print(f"Downloading image to {filepath} ...")
+
     geemap.ee_export_image(
         im_gee,
         filename=filepath,
@@ -289,6 +304,9 @@ def download_gee_image(
         file_per_band=False,  # crs='EPSG:32630'
         verbose=False,
     )
+
+    if verbose:
+        print(f"Saved image to {filepath}")
 
     if resize_image:  # load & crop & save to size correctly (because of buffer):
         remove_if_too_small = (
@@ -298,7 +316,7 @@ def download_gee_image(
         if verbose:
             print("Original size: ", im.shape)
         if im.shape[1] < pixel_patch_size or im.shape[2] < pixel_patch_size:
-            print("WARNING: image too small, returning None")
+            print(f"WARNING: image too small after loading, returning None ({im.shape})")
             if remove_if_too_small:
                 os.remove(filepath)
             return None, None
@@ -334,6 +352,7 @@ def download_list_coord(
     stop_index=None,
     resize_image=True,
     list_collections=["sentinel2", "alphaearth"],
+    verbose=0,
 ):
     """For a list of coordinates (and optional names), download GEE images for each coordinate and
     save them locally."""
@@ -368,12 +387,16 @@ def download_list_coord(
             name = f"{name_group}_{i}"
         for im_collection in list_collections:
             try:
+                if verbose:
+                    print(
+                        f"Downloading image {i} and {name}, collection: {im_collection}. Coords: {coords}. Patch size: {pixel_patch_size}. path: {path_save}. resize: {resize_image}"
+                    )
                 im, path_im = download_gee_image(
                     coords=coords,
                     name=name,
                     pixel_patch_size=pixel_patch_size,
                     path_save=path_save,
-                    verbose=0,
+                    verbose=verbose,
                     resize_image=resize_image,
                     collection_name=im_collection,
                 )
