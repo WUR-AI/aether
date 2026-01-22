@@ -19,8 +19,12 @@ from src.data_preprocessing.crs_utils import (
 )
 
 
-def reproject_dataset(src_raster, dst_crs):
+def reproject_dataset(src_raster: MemoryFile, dst_crs: str) -> MemoryFile:
+    """Reprojects Memory file if it's not in dst_crs.
 
+    :param src_raster: Raster file to reproject.
+    :param dst_crs: CRS to reproject.
+    """
     dst_crs = CRS.from_user_input(dst_crs)
     if src_raster.crs == dst_crs:
         return src_raster, None
@@ -61,7 +65,7 @@ def get_tessera_embeds(
     year: int,
     save_dir: str,
     tile_size: int,
-    tessera_con: GeoTessera,
+    tessera_con: GeoTessera | None,
 ) -> None:
     """Obtain tessera embedding tile with specified size for a given coordinates.
 
@@ -155,7 +159,11 @@ def get_tessera_embeds(
 
 
 def tessera_from_df(
-    model_ready_df: str, data_dir: str, year: int, tile_size: int = 256, cache_dir: str = "temp/"
+    model_ready_df: pd.DataFrame,
+    data_dir: str,
+    year: int,
+    tile_size: int = 256,
+    cache_dir: str = "temp/",
 ) -> None:
     """Obtains Tessera embeddings from a CSV file for each (lon, lat).
 
