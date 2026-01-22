@@ -12,7 +12,7 @@ cache_dir = "data/cache"
 data_dir = "data/"
 
 
-def get_satbird_data(
+def setup_satbird_from_pooch(
     data_dir: str, cache_dir: str, study_site: str = "Kenya", registry_file=None
 ) -> None:
     """Gets satbird data from the source Google Drive using pooch, structurises this data for this
@@ -28,7 +28,7 @@ def get_satbird_data(
     # Model ready csv path
     model_ready_csv_path = os.path.join(data_dir, f"model_ready_satbird-{study_site}.csv")
 
-    # FLag for missing data (model ready csv or some mod folder empty)
+    # Flag for missing data (model ready csv or some mod folder empty)
     download_flag = not os.path.exists(model_ready_csv_path)
     for mod in ["s2", "s2rgb", "environmental"]:
         if (
@@ -100,7 +100,7 @@ def pooch_satbird_downloader(
         print(f"{unzip_dir} emptied")
 
 
-def extract_satbird_data(data_dir: str, fnames: list[str], study_site: str):
+def extract_satbird_data(data_dir: str, fnames: list[str], study_site: str) -> None:
     """Moves, renames satbird data into desired structure.
 
     :param data_dir: data directory (e.g. data/satbird_kenya)
@@ -170,8 +170,19 @@ def extract_satbird_data(data_dir: str, fnames: list[str], study_site: str):
         print(f"Saved split indices to {split_name}")
 
 
-def make_model_ready_csv(df, split_df, model_ready_csv_path, study_site):
+def make_model_ready_csv(
+    df: pd.DataFrame, split_df: pd.DataFrame, model_ready_csv_path: str, study_site: str
+):
+    """Compiles model ready csv file from retrieved target df and split dataframe.
 
+    :param df: dataframe of target values compiled from target json files
+    :param split_df: split dataframe
+    :param model_ready_csv_path: name of model ready csv file
+    :param study_site: study site name (Kenya, USA_summer, USA_winter)
+    """
+
+    if study_site != "Kenya":
+        raise NotImplementedError(f"Dataset not implemented for {study_site}")
     # Check for duplicates
     assert not df["hotspot_id"].duplicated().any()
 
