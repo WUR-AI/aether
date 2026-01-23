@@ -2,46 +2,43 @@ from typing import Dict, override
 
 import torch
 from geoclip import GeoCLIP
-from transformers import CLIPProcessor, CLIPModel
+from torch.nn import functional as F
+from transformers import CLIPModel, CLIPProcessor
 
-from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
+from src.models.components.text_encoders.base_text_encoder import (
+    BaseTextEncoder,
+)
 
 
 class ClipTextEncoder(BaseTextEncoder):
-    def __init__(
-            self,
-            hf_cache_dir: str = '../.cache'
-    ) -> None:
+    def __init__(self, hf_cache_dir: str = "../.cache", output_normalization="l2") -> None:
         super().__init__()
         self.processor = CLIPProcessor.from_pretrained(
-            'openai/clip-vit-large-patch14',
+            "openai/clip-vit-large-patch14",
             use_fast=True,
             cache_dir=hf_cache_dir,
         )
         self.model = CLIPModel.from_pretrained(
-            'openai/clip-vit-large-patch14',
+            "openai/clip-vit-large-patch14",
             cache_dir=hf_cache_dir,
         )
 
         self.projector = GeoCLIP().image_encoder.mlp
+        self.output_normalization = output_normalization
         self.output_dim = 512
 
     @override
-    def forward(
-            self,
-            batch: Dict[str, torch.Tensor],
-            mode: str
-    ) -> torch.Tensor:
+    def forward(self, batch: Dict[str, torch.Tensor], mode: str) -> torch.Tensor:
         # Get text inputs
-        text_input = batch.get('text')
+        text_input = batch.get("text")
 
-        if mode == 'train':
+        if mode == "train":
             text_input = [text_input]
         # Embed text and if not training loop average all templates
         avr_embeds = []
         for captions_per_row in text_input:
             # Tokenize and embed
-            text_tokens = self.processor(text=captions_per_row, return_tensors='pt', padding=True)
+            text_tokens = self.processor(text=captions_per_row, return_tensors="pt", padding=True)
             device = next(self.model.parameters()).device
             text_tokens = {k: v.to(device) for k, v in text_tokens.items()}
 
@@ -54,10 +51,19 @@ class ClipTextEncoder(BaseTextEncoder):
             if self.extra_projector is not None:
                 text_embeds = self.extra_projector(text_embeds)
 
-            if mode != 'train':
+            if mode != "train":
                 avr_embeds.append(text_embeds.mean(dim=0))
 
-        if mode != 'train':
+        if mode != "train":
             text_embeds = torch.stack(avr_embeds, dim=0)
+
+        if self.output_normalization == "l2":
+            text_embeds = F.normalize(
+                text_embeds, p=2, dim=-1
+            )  # L2 normalization (per feature vector)
+        elif self.output_normalization == "none":
+            pass
+        else:
+            raise ValueError(f"Unsupported output_normalization: {self.output_normalization}")
 
         return text_embeds

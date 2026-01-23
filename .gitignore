@@ -222,3 +222,8 @@ __marimo__/
 archive/content/api_keys.py
 notebooks/tmp.tif
 uv.lock
+
+# Directories and files
+notebooks/01-TvdP-tmp.ipynb
+*/source/*
+*.tif # for now

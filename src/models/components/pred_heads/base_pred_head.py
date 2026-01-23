@@ -13,20 +13,16 @@ class BasePredictionHead(nn.Module, ABC):
         self.output_dim: int | None = None
 
     @abstractmethod
-    def forward(
-            self,
-            feats: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, feats: torch.Tensor) -> torch.Tensor:
         pass
 
     @final
-    def set_dim(
-            self,
-            input_dim: int,
-            output_dim: int
-    ) -> None:
+    def set_dim(self, input_dim: int, output_dim: int) -> None:
         self.input_dim = input_dim
         self.output_dim = output_dim
+        assert type(self.input_dim) is int, self.input_dim
+        if output_dim is not None:
+            assert type(self.output_dim) is int, self.output_dim
 
     @abstractmethod
     def configure_nn(self) -> None:

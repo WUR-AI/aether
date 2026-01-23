@@ -1,0 +1,8 @@
+# Global owners (default unless specified otherwise)
+* @WUR-AI/aether-admins
+
+# Develop branch
+/src/ @WUR-AI/aether-admins
+
+# example of specific encoder
+/src/models/components/text_encoders/clip_text_encoders.py @gabrieletijunaityte

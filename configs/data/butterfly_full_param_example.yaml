@@ -1,0 +1,35 @@
+_target_: src.data.base_datamodule.BaseDataModule
+
+dataset:
+  _target_: src.data.butterfly_dataset.ButterflyDataset
+
+  data_dir: ${paths.data_dir}
+  modalities:
+    coords:
+    s2:
+      size: 256
+      format: tif
+      channels: rgb
+      preprocessing: zscored
+    tessera:
+      size: 256
+      format: npy
+      year: 2019
+  use_target_data: true
+  use_aux_data: false
+  seed: ${seed}
+  cache_dir: ${paths.cache_dir}
+
+caption_builder:
+  _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
+  templates_fname: caption_templates.json
+  data_dir: ${paths.data_dir}/s2bms
+  seed: ${seed}
+
+batch_size: 16
+num_workers: 8
+pin_memory: true
+split_mode: "from_file"
+save_split: false
+saved_split_file_name: "split_indices_s2bms_2024-08-14-1459.pth"
+seed: ${seed}
