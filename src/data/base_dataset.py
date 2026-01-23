@@ -46,7 +46,6 @@ class BaseDataset(Dataset, ABC):
         :param implemented_mod: implemented modalities for each dataset
         :param mock: whether to mock csv file
         """
-        print(mock)
 
         if mock:
             dataset_name = "mock"

@@ -1,7 +1,6 @@
 # https://drive.google.com/drive/folders/1eaL2T7U9Imq_CTDSSillETSDJ1vxi5Wq
 import os
 import shutil
-from idlelib.window import registry
 
 import pandas as pd
 import torch

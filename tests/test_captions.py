@@ -12,9 +12,12 @@ from src.data.butterfly_dataset import ButterflyDataset
 
 def test_datamodule_uses_collate_when_aux_data(request, sample_csv, tmp_path):
     use_mock = request.config.getoption("--use-mock")
-    templates_path = tmp_path / "caption_templates.json"
+    templates_path = tmp_path / "caption_templates" / "v1.json"
+    os.makedirs(str(tmp_path / "caption_templates"), exist_ok=True)
+    print(f"Mock captions written to {templates_path}")
     templates_path.write_text(json.dumps(["<name_loc> text"]))
-    caption_builder = DummyCaptionBuilder("caption_templates.json", data_dir=str(tmp_path), seed=0)
+
+    caption_builder = DummyCaptionBuilder("v1.json", data_dir=str(tmp_path), seed=0)
 
     dataset = ButterflyDataset(
         data_dir=sample_csv,

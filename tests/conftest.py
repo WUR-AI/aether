@@ -165,11 +165,13 @@ def create_butterfly_dataset(request, sample_csv, tmp_path):
         mock=use_mock,
     )
 
-    templates_path = tmp_path / "caption_templates.json"
+    templates_path = tmp_path / "caption_templates" / "v1.json"
+    os.makedirs(str(tmp_path / "caption_templates"), exist_ok=True)
+    print(f"Mock captions written to {templates_path}")
     templates_path.write_text(json.dumps(["<name_loc> text"]))
 
     caption_builder = DummyCaptionBuilder(
-        templates_fname="caption_templates.json",
+        templates_fname="v1.json",
         data_dir=str(tmp_path),
         seed=0,
     )

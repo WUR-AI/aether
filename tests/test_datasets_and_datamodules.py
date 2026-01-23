@@ -1,10 +1,3 @@
-import json
-
-import pandas as pd
-import pytest
-
-from src.data.base_caption_builder import BaseCaptionBuilder, DummyCaptionBuilder
-from src.data.base_datamodule import BaseDataModule
 from src.data.butterfly_dataset import ButterflyDataset
 from src.data.satbird_dataset import SatBirdDataset
 
