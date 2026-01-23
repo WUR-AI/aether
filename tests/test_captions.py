@@ -51,15 +51,16 @@ def test_captionbuilder_generic_properties(tmp_path):
     templates_fname = "v1.json"
 
     for name_cb, cb_class in dict_caption_builders.items():
-        if name_cb == "butterfly":
-            repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-            templates_path = os.path.join(repo_root, "data", "s2bms")
-        else:
-            templates_path = tmp_path
-            templates_fpath = templates_path / "caption_templates" / templates_fname
-            os.makedirs(str(templates_path / "caption_templates"), exist_ok=True)
-            templates_fpath.write_text(json.dumps(["<name_loc> text"]))
-            print(f"written to {templates_path}")
+        # There is no data on git anymore
+        # if name_cb == "butterfly":
+        #     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        #     templates_path = os.path.join(repo_root, "data", "s2bms")
+        # else:
+        templates_path = tmp_path
+        templates_fpath = templates_path / "caption_templates" / templates_fname
+        os.makedirs(str(templates_path / "caption_templates"), exist_ok=True)
+        templates_fpath.write_text(json.dumps(["<name_loc> text"]))
+        print(f"written to {templates_path}")
 
         caption_builder = cb_class(
             templates_fname=templates_fname,
