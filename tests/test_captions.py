@@ -11,7 +11,8 @@ from src.data.butterfly_dataset import ButterflyDataset
 
 
 def test_datamodule_uses_collate_when_aux_data(sample_csv, tmp_path):
-    templates_path = tmp_path / "caption_templates.json"
+    templates_path = tmp_path / "caption_templates" / "caption_templates.json"
+    os.makedirs(str(tmp_path / "caption_templates"), exist_ok=True)
     templates_path.write_text(json.dumps(["<name_loc> text"]))
     caption_builder = DummyCaptionBuilder("caption_templates.json", data_dir=str(tmp_path), seed=0)
 
@@ -22,6 +23,7 @@ def test_datamodule_uses_collate_when_aux_data(sample_csv, tmp_path):
         use_target_data=True,
         use_aux_data=True,
         seed=0,
+        mock=True,
     )
 
     dm = BaseDataModule(
@@ -43,7 +45,7 @@ def test_captionbuilder_generic_properties(tmp_path):
     """This test checks that all caption builders implement the basic properties and methods."""
     dict_caption_builders = {"butterfly": ButterflyCaptionBuilder, "dummy": DummyCaptionBuilder}
 
-    templates_fname = "caption_templates.json"
+    templates_fname = "v1.json"
 
     for name_cb, cb_class in dict_caption_builders.items():
         if name_cb == "butterfly":
@@ -51,7 +53,8 @@ def test_captionbuilder_generic_properties(tmp_path):
             templates_path = os.path.join(repo_root, "data", "s2bms")
         else:
             templates_path = tmp_path
-            templates_fpath = templates_path / templates_fname
+            templates_fpath = templates_path / "caption_templates" / templates_fname
+            os.makedirs(str(templates_path / "caption_templates"), exist_ok=True)
             templates_fpath.write_text(json.dumps(["<name_loc> text"]))
             print(f"written to {templates_path}")
 
