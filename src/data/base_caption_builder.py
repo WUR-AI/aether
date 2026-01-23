@@ -21,7 +21,7 @@ class BaseCaptionBuilder(ABC):
         """
 
         self.data_dir = data_dir
-        templates_path = os.path.join(self.data_dir, templates_fname)
+        templates_path = os.path.join(self.data_dir, "caption_templates", templates_fname)
         self.templates = json.load(open(templates_path))
         self.tokens_in_template = [self._extract_tokens(t) for t in self.templates]
 
