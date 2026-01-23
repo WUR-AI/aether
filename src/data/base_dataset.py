@@ -19,7 +19,7 @@ class BaseDataset(Dataset, ABC):
         seed: int = 12345,
         mode: str = "train",
         cache_dir: str = None,
-        implemented_mod: list[str] = None,
+        implemented_mod: set[str] = None,
     ) -> None:
         """Interface for any use case dataset.
 

@@ -38,7 +38,7 @@ class ButterflyDataset(BaseDataset):
             dataset_name="s2bms",
             seed=seed,
             cache_dir=cache_dir,
-            implemented_mod=["s2", "tessera", "coords", "aef"],
+            implemented_mod={"s2", "tessera", "coords", "aef"},
         )
 
     def setup(self):

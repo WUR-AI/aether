@@ -41,7 +41,7 @@ class SatBirdDataset(BaseDataset):
             dataset_name=f"satbird-{study_site}",
             seed=seed,
             cache_dir=cache_dir,
-            implemented_mod=["coords", "s2", "s2rgb", "tessera"],
+            implemented_mod={"coords", "s2", "s2rgb", "tessera"},
         )
 
         self.study_site = study_site
