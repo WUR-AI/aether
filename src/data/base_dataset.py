@@ -7,6 +7,8 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
+import src.data_preprocessing.data_utils as du
+
 
 class BaseDataset(Dataset, ABC):
     def __init__(
@@ -224,3 +226,12 @@ class BaseDataset(Dataset, ABC):
         """Loads numpy array from file as a tensor."""
         im = np.load(filepath).transpose(2, 0, 1)
         return torch.from_numpy(im).float()
+
+    @final
+    def load_aef(self, filepath: str):
+        """Loads AEF data from file as a tensor."""
+
+        im = du.load_tiff(filepath, datatype="np")
+        if np.isinf(im).any():
+            im = np.clip(im, a_min=-0.5, a_max=0.5)
+        return torch.tensor(im).float()

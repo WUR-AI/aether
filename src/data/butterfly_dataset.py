@@ -135,13 +135,6 @@ class ButterflyDataset(BaseDataset):
             im = im / 2000.0
         return torch.tensor(im).float()
 
-    def load_aef(self, filepath: str):
-        # TODO move to the base class?
-        im = du.load_tiff(filepath, datatype="np")
-        if np.isinf(im).any():
-            im = np.clip(im, a_min=-0.5, a_max=0.5)
-        return torch.tensor(im).float()
-
     @override
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         row = self.records[idx]
