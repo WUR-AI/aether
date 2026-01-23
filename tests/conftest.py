@@ -140,8 +140,8 @@ def sample_csv(tmp_path) -> str:
             "aux_temp": [10, 11, 12, 13, 14, 15],
         }
     )
-    path = tmp_path / "s2bms/model_ready_s2bms.csv"
-    os.makedirs(str(tmp_path / "s2bms"), exist_ok=True)
+    path = tmp_path / "mock/model_ready_mock.csv"
+    os.makedirs(str(tmp_path / "mock"), exist_ok=True)
     df.to_csv(path, index=False)
     return str(tmp_path)
 
@@ -162,6 +162,7 @@ def create_butterfly_dataset(request, sample_csv, tmp_path):
         use_target_data=True,
         use_aux_data=True,
         seed=0,
+        mock=use_mock,
     )
 
     templates_path = tmp_path / "caption_templates.json"

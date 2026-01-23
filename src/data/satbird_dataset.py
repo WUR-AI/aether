@@ -17,8 +17,9 @@ class SatBirdDataset(BaseDataset):
         use_target_data: bool,
         use_aux_data: bool,
         seed: int,
-        study_site: str,
+        study_site: str = "Kenya",
         cache_dir: str = None,
+        mock: bool = False,
     ):
         """A dataset implementation for the Butterfly diversity use case.
 
@@ -29,6 +30,7 @@ class SatBirdDataset(BaseDataset):
         :param seed: random seed
         :param cache_dir: path to cache dir
         :param study_site: study site name [Kenya, USA_summer, USA_winter]
+        :param mock: whether to mock csv file
         """
         # assert study_site in ["Kenya", "USA_summer", "USA_winter"]
         assert study_site in ["Kenya"]
@@ -42,6 +44,7 @@ class SatBirdDataset(BaseDataset):
             seed=seed,
             cache_dir=cache_dir,
             implemented_mod={"coords", "s2", "s2rgb", "tessera"},
+            mock=mock,
         )
 
         self.study_site = study_site

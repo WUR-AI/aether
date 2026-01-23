@@ -6,11 +6,12 @@ import pytest
 from src.data.base_caption_builder import BaseCaptionBuilder, DummyCaptionBuilder
 from src.data.base_datamodule import BaseDataModule
 from src.data.butterfly_dataset import ButterflyDataset
+from src.data.satbird_dataset import SatBirdDataset
 
 
 def test_datasets_generic_properties(request, tmp_path, sample_csv):
     """This test checks that all datasets implement the basic properties and methods."""
-    list_datasets = [ButterflyDataset]
+    list_datasets = [ButterflyDataset, SatBirdDataset]
     use_mock = request.config.getoption("--use-mock")
     if use_mock:
         csv_dir = sample_csv
@@ -25,6 +26,7 @@ def test_datasets_generic_properties(request, tmp_path, sample_csv):
             use_target_data=True,
             use_aux_data=True,
             seed=0,
+            mock=use_mock,
         )
 
         assert len(dataset) > 0, f"{ds_class.__name__} is empty."

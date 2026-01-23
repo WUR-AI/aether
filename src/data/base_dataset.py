@@ -22,6 +22,7 @@ class BaseDataset(Dataset, ABC):
         mode: str = "train",
         cache_dir: str = None,
         implemented_mod: set[str] = None,
+        mock: bool = False,
     ) -> None:
         """Interface for any use case dataset.
 
@@ -43,7 +44,12 @@ class BaseDataset(Dataset, ABC):
         :param mode: train/val/test mode of the dataset
         :param cache_dir: directory to save cached data
         :param implemented_mod: implemented modalities for each dataset
+        :param mock: whether to mock csv file
         """
+        print(mock)
+
+        if mock:
+            dataset_name = "mock"
 
         # Modalities
         self.implemented_mod = implemented_mod

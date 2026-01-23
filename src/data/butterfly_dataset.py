@@ -19,6 +19,7 @@ class ButterflyDataset(BaseDataset):
         use_aux_data: bool = False,
         seed: int = 12345,
         cache_dir: str = None,
+        mock: bool = False,
     ) -> None:
         """A dataset implementation for the Butterfly diversity use case.
 
@@ -28,6 +29,7 @@ class ButterflyDataset(BaseDataset):
         :param use_aux_data: if auxiliary values should be returned
         :param seed: random seed
         :param cache_dir: path to cache dir
+        :param mock: whether to mock csv file
         """
 
         super().__init__(
@@ -39,6 +41,7 @@ class ButterflyDataset(BaseDataset):
             seed=seed,
             cache_dir=cache_dir,
             implemented_mod={"s2", "tessera", "coords", "aef"},
+            mock=mock,
         )
 
     def setup(self):
