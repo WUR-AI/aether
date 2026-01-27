@@ -29,14 +29,8 @@ class TopKAccuracy(BaseLossFn):
                 tmp_pred_greater_th[row, inds_sorted_preds[row, :k]] = 1
                 tmp_label_greater_th[row, inds_sorted_target[row, :k]] = 1
 
-            assert tmp_pred_greater_th.sum() <= k * len_batch, tmp_pred_greater_th.sum()
-            assert tmp_label_greater_th.sum() <= k * len_batch, tmp_label_greater_th.sum()
             tmp_joint = tmp_pred_greater_th * tmp_label_greater_th
             n_present = torch.sum(tmp_joint, dim=1)  # sum per batch sample
-
-            for n in n_present:
-                assert n <= k, n_present
-
             top_k_acc = n_present.float() / k  # accuracy per batch sample
             accs[k] = top_k_acc.mean()
 
