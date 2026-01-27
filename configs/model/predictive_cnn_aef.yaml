@@ -1,0 +1,28 @@
+_target_: src.models.predictive_model.PredictiveModel
+
+eo_encoder:
+  _target_: src.models.components.eo_encoders.cnn_encoder.CNNEncoder
+  resnet_version: 18
+  freezing_strategy: none
+  eo_data_name: aef
+
+prediction_head:
+  _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
+
+trainable_modules: [eo_encoder, prediction_head]
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.0
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+
+loss_fn:
+  _target_: src.models.components.loss_fns.bce_loss.BCELoss

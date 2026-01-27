@@ -187,9 +187,6 @@ cython_debug/
 *.tar.gz
 
 # Lightning-Hydra-Template
-configs/local/default.yaml
-/data/model_ready/
-/data/source/
 /logs/
 .env
 
@@ -224,3 +221,9 @@ __marimo__/
 .DS_Store
 archive/content/api_keys.py
 notebooks/tmp.tif
+uv.lock
+
+# Directories and files
+notebooks/01-TvdP-tmp.ipynb
+*/source/*
+*.tif # for now

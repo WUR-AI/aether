@@ -1,0 +1,45 @@
+code,color,category,category_level_1,category_level_2,category_level_3
+aux_corine_frac_111,#e6004d,Artificial surfaces > Urban fabric > Continuous urban fabric,Artificial surfaces,Urban fabric,Continuous urban fabric
+aux_corine_frac_112,#ff0000,Artificial surfaces > Urban fabric > Discontinuous urban fabric,Artificial surfaces,Urban fabric,Discontinuous urban fabric
+aux_corine_frac_121,#cc4df2,"Artificial surfaces > Industrial, commercial, and transport units > Industrial or commercial units",Artificial surfaces,"Industrial, commercial, and transport units",Industrial or commercial units
+aux_corine_frac_122,#cc0000,"Artificial surfaces > Industrial, commercial, and transport units > Road and rail networks and associated land",Artificial surfaces,"Industrial, commercial, and transport units",Road and rail networks and associated land
+aux_corine_frac_123,#e6cccc,"Artificial surfaces > Industrial, commercial, and transport units > Port areas",Artificial surfaces,"Industrial, commercial, and transport units",Port areas
+aux_corine_frac_124,#e6cce6,"Artificial surfaces > Industrial, commercial, and transport units > Airports",Artificial surfaces,"Industrial, commercial, and transport units",Airports
+aux_corine_frac_131,#a600cc,"Artificial surfaces > Mine, dump, and construction sites > Mineral extraction sites",Artificial surfaces,"Mine, dump, and construction sites",Mineral extraction sites
+aux_corine_frac_132,#a64dcc,"Artificial surfaces > Mine, dump, and construction sites > Dump sites",Artificial surfaces,"Mine, dump, and construction sites",Dump sites
+aux_corine_frac_133,#ff4dff,"Artificial surfaces > Mine, dump, and construction sites > Construction sites",Artificial surfaces,"Mine, dump, and construction sites",Construction sites
+aux_corine_frac_141,#ffa6ff,"Artificial surfaces > Artificial, non-agricultural vegetated areas > Green urban areas",Artificial surfaces,"Artificial, non-agricultural vegetated areas",Green urban areas
+aux_corine_frac_142,#ffe6ff,"Artificial surfaces > Artificial, non-agricultural vegetated areas > Sport and leisure facilities",Artificial surfaces,"Artificial, non-agricultural vegetated areas",Sport and leisure facilities
+aux_corine_frac_211,#ffffa8,Agricultural areas > Arable land > Non-irrigated arable land,Agricultural areas,Arable land,Non-irrigated arable land
+aux_corine_frac_212,#ffff00,Agricultural areas > Arable land > Permanently irrigated land,Agricultural areas,Arable land,Permanently irrigated land
+aux_corine_frac_213,#e6e600,Agricultural areas > Arable land > Rice fields,Agricultural areas,Arable land,Rice fields
+aux_corine_frac_221,#e68000,Agricultural areas > Permanent crops > Vineyards,Agricultural areas,Permanent crops,Vineyards
+aux_corine_frac_222,#f2a64d,Agricultural areas > Permanent crops > Fruit trees and berry plantations,Agricultural areas,Permanent crops,Fruit trees and berry plantations
+aux_corine_frac_223,#e6a600,Agricultural areas > Permanent crops > Olive groves,Agricultural areas,Permanent crops,Olive groves
+aux_corine_frac_231,#e6e64d,Agricultural areas > Pastures > Pastures,Agricultural areas,Pastures,Pastures
+aux_corine_frac_241,#ffe6a6,Agricultural areas > Heterogeneous agricultural areas > Annual crops associated with permanent crops,Agricultural areas,Heterogeneous agricultural areas,Annual crops associated with permanent crops
+aux_corine_frac_242,#ffe64d,Agricultural areas > Heterogeneous agricultural areas > Complex cultivation patterns,Agricultural areas,Heterogeneous agricultural areas,Complex cultivation patterns
+aux_corine_frac_243,#e6cc4d,"Agricultural areas > Heterogeneous agricultural areas > Land principally occupied by agriculture, with significant areas of natural vegetation",Agricultural areas,Heterogeneous agricultural areas,"Land principally occupied by agriculture, with significant areas of natural vegetation"
+aux_corine_frac_244,#f2cca6,Agricultural areas > Heterogeneous agricultural areas > Agro-forestry areas,Agricultural areas,Heterogeneous agricultural areas,Agro-forestry areas
+aux_corine_frac_311,#80ff00,Forest and semi natural areas > Forests > Broad-leaved forest,Forest and semi natural areas,Forests,Broad-leaved forest
+aux_corine_frac_312,#00a600,Forest and semi natural areas > Forests > Coniferous forest,Forest and semi natural areas,Forests,Coniferous forest
+aux_corine_frac_313,#4dff00,Forest and semi natural areas > Forests > Mixed forest,Forest and semi natural areas,Forests,Mixed forest
+aux_corine_frac_321,#ccf24d,Forest and semi natural areas > Scrub and/or herbaceous vegetation associations > Natural grasslands,Forest and semi natural areas,Scrub and/or herbaceous vegetation associations,Natural grasslands
+aux_corine_frac_322,#a6ff80,Forest and semi natural areas > Scrub and/or herbaceous vegetation associations > Moors and heathland,Forest and semi natural areas,Scrub and/or herbaceous vegetation associations,Moors and heathland
+aux_corine_frac_323,#a6e64d,Forest and semi natural areas > Scrub and/or herbaceous vegetation associations > Sclerophyllous vegetation,Forest and semi natural areas,Scrub and/or herbaceous vegetation associations,Sclerophyllous vegetation
+aux_corine_frac_324,#a6f200,Forest and semi natural areas > Scrub and/or herbaceous vegetation associations > Transitional woodland-shrub,Forest and semi natural areas,Scrub and/or herbaceous vegetation associations,Transitional woodland-shrub
+aux_corine_frac_331,#e6e6e6,"Forest and semi natural areas > Open spaces with little or no vegetation > Beaches, dunes, sands",Forest and semi natural areas,Open spaces with little or no vegetation,"Beaches, dunes, sands"
+aux_corine_frac_332,#cccccc,Forest and semi natural areas > Open spaces with little or no vegetation > Bare rocks,Forest and semi natural areas,Open spaces with little or no vegetation,Bare rocks
+aux_corine_frac_333,#ccffcc,Forest and semi natural areas > Open spaces with little or no vegetation > Sparsely vegetated areas,Forest and semi natural areas,Open spaces with little or no vegetation,Sparsely vegetated areas
+aux_corine_frac_334,#000000,Forest and semi natural areas > Open spaces with little or no vegetation > Burnt areas,Forest and semi natural areas,Open spaces with little or no vegetation,Burnt areas
+aux_corine_frac_335,#a6e6cc,Forest and semi natural areas > Open spaces with little or no vegetation > Glaciers and perpetual snow,Forest and semi natural areas,Open spaces with little or no vegetation,Glaciers and perpetual snow
+aux_corine_frac_411,#a6a6ff,Wetlands > Inland wetlands > Inland marshes,Wetlands,Inland wetlands,Inland marshes
+aux_corine_frac_412,#4d4dff,Wetlands > Inland wetlands > Peat bogs,Wetlands,Inland wetlands,Peat bogs
+aux_corine_frac_421,#ccccff,Wetlands > Maritime wetlands > Salt marshes,Wetlands,Maritime wetlands,Salt marshes
+aux_corine_frac_422,#e6e6ff,Wetlands > Maritime wetlands > Salines,Wetlands,Maritime wetlands,Salines
+aux_corine_frac_423,#a6a6e6,Wetlands > Maritime wetlands > Intertidal flats,Wetlands,Maritime wetlands,Intertidal flats
+aux_corine_frac_511,#00ccf2,Water bodies > Inland waters > Water courses,Water bodies,Inland waters,Water courses
+aux_corine_frac_512,#80f2e6,Water bodies > Inland waters > Water bodies,Water bodies,Inland waters,Water bodies
+aux_corine_frac_521,#00ffa6,Water bodies > Marine waters > Coastal lagoons,Water bodies,Marine waters,Coastal lagoons
+aux_corine_frac_522,#a6ffe6,Water bodies > Marine waters > Estuaries,Water bodies,Marine waters,Estuaries
+aux_corine_frac_523,#e6f2ff,Water bodies > Marine waters > Sea and ocean,Water bodies,Marine waters,Sea and ocean

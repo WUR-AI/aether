@@ -1,119 +1,136 @@
-from typing import override, Dict, Any
 import os
-import torch
+from typing import Any, Dict, override
+
 import numpy as np
-from src.data.base_dataset import BaseDataset
+import torch
+
 import src.data_preprocessing.data_utils as du
+from src.data.base_dataset import BaseDataset
+from src.data_preprocessing.renaming_utils import rename_s2bms
 from src.utils.errors import IllegalArgumentCombination
 
 
 class ButterflyDataset(BaseDataset):
     def __init__(
-            self,
-            path_csv: str,
-            modalities: list[str] = ['coords'],
-            use_target_data: bool = True,
-            use_aux_data: bool = False,
-            random_state: int = 42,
-            path_s2_im: str = None,
-            n_bands: int | None = None,
-            zscore_im: bool | None = None,
+        self,
+        data_dir: str,
+        modalities: dict,
+        use_target_data: bool = True,
+        use_aux_data: bool = False,
+        seed: int = 12345,
+        cache_dir: str = None,
+        mock: bool = False,
     ) -> None:
-        super().__init__(path_csv, modalities, use_target_data, use_aux_data, 'Butterflies', random_state)
+        """A dataset implementation for the Butterfly diversity use case.
 
-        # Placeholder for filtered columns
-        columns = ['id']
-        self.df.rename(columns={'name_loc': 'id'}, inplace=True)
+        :param data_dir: path to data dir
+        :param modalities: a list of modalities needed as EO data (for EO encoder)
+        :param use_target_data: if target values should be returned
+        :param use_aux_data: if auxiliary values should be returned
+        :param seed: random seed
+        :param cache_dir: path to cache dir
+        :param mock: whether to mock csv file
+        """
 
-        for m in self.modalities:
-            assert m in ['s2', 'coords'], f'Unsupported modality: {m}'
+        super().__init__(
+            data_dir=data_dir,
+            modalities=modalities,
+            use_target_data=use_target_data,
+            use_aux_data=use_aux_data,
+            dataset_name="s2bms",
+            seed=seed,
+            cache_dir=cache_dir,
+            implemented_mod={"s2", "tessera", "coords", "aef"},
+            mock=mock,
+        )
 
-        if 'coords' in self.modalities:
-            columns.extend(['lat', 'lon'])
-        if 's2' in self.modalities:
-            self.path_s2_im = path_s2_im or IllegalArgumentCombination(f'Provide path_s2_im for if using s2 modality')
-            self.path_s2_im = os.path.join(self.path_s2_im, 'sentinel2_satellite-images/y-2018-2019_m-06-09')  ## default path from S2BMS dataset (on Zotero). Assuming S2BMS_PATH points to the parent folder
-            assert os.path.exists(path_s2_im), FileNotFoundError(f'S2BMS path does not exist: {path_s2_im}')
+    def setup(self):
+        """Setups the whole dataset, makes available data of requested modalities."""
 
-            columns.append('s2_path')
-            self.add_s2_paths()
-            self.n_bands = n_bands
-            self.zscore_im = zscore_im
-            if self.zscore_im:
-                self.init_norm_stats()
+        # Set up each requested modality
+        for mod in self.modalities.keys():
+            if mod == "coords" and len(self.modalities.keys()) == 1:
+                return
+            elif mod == "s2":
+                self.setup_s2bms()
+                if self.modalities["s2"].get("preprocessing", "") == "zcored":
+                    self.init_norm_stats()
+            elif mod == "tessera":
+                self.setup_tessera()
+            elif mod == "aef":
+                self.setup_aef()
 
-        if self.use_target_data:
-            self.target_names = [c for c in self.df.columns if 'target' in c]
-            columns.extend(self.target_names)
-            self.num_classes = len(self.target_names)
+    def setup_s2bms(self) -> None:
+        """Prepares (downloads, renames and moves) data from S2BMS study."""
+        print("\n\nSetting up S2BMS data...\n\n")
 
-        if self.use_aux_data:
-            self.aux_names = [c for c in self.df.columns if c not in columns and c != 'name_loc']
-            columns.extend(self.aux_names)
+        # Check if data is already available
+        dst_dir = os.path.join(self.data_dir, "eo/s2")
 
-        self.records = self.df.loc[:, columns].to_dict('records')
+        # If data does not exist or is empty → full download
+        if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
+            import pooch
+
+            os.makedirs(dst_dir, exist_ok=True)
+            fnames = self.pooch_cli.fetch("S2BMS.zip", processor=pooch.Unzip())
+
+            # Copy ukbms_species-presence
+            # df_dir = os.path.dirname([n for n in fnames if 'ukbms_species-presence' in n and 'MACOSX' not in n and '.DS_Store' not in n][0])
+            # shutil.move(df_dir, 'source/ukbms_species-presence')
+
+            # Move files to data dir
+            rename_s2bms(dst_dir, fnames)
+
+            with open(os.path.join(dst_dir, "meta.tx"), "w") as f:
+                f.writelines("Data from S2BMS study\n")
+                f.writelines("Containing 4 channel S2 256x256px imagery.\n")
+                # TODO: add more
+
+        else:
+            # Check for missing files
+            avail_files = os.listdir(dst_dir)
+            for rec in self.records:
+                fname = os.path.basename(rec["s2_path"])
+                if fname not in avail_files:
+                    raise FileNotFoundError(f"Missing S2 data: {fname}")
+                # TODO potentially handle single missing files with GEE API?
 
     def init_norm_stats(self, means: list[float] = None, stds: list[float] = None):
+        """Initializes normalization statistics for the original S2BMS dataset."""
         if means is None or stds is None:
-            print('Using S2BMS default zscore means and stds')
-            means = np.array([661.1047,  770.6800,  531.8330, 3228.5588]).astype(np.float32)  ## computed across entire ds
-            stds = np.array([640.2482,  571.8545,  597.3570, 1200.7518]).astype(np.float32) 
-        if self.n_bands == 3:
+            print("Using S2BMS default zscore means and stds")
+            means = np.array([661.1047, 770.6800, 531.8330, 3228.5588]).astype(
+                np.float32
+            )  # computed across entire ds
+            stds = np.array([640.2482, 571.8545, 597.3570, 1200.7518]).astype(np.float32)
+        if self.modalities["s2"]["channels"] == "rgb":
             means = means[:3]
             stds = stds[:3]
-        self.norm_means = means[:, None, None]
-        self.norm_std = stds[:, None, None]
-
-    def find_image_path(self, name_loc, prefix_images: str='', suffix_images: list[str]=['']):
-        if len(suffix_images) == 1:
-            im_file_name = f'{prefix_images}_{name_loc}_{suffix_images[0]}'
-            im_file_path = os.path.join(self.path_s2_im, im_file_name)
-            if os.path.exists(im_file_path):
-                return im_file_path
-        else:
-            for s in suffix_images:
-                im_file_name = f'{prefix_images}_{name_loc}_{s}'
-                im_file_path = os.path.join(self.path_s2_im, im_file_name)
-                if os.path.exists(im_file_path):
-                    return im_file_path
-        return None
-
-    def add_s2_paths(self):
-        content_image_folder = os.listdir(self.path_s2_im)
-        suffix_images = list(set((['_'.join(x.split('_')[3:]) for x in content_image_folder])))
-        prefix_images = list(set(([x.split('_')[0] for x in content_image_folder])))
-
-        assert len(prefix_images) == 1, f'Multiple prefixes found in image folder: {prefix_images}'
-        prefix_images = prefix_images[0]
-        list_paths = [] 
-        for loc in self.df['id'].values:
-            im_path = self.find_image_path(loc, prefix_images=prefix_images, suffix_images=suffix_images)
-            if im_path is None:
-                ## could be changed to a warning instead of error, if downstream code can handle missing images
-                raise FileNotFoundError(f'No image found for location {loc} in folder {self.path_s2_im}')
-            else:
-                list_paths.append(im_path)
-        self.df['s2_path'] = list_paths
+        self.s2_norm_means = means[:, None, None]
+        self.s2_norm_std = stds[:, None, None]
 
     def zscore_image(self, im: np.ndarray):
-        '''Apply preprocessing function to a single image. 
-        raw_sent2_means = torch.tensor([661.1047,  770.6800,  531.8330, 3228.5588])
-        raw_sent2_stds = torch.tensor([640.2482,  571.8545,  597.3570, 1200.7518])
-        '''
-        im = (im - self.norm_means) / self.norm_std
+        """Apply preprocessing function to a single image.
+
+        raw_sent2_means = torch.tensor([661.1047,  770.6800,  531.8330, 3228.5588]) raw_sent2_stds
+        = torch.tensor([640.2482,  571.8545,  597.3570, 1200.7518])
+        """
+        im = (im - self.s2_norm_means) / self.s2_norm_std
         return im
 
-    def load_image(self, filepath: str):
-        im = du.load_tiff(filepath, datatype='np')
-        
-        if self.n_bands == 4:
-            pass 
-        elif self.n_bands == 3:
+    def load_s2(self, filepath: str):
+        im = du.load_tiff(filepath, datatype="np")
+
+        if self.modalities["s2"]["channels"] == "4c":
+            pass
+        elif self.modalities["s2"]["channels"] == "rgb":
             im = im[:3, :, :]
         else:
-            raise IllegalArgumentCombination(f'Number of bands {self.n_bands} not implemented.')
+            raise IllegalArgumentCombination(
+                f"Channel specification {self.n_bands} is not implemented."
+            )
 
-        if self.zscore_im:
+        if self.modalities["s2"]["preprocessing"] == "zscored":
             im = im.astype(np.int32)
             im = self.zscore_image(im)
         else:
@@ -122,28 +139,33 @@ class ButterflyDataset(BaseDataset):
         return torch.tensor(im).float()
 
     @override
-    def __getitem__(
-            self,
-            idx: int
-    ) -> Dict[str, Any]:
+    def __getitem__(self, idx: int) -> Dict[str, Any]:
         row = self.records[idx]
 
-        formatted_row = {'eo': {}}
+        formatted_row = {"eo": {}}
 
         for modality in self.modalities:
-            if modality in ['coords']:
-                formatted_row['eo'][modality] = torch.tensor([row['lat'], row['lon']])
-            elif modality == 's2':
-                formatted_row['eo'][modality] = self.load_image(row['s2_path'])
+            if modality in ["coords"]:
+                formatted_row["eo"][modality] = torch.tensor([row["lat"], row["lon"]])
+            elif modality == "s2":
+                formatted_row["eo"][modality] = self.load_s2(row["s2_path"])
                 # TODO: augmentations
+            elif modality == "tessera":
+                formatted_row["eo"][modality] = self.load_npy(row["tessera_path"])
+                # TODO any normalisation needed
+            elif modality == "aef":
+                formatted_row["eo"][modality] = self.load_aef(row["aef_path"])
 
         if self.use_target_data:
-            formatted_row['target'] = torch.tensor([row[k] for k in self.target_names], dtype=torch.float32)
+            formatted_row["target"] = torch.tensor(
+                [row[k] for k in self.target_names], dtype=torch.float32
+            )
 
         if self.use_aux_data:
-            formatted_row['aux'] = torch.tensor([row[k] for k in self.aux_names], dtype= torch.float32)
+            formatted_row["aux"] = [row[i] for i in self.aux_names]
 
         return formatted_row
 
-if __name__ == '__main__':
-    _ = ButterflyDataset(None, None, None, None, None)
+
+if __name__ == "__main__":
+    _ = ButterflyDataset(None, None, None, None, None, None, None, None)

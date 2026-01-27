@@ -1,0 +1,16 @@
+# Line endings & normalize text
+* text=auto
+
+# Treat notebooks as docs, not code
+*.ipynb linguist-documentation
+
+# Big ML artifacts (no textual diff)
+*.ckpt -diff
+*.pt -diff
+*.pth -diff
+
+# Binary files
+*.tif binary
+
+# Hydra & config files (optional: ensure YAML diffs show clean)
+*.yaml text

@@ -23,12 +23,22 @@ dependencies = [
     "utm>=0.8.1",
     "geopy>=2.4.1",
     "tqdm>=4.67.1",
+    "sh>=2.2.2",
+    "pytest-cov>=7.0.0",
+    "pre-commit>=4.5.1",
+    "pooch>=1.8.2",
+    "torchinfo>=1.8.0",
+    "transformers==4.57",
+    "gdown>=5.2.1",
 ]
 
 [project.optional-dependencies]
 create-data = [
     "geemap>=0.36.6",
     "pipreqs>=0.5.0",
+]
+geotessera = [
+    "geotessera>=0.7.3",
 ]
 
 [tool.pytest.ini_options]

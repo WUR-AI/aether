@@ -4,9 +4,9 @@ eo_encoder:
   _target_: src.models.components.eo_encoders.geoclip.GeoClipCoordinateEncoder
 
 prediction_head:
-  _target_: src.models.components.pred_heads.linear_pred_head.LinearPredictionHead
+  _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
 
-freezing_strategy: [eo_encoder]
+trainable_modules: [prediction_head]
 
 optimizer:
   _target_: torch.optim.Adam
