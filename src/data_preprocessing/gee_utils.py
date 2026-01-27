@@ -194,7 +194,7 @@ def convert_corine_lc_im_to_tab(lc_im):
     for k, v in pixel_counts.items():
         assert (
             k in df_lc_classes["code"].values
-        ), f"Land cover code {k} not found in land cover classes."
+        ), f"Land cover code {k} not found in land cover classes {df_lc_classes['code'].values}."
 
     sum_counts = sum(pixel_counts.values())
     assert sum_counts > 0, "No pixels found in the land cover image."

@@ -22,7 +22,7 @@ def get_bioclim_lc_from_coords_list(
     coords_list,
     name_list=None,
     save_file=False,
-    save_folder=os.path.join(os.environ["PROJECT_ROOT"], "data/source/butterflies/"),
+    save_folder=os.path.join(os.environ["DATA_DIR"], "s2bms/source/"),
     save_filename="bioclim_lc_data.csv",
 ):
     """Get both bioclimatic and land cover data from a list of coordinates."""
@@ -126,8 +126,8 @@ def create_butterfly_aux_data(
 
     # Load auxiliary data:
     if data_dir is None:
-        data_dir = os.path.join(os.environ["PROJECT_ROOT"], "data")
-    path_butterfly_aux_target = os.path.join(data_dir, "source", "butterflies", filename)
+        data_dir = os.environ["DATA_DIR"]
+    path_butterfly_aux_target = os.path.join(data_dir, "s2bms", "source", filename)
     assert os.path.exists(
         path_butterfly_aux_target
     ), f"Butterfly auxiliary data file does not exist: {path_butterfly_aux_target}"
@@ -177,8 +177,14 @@ def create_butterfly_aux_data(
             f"Warning: dropped {n_rows - n_rows_after} rows with missing auxiliary data. New number of rows: {n_rows_after}"
         )
     if save_file:
-        os.makedirs("../data/s2bms/", exist_ok=True)
-        df_merged.to_csv("../data/s2bms/model_ready_s2bms.csv", index=False)
+        os.makedirs(os.path.join(os.environ["DATA_DIR"], "s2bms"), exist_ok=True)
+        filepath = os.path.join(os.environ["DATA_DIR"], "s2bms", filename)
+        max_it, it = 10, 0
+        while os.path.exists(filepath) and it < max_it:
+            print(f"Changing name to avoid overwrite: {filepath}")
+            it += 1
+            filepath = filepath.replace(".csv", "_new.csv")
+        df_merged.to_csv(filepath, index=False)
     return df_merged
 
 
