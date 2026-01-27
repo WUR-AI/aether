@@ -29,6 +29,7 @@ dependencies = [
     "pooch>=1.8.2",
     "torchinfo>=1.8.0",
     "transformers==4.57",
+    "gdown>=5.2.1",
 ]
 
 [project.optional-dependencies]
