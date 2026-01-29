@@ -23,7 +23,7 @@ This project develops an EO embedding/language model that can be used for explai
 
 ### Virtual environment
 
-First, install dependencies in a venv using [uv](https://docs.astral.sh/uv/getting-started/installation/)
+To install the dependencies in a venv using [uv](https://docs.astral.sh/uv/getting-started/installation/), first, clone the repo:
 
 ```bash
 # clone project
@@ -31,12 +31,14 @@ git clone https://github.com/WUR-AI/aether
 cd aether
 ```
 
+Then, create a virtual environment (or alternatively via conda):
 ```bash
 # Create venv
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
+Then, install `uv` and use this to install all packages.
 ```bash
 # install uv manager
 pip install uv
@@ -52,9 +54,16 @@ Note, running `uv sync` in the venv will always update the package to the most u
 
 ### Set paths
 
-Next, create a file in your local repo parent folder `aether/` called `.env`. Copy the contents of `aether/env.example` and adjust the paths to your local system. **Important**: `DATA_DIR` should either point to `aether/data/` OR if it points to another folder (e.g., `my/local/data/`) then copy the contents of `aether/data/` to `my/local/data/` to ensure the butterfly use case runs using the provided example data. Other data will automatically be downloaded and organised by `pooch` if possible, or should be copied manually.
+Next, create a file in your local repo parent folder `aether/` called `.env` and copy the contents of `aether/.env.example`:
 
-Data folders should follow the following directory structure:
+```bash
+cp .env.example .env
+```
+Adjust the paths in `.env` to your local system. **At a minimum, you should set PROJECT_ROOT!**. 
+
+**Important**: `DATA_DIR` should either point to `aether/data/` (default setting) OR if it points to another folder (e.g., `my/local/data/`) then copy the contents of the `aether/data/` folder to `my/local/data/` to ensure the butterfly use case runs using the provided example data. Other data will automatically be downloaded and organised by `pooch` if possible into `DATA_DIR`, or should be copied manually.
+
+Data folders should follow the following directory structure within `DATA_DIR`:
 
 ```
 ├── registry.txt                         <- Pooch config file, don't change.
@@ -71,6 +80,13 @@ Data folders should follow the following directory structure:
 │       ├── aef/                         <- Modality 2: (e.g. AEF)
 │       ├── other_modality/
 ├── other_dataset/
+```
+
+### Verify installation:
+
+To verify whether the installation was successful, run the tests in `aether/` using:
+```bash
+pytest --use-mock -m "not slow"
 ```
 
 ### Training
