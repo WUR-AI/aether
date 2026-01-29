@@ -72,6 +72,7 @@ class ButterflyDataset(BaseDataset):
             import pooch
 
             os.makedirs(dst_dir, exist_ok=True)
+            self.pooch_setup()
             fnames = self.pooch_cli.fetch("S2BMS.zip", processor=pooch.Unzip())
 
             # Copy ukbms_species-presence
