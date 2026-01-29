@@ -83,7 +83,7 @@ class ButterflyDataset(BaseDataset):
             # Move files to data dir
             rename_s2bms(dst_dir, fnames)
 
-            with open(os.path.join(dst_dir, "meta.tx"), "w") as f:
+            with open(os.path.join(dst_dir, "meta.txt"), "w") as f:
                 f.writelines("Data from S2BMS study\n")
                 f.writelines("Containing 4 channel S2 256x256px imagery.\n")
                 # TODO: add more
