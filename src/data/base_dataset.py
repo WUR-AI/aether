@@ -94,7 +94,12 @@ class BaseDataset(Dataset, ABC):
                 columns.extend(["lat", "lon"])
             else:
                 # Add paths
-                self.add_modality_paths_to_df(modality, params["format"])
+                self.add_modality_paths_to_df(
+                    modality,
+                    params.get(
+                        "format", KeyError(f"{modality} modality is missing format parameter")
+                    ),
+                )
                 columns.append(f"{modality}_path")
 
         # Include targets
@@ -219,7 +224,7 @@ class BaseDataset(Dataset, ABC):
 
         # Initialise pooch client
         self.pooch_cli = pooch.create(
-            path=os.path.join(self.cache_dir, self.data_dir),
+            path=self.cache_dir,
             base_url="",
             registry=None,
         )
