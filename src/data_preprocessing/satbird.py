@@ -73,8 +73,8 @@ def pooch_satbird_downloader(
 
     conf = {
         "Kenya": ("Kenya.zip", pooch.Unzip),
-        "USA_summer": ("USA_summer.tar.gz", pooch.Untar),
-        "USA_winter": ("USA_winter.tar.gz", pooch.Untar),
+        "USA-summer": ("USA_summer.tar.gz", pooch.Untar),
+        "USA-winter": ("USA_winter.tar.gz", pooch.Untar),
     }
 
     fnames = pooch_cli.fetch(
@@ -86,7 +86,7 @@ def pooch_satbird_downloader(
     extract_satbird_data(data_dir, fnames, study_site)
 
     # Delete the unzipped dir at the end
-    if False:
+    if True:
         unzip_dir = os.path.join(cache_dir, f"{study_site}.zip.unzip")
         for name in os.listdir(unzip_dir):
             path = os.path.join(unzip_dir, name)
@@ -123,7 +123,6 @@ def extract_satbird_data(data_dir: str, fnames: list[str], study_site: str) -> N
     # Iterate through all file names from pooch
 
     for fname in fnames:
-
         # get the base name
         base = os.path.basename(fname)
         dst = None
@@ -137,7 +136,7 @@ def extract_satbird_data(data_dir: str, fnames: list[str], study_site: str) -> N
         elif "environmental" in fname:
             dst = os.path.join(env_dir, f"environmental_{base}")
         elif "images_visual" in fname:
-            base = base.replace("_visual", " ")
+            base = base.replace("_visual", "")
             dst = os.path.join(s2rgb_dir, f"s2rgb_{base}")
         elif "images" in fname:
             dst = os.path.join(s2_dir, f"s2_{base}")
@@ -145,7 +144,7 @@ def extract_satbird_data(data_dir: str, fnames: list[str], study_site: str) -> N
             splits_file.append(fname)
 
         if dst is not None and not os.path.exists(dst):
-            shutil.copy(fname, dst)
+            shutil.move(fname, dst)
             print(f"Moving {base} to {dst}")
 
     # Compile model ready csv and split file
@@ -232,3 +231,15 @@ def make_model_ready_csv(
     df_joined.rename(columns=rename_col, inplace=True)
     df_joined.to_csv(model_ready_csv_path, index=False)
     print(f"Model ready csv saved {model_ready_csv_path}")
+
+
+if __name__ == "__main__":
+    print(os.getcwd())
+    study_site = "USA-winter"
+
+    setup_satbird_from_pooch(
+        f"data/satbird-{study_site}/",
+        cache_dir="data/cache",
+        study_site=study_site,
+        registry_file="data/registry.txt",
+    )
