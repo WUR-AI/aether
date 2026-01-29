@@ -53,7 +53,7 @@ class ButterflyDataset(BaseDataset):
                 return
             elif mod == "s2":
                 self.setup_s2bms()
-                if self.modalities["s2"].get("preprocessing", "") == "zcored":
+                if self.modalities["s2"].get("preprocessing", "") == "zscored":
                     self.init_norm_stats()
             elif mod == "tessera":
                 self.setup_tessera()
