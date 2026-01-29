@@ -2,6 +2,7 @@ import os
 from typing import Any, Dict, override
 
 import numpy as np
+import pooch
 import torch
 
 import src.data_preprocessing.data_utils as du
@@ -53,7 +54,7 @@ class ButterflyDataset(BaseDataset):
                 return
             elif mod == "s2":
                 self.setup_s2bms()
-                if self.modalities["s2"].get("preprocessing", "") == "zcored":
+                if self.modalities["s2"].get("preprocessing", "") == "zscored":
                     self.init_norm_stats()
             elif mod == "tessera":
                 self.setup_tessera()
@@ -69,7 +70,8 @@ class ButterflyDataset(BaseDataset):
 
         # If data does not exist or is empty → full download
         if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
-            import pooch
+            if self.pooch_cli is None:
+                self.pooch_setup()
 
             os.makedirs(dst_dir, exist_ok=True)
             fnames = self.pooch_cli.fetch("S2BMS.zip", processor=pooch.Unzip())
@@ -81,7 +83,7 @@ class ButterflyDataset(BaseDataset):
             # Move files to data dir
             rename_s2bms(dst_dir, fnames)
 
-            with open(os.path.join(dst_dir, "meta.tx"), "w") as f:
+            with open(os.path.join(dst_dir, "meta.txt"), "w") as f:
                 f.writelines("Data from S2BMS study\n")
                 f.writelines("Containing 4 channel S2 256x256px imagery.\n")
                 # TODO: add more

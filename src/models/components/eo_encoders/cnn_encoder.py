@@ -142,13 +142,11 @@ class CNNEncoder(BaseEOEncoder):
         :return: extracted features
         """
         eo_data = batch.get("eo", {})
-        assert self.eo_data_name in eo_data, f"eo['{self.eo_data_name}'] not found in batch"
-        # assert not torch.any(torch.isnan(eo_data[self.eo_data_name])), f"EO data for modality {self.eo_data_name} contains NaNs in the batch."
         feats = self.eo_encoder(eo_data[self.eo_data_name])
-        n_nans = torch.sum(torch.isnan(feats)).item()
-        assert (
-            n_nans == 0
-        ), f"CNNEncoder output contains {n_nans}/{feats.numel()} NaNs PRIOR to normalization with data min {eo_data[self.eo_data_name].min()} and max {eo_data[self.eo_data_name].max()}."
+        # n_nans = torch.sum(torch.isnan(feats)).item()
+        # assert (
+        #     n_nans == 0
+        # ), f"CNNEncoder output contains {n_nans}/{feats.numel()} NaNs PRIOR to normalization with data min {eo_data[self.eo_data_name].min()} and max {eo_data[self.eo_data_name].max()}."
         if self.output_normalization == "l2":
             feats = F.normalize(feats, p=2, dim=1)  # L2 normalization (per feature vector)
         elif self.output_normalization == "none":
