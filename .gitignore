@@ -226,4 +226,5 @@ uv.lock
 # Directories and files
 notebooks/01-TvdP-tmp.ipynb
 */source/*
-*.tif
+*.tif # for now
+..env.swp
