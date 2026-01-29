@@ -78,6 +78,7 @@ class BaseDataset(Dataset, ABC):
         self.use_target_data: bool = use_target_data
         self.use_aux_data: bool = use_aux_data
         self.records: dict[str, Any] = self.get_records()
+        self.pooch_cli = None
 
     @final
     def get_records(self) -> dict[str, Any]:
