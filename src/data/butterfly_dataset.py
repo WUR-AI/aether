@@ -2,6 +2,7 @@ import os
 from typing import Any, Dict, override
 
 import numpy as np
+import pooch
 import torch
 
 import src.data_preprocessing.data_utils as du
@@ -69,7 +70,8 @@ class ButterflyDataset(BaseDataset):
 
         # If data does not exist or is empty → full download
         if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
-            import pooch
+            if self.pooch_cli is None:
+                self.pooch_setup()
 
             os.makedirs(dst_dir, exist_ok=True)
             fnames = self.pooch_cli.fetch("S2BMS.zip", processor=pooch.Unzip())
