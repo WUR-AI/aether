@@ -37,6 +37,8 @@ def get_bioclim_lc_from_coords_list(
         print(
             f"Will save bioclimatic and land cover data to {save_path} every {save_every_n} samples"
         )
+    else:
+        print("WARNING: Not saving bioclimatic and land cover data to file.")
     results = {}
     with tqdm(
         total=len(coords_list),
@@ -93,7 +95,7 @@ def get_bioclim_lc_from_coords_list(
     if save_file:
         results.to_csv(save_path, index=False)
         print(f"Saved bioclimatic and land cover data to {save_path}")
-    return results
+    return results, save_path
 
 
 def create_butterfly_aux_data(
@@ -117,22 +119,22 @@ def create_butterfly_aux_data(
 
     # Download auxiliary data if needed:
     if download_aux_data:
-        get_bioclim_lc_from_coords_list(
+        df_bioclim_lc, path_butterfly_aux_target = get_bioclim_lc_from_coords_list(
             coords_list=df_s2bms_presence.tuple_coords.values,
             name_list=df_s2bms_presence.name_loc.values,
-            save_file=False,
+            save_file=True,
             save_filename=filename,
         )
-
-    # Load auxiliary data:
-    if data_dir is None:
-        data_dir = os.environ["DATA_DIR"]
-    path_butterfly_aux_target = os.path.join(data_dir, "s2bms", "source", filename)
-    assert os.path.exists(
-        path_butterfly_aux_target
-    ), f"Butterfly auxiliary data file does not exist: {path_butterfly_aux_target}"
-    df_bioclim_lc = pd.read_csv(path_butterfly_aux_target)
-    corine_keys = [k for k in df_bioclim_lc.iloc[0].index if "corine_frac_" in k]
+    else:
+        # Load auxiliary data:
+        if data_dir is None:
+            data_dir = os.environ["DATA_DIR"]
+        path_butterfly_aux_target = os.path.join(data_dir, "s2bms", "source", filename)
+        assert os.path.exists(
+            path_butterfly_aux_target
+        ), f"Butterfly auxiliary data file does not exist: {path_butterfly_aux_target}"
+        df_bioclim_lc = pd.read_csv(path_butterfly_aux_target)
+    # corine_keys = [k for k in df_bioclim_lc.iloc[0].index if "corine_frac_" in k]
 
     # rename columns:
     df_bioclim_lc.rename(columns={"name": "name_loc"}, inplace=True)
@@ -190,7 +192,7 @@ def create_butterfly_aux_data(
 
 if __name__ == "__main__":
     df_s2bms_presence = du.load_s2bms_presence()
-    get_bioclim_lc_from_coords_list(
+    _, __ = get_bioclim_lc_from_coords_list(
         coords_list=df_s2bms_presence.tuple_coords.values,
         name_list=df_s2bms_presence.name_loc.values,
         save_file=True,
