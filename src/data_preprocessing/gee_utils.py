@@ -114,6 +114,8 @@ def get_gee_image_from_coord(
         collection = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
     elif collection_name == "dynamicworld":
         collection = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
+    elif collection_name == "popdensity":
+        collection = ee.ImageCollection("WorldPop/GP/100m/pop")
     else:
         raise NotImplementedError(f"Unknown collection_name: {collection_name}")
     if collection is None:
@@ -162,7 +164,13 @@ def get_gee_image_from_coord(
             .reproject(f"EPSG:{epsg_code}", scale=10)  # reproject to 10m
             .clip(aoi)
         )
-
+    elif collection_name == "popdensity":
+        # Get population density image for the given year. DOES NOT CLIP TO AOI, to prevent scaling issues.
+        im_gee = ee.Image(
+            collection.filterDate(ee.Date(f"{year}-01-01"), ee.Date(f"{year}-12-31"))
+            .mosaic()
+            .unmask(0)  # set unmasked values to 0 (water bodies)
+        )
     if verbose:
         im_dims = im_gee.getInfo()["bands"][0]["dimensions"]
         print(f"Downloaded image dimensions: {im_dims}")
@@ -172,7 +180,7 @@ def get_gee_image_from_coord(
         if im_dims[0] < threshold_size or im_dims[1] < threshold_size:
             print(f"WARNING: image too small before downloading, returning None ({im_dims})")
             return None
-    return im_gee
+    return im_gee, aoi
 
 
 def convert_corine_lc_im_to_tab(lc_im):
@@ -203,6 +211,21 @@ def convert_corine_lc_im_to_tab(lc_im):
         for k in df_lc_classes["code"].values
     }
     return dict_lc_counts
+
+
+def convert_popdensity_im_to_sum(popdensity_im, aoi):
+    """Convert a population density image to a total population count in the area."""
+    assert ONLINE_ACCESS_TO_GEE, "ONLINE_ACCESS_TO_GEE is set to False, so no access to GEE"
+    sum_dict = popdensity_im.reduceRegion(
+        reducer=ee.Reducer.sum(),
+        geometry=aoi,
+        scale=100,  # match the original worldpop image resolution
+        maxPixels=1e9,
+    )
+    total_pop = sum_dict.getInfo().get(
+        "population", 0
+    )  # get total population, default to 0 if not found
+    return {"popdensity_total": total_pop}  # return as dict for consistency
 
 
 def create_filename(
@@ -268,7 +291,7 @@ def download_gee_image(
     patch_size = (
         pixel_patch_size + 20
     ) * gsd_resolution  # adding a bit extra in case of minor misalignment
-    im_gee = get_gee_image_from_coord(
+    im_gee, aoi = get_gee_image_from_coord(
         coords=coords,
         patch_size=patch_size,
         year=year,
