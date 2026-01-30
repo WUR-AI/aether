@@ -225,7 +225,7 @@ def convert_popdensity_im_to_sum(popdensity_im, aoi):
     total_pop = sum_dict.getInfo().get(
         "population", 0
     )  # get total population, default to 0 if not found
-    return {"popdensity_total": total_pop}  # return as dict for consistency
+    return {"popdensity_total": int(total_pop)}  # return as dict for consistency
 
 
 def create_filename(
