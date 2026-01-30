@@ -228,6 +228,24 @@ def convert_popdensity_im_to_sum(popdensity_im, aoi):
     return {"popdensity_total": int(total_pop)}  # return as dict for consistency
 
 
+def get_distance_to_road_within_aoi(aoi, cell_size=30, radius_max=5000):
+    """Calculates for each pixel in AOI the distance to the nearest road within radius_max and
+    returns the maximum distance inside the AOI."""
+    roads = ee.FeatureCollection("projects/sat-io/open-datasets/GRIP4/Europe")
+    distance = roads.distance(searchRadius=radius_max, maxError=50)
+    distance_masked = distance.clip(aoi).rename("distance")
+    max_distance = distance_masked.reduceRegion(
+        reducer=ee.Reducer.max(), geometry=aoi, scale=cell_size, maxPixels=1e9
+    )
+    mean_distance = distance_masked.reduceRegion(
+        reducer=ee.Reducer.mean(), geometry=aoi, scale=cell_size, maxPixels=1e9
+    )
+    return {
+        "maxdist_road": int(max_distance.get("distance").getInfo()),
+        "meandist_road": int(mean_distance.get("distance").getInfo()),
+    }
+
+
 def create_filename(
     base_name,
     collection_name="sentinel2",

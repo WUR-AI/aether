@@ -10,27 +10,29 @@ from src.data_preprocessing import gee_utils as gu
 
 
 def get_aux_data_from_coords(
-    coords, aux_modalities=["bioclim", "corine_lc", "popdensity"], patch_size=2560
+    coords, aux_modalities=["bioclim", "corine_lc", "pop_density", "dist_road"], patch_size=2560
 ):
     """Get both bioclimatic and land cover data from coordinates."""
     for m in aux_modalities:
         assert m in [
             "bioclim",
             "corine_lc",
-            "popdensity",
+            "pop_density",
+            "dist_road",
         ], f"Unknown auxiliary modality: {m}"
     aux_data = {}
+    aoi = None
     if "bioclim" in aux_modalities:
         bioclim_data = gu.get_bioclim_from_coord(coords)
         bioclim_data = gu.convert_bioclim_to_units(bioclim_data)
         aux_data.update(bioclim_data)
     if "corine_lc" in aux_modalities:
-        lc_im, _ = gu.get_gee_image_from_coord(
+        lc_im, aoi = gu.get_gee_image_from_coord(
             coords, collection_name="corine", patch_size=patch_size, threshold_size=None
         )
         lc_data = gu.convert_corine_lc_im_to_tab(lc_im)
         aux_data.update(lc_data)
-    if "popdensity" in aux_modalities:
+    if "pop_density" in aux_modalities:
         popdensity_im, aoi = gu.get_gee_image_from_coord(
             coords,
             collection_name="popdensity",
@@ -39,6 +41,16 @@ def get_aux_data_from_coords(
         )
         popdensity_data = gu.convert_popdensity_im_to_sum(popdensity_im, aoi)
         aux_data.update(popdensity_data)
+    if "dist_road" in aux_modalities:
+        if aoi is None:
+            _, aoi = gu.get_gee_image_from_coord(
+                coords,
+                collection_name="popdensity",
+                patch_size=patch_size,
+                threshold_size=None,
+            )
+        dist_road = gu.get_distance_to_road_within_aoi(aoi, cell_size=30, radius_max=5000)
+        aux_data.update(dist_road)
     return aux_data
 
 
