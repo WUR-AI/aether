@@ -9,8 +9,9 @@ import pandas as pd
 import rasterio
 import rioxarray as rxr
 import xarray as xr
-from hydra import compose, initialize
-from omegaconf import OmegaConf
+
+# from hydra import compose, initialize
+# from omegaconf import OmegaConf
 
 
 def process_corine_classes(input_path, output_path):

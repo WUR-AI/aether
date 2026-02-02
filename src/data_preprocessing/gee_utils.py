@@ -233,7 +233,8 @@ def convert_popdensity_im_to_sum(popdensity_im, aoi):
     total_pop = sum_dict.getInfo().get(
         "population", 0
     )  # get total population, default to 0 if not found
-    return {"popdensity_total": int(total_pop)}  # return as dict for consistency
+    pop_density = total_pop / (aoi.area(maxError=1).getInfo() / 1e6)  # people per km^2
+    return {"total_population": int(total_pop), "pop_density": int(pop_density)}
 
 
 def get_distance_to_road_within_aoi(aoi, cell_size=30, radius_max=5000):

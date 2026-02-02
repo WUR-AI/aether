@@ -102,9 +102,6 @@ def get_aux_data_from_coords_list(
             if save_file and (i_coords + 1) % save_every_n == 0:
                 temp_results = pd.DataFrame(results)
                 temp_results.to_csv(save_path, index=False)
-                print(
-                    f"Intermediate save of auxiliary data to {save_path} at {i_coords + 1} samples"
-                )
 
     results = pd.DataFrame(results)
 
