@@ -6,6 +6,7 @@ Many functions were adapted from github.com/vdplasthijs/NeurEO.
 import json
 import os
 import sys
+from collections import defaultdict
 
 import ee
 import geemap
@@ -210,6 +211,13 @@ def convert_corine_lc_im_to_tab(lc_im):
         f"corine_frac_{int(k)}": (0 if k not in pixel_counts else pixel_counts[k] / sum_counts)
         for k in df_lc_classes["code"].values
     }
+    dict_lc_counts_include_higher = defaultdict(float)
+    for k, v in dict_lc_counts.items():
+        dict_lc_counts_include_higher[k[:-2]] += v
+    for k, v in dict_lc_counts.items():  # using two separate loops so it's sorted by key length
+        dict_lc_counts_include_higher[k[:-1]] += v
+    dict_lc_counts.update(dict_lc_counts_include_higher)
+
     return dict_lc_counts
 
 
