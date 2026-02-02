@@ -3,7 +3,7 @@ import os
 import random
 import re
 from abc import ABC, abstractmethod
-from typing import Dict, List, final
+from typing import Any, Dict, List, final
 
 import torch
 
@@ -52,19 +52,18 @@ class BaseCaptionBuilder(ABC):
         return template
 
     @abstractmethod
-    def _build_from_template(self, template_idx: int, row: torch.Tensor) -> str:
+    def _build_from_template(self, template_idx: int, row: List[Any]) -> str:
         """Build caption text from template and row of auxiliary data."""
         pass
 
-    def random(self, aux_values: torch.Tensor, n_random=1) -> List[str]:
+    def random(self, row: List[Any], n_random=1) -> List[str]:
         """Return a caption from a randomly sampled template for each data point."""
-        n_random = min(n_random, len(aux_values))  # TODO unused
         formatted_rows = []
         template_idx = random.choices(
             range(len(self.templates)),
-            k=len(aux_values),
+            k=n_random,
         )
-        for idx, row in zip(template_idx, aux_values):
+        for idx in template_idx:
             formatted_rows.append(self._build_from_template(idx, row))
 
         return formatted_rows

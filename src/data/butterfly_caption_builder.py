@@ -89,9 +89,10 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
     def get_humanfootprint_column_keys(self):
         """Returns metadata for human footprint columns."""
         dict_hf = {
-            "maxdist_road": ("farthest distance to road", "m"),
-            "meandist_road": ("mean distance to road", "m"),
-            "popdensity_total": ("total population", "people"),
+            "aux_maxdist_road": ("farthest distance to road", "m"),
+            "aux_meandist_road": ("mean distance to road", "m"),
+            "aux_pop_density": ("population density", "people/km²"),
+            "aux_total_population": ("total population", "people"),
         }
         return dict_hf
 
@@ -130,9 +131,9 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                     adjective = get_adjective_for_percentage(value)
                     formatted_desc = f"{adjective} {formatted_desc}"
                 else:
-                    formatted_desc = formatted_desc + f' ({round(value)}{units if units else ""})'
+                    formatted_desc = formatted_desc + f' ({round(value)} {units if units else ""})'
             else:
-                formatted_desc = formatted_desc + f' of {round(value)}{units if units else ""}'
+                formatted_desc = formatted_desc + f' of {round(value)} {units if units else ""}'
             replacements[token] = formatted_desc
 
         template = self._fill(template, replacements)

@@ -135,7 +135,8 @@ def get_aux_data_from_coords_list(
 def create_butterfly_aux_data(
     download_aux_data=False,
     data_dir=None,
-    filename="s2bms_aux_data.csv",
+    filename_aux="s2bms_aux_data.csv",
+    filename_save="model_ready_s2bms.csv",
     prefix_aux="aux_",
     prefix_target="target_",
     save_file=True,
@@ -157,13 +158,13 @@ def create_butterfly_aux_data(
             coords_list=df_s2bms_presence.tuple_coords.values,
             name_list=df_s2bms_presence.name_loc.values,
             save_file=True,
-            save_filename=filename,
+            save_filename=filename_aux,
         )
     else:
         # Load auxiliary data:
         if data_dir is None:
             data_dir = os.environ["DATA_DIR"]
-        path_butterfly_aux_target = os.path.join(data_dir, "s2bms", "source", filename)
+        path_butterfly_aux_target = os.path.join(data_dir, "s2bms", "source", filename_aux)
         assert os.path.exists(
             path_butterfly_aux_target
         ), f"Butterfly auxiliary data file does not exist: {path_butterfly_aux_target}"
@@ -211,7 +212,7 @@ def create_butterfly_aux_data(
         )
     if save_file:
         os.makedirs(os.path.join(os.environ["DATA_DIR"], "s2bms"), exist_ok=True)
-        filepath = os.path.join(os.environ["DATA_DIR"], "s2bms", filename)
+        filepath = os.path.join(os.environ["DATA_DIR"], "s2bms", filename_save)
         max_it, it = 10, 0
         while os.path.exists(filepath) and it < max_it:
             print(f"Changing name to avoid overwrite: {filepath}")
