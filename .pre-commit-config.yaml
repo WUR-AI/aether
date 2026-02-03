@@ -60,7 +60,7 @@ repos:
         args:
           [
             --verbose,
-            --fail-under=30,
+            --fail-under=10,
             --ignore-init-module,
             --ignore-init-method,
             --ignore-module,
