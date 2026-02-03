@@ -32,8 +32,9 @@ class SatBirdDataset(BaseDataset):
         :param study_site: study site name [Kenya, USA_summer, USA_winter]
         :param mock: whether to mock csv file
         """
-        # assert study_site in ["Kenya", "USA_summer", "USA_winter"]
-        assert study_site in ["Kenya"]
+        assert study_site in ["Kenya", "USA-summer", "USA-winter"]
+        # assert study_site in ["Kenya"]
+        self.study_site = study_site
 
         super().__init__(
             data_dir=data_dir,
@@ -47,14 +48,11 @@ class SatBirdDataset(BaseDataset):
             mock=mock,
         )
 
-        self.study_site = study_site
-
     @override
     def setup(self):
         """Setups the whole dataset, makes available data of requested modalities."""
 
         # Set up each requested modality
-
         for mod in self.modalities.keys():
             if mod == "coords" and len(self.modalities.keys()) == 1:
                 return
@@ -95,8 +93,10 @@ class SatBirdDataset(BaseDataset):
             if modality in ["coords"]:
                 formatted_row["eo"][modality] = torch.tensor([row["lat"], row["lon"]])
             elif modality in ["s2", "s2rgb"]:
-                formatted_row["eo"][modality] = self.load_s2(row[f"{modality}_path"])
+                s2 = self.load_s2(row[f"{modality}_path"])
                 # TODO: augmentations
+                s2 = v2.CenterCrop(self.modalities[modality].get("size", 256))(s2)
+                formatted_row["eo"][modality] = s2
             elif modality == "tessera":
                 formatted_row["eo"][modality] = self.load_npy(row["tessera_path"])
                 # TODO any normalisation needed
