@@ -25,7 +25,8 @@ class ButterflyDataset(BaseDataset):
         """A dataset implementation for the Butterfly diversity use case.
 
         :param data_dir: path to data dir
-        :param modalities: a list of modalities needed as EO data (for EO encoder)
+        :param modalities: a dict of modalities needed as EO data (for EO encoder) (e.g.,
+            {"coords": None, "s2": {"channels": "rgb", "preprocessing": "zscored"}})
         :param use_target_data: if target values should be returned
         :param use_aux_data: if auxiliary values should be returned
         :param seed: random seed

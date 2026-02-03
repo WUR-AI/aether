@@ -9,23 +9,60 @@ from src.data_preprocessing import data_utils as du
 from src.data_preprocessing import gee_utils as gu
 
 
-def get_bioclim_lc_from_coords(coords):
+def get_aux_data_from_coords(
+    coords, aux_modalities=["bioclim", "corine_lc", "pop_density", "dist_road"], patch_size=2560
+):
     """Get both bioclimatic and land cover data from coordinates."""
-    bioclim_data = gu.get_bioclim_from_coord(coords)
-    bioclim_data = gu.convert_bioclim_to_units(bioclim_data)
-    lc_im = gu.get_gee_image_from_coord(coords, collection_name="corine")
-    lc_data = gu.convert_corine_lc_im_to_tab(lc_im)
-    return {**bioclim_data, **lc_data}
+    for m in aux_modalities:
+        assert m in [
+            "bioclim",
+            "corine_lc",
+            "pop_density",
+            "dist_road",
+        ], f"Unknown auxiliary modality: {m}"
+    aux_data = {}
+    aoi = None
+    if "bioclim" in aux_modalities:
+        bioclim_data = gu.get_bioclim_from_coord(coords)
+        bioclim_data = gu.convert_bioclim_to_units(bioclim_data)
+        aux_data.update(bioclim_data)
+    if "corine_lc" in aux_modalities:
+        lc_im, aoi = gu.get_gee_image_from_coord(
+            coords, collection_name="corine", patch_size=patch_size, threshold_size=None
+        )
+        lc_data = gu.convert_corine_lc_im_to_tab(lc_im)
+        aux_data.update(lc_data)
+    if "pop_density" in aux_modalities:
+        popdensity_im, aoi = gu.get_gee_image_from_coord(
+            coords,
+            collection_name="popdensity",
+            patch_size=patch_size,
+            threshold_size=None,
+        )
+        popdensity_data = gu.convert_popdensity_im_to_sum(popdensity_im, aoi)
+        aux_data.update(popdensity_data)
+    if "dist_road" in aux_modalities:
+        if aoi is None:
+            _, aoi = gu.get_gee_image_from_coord(
+                coords,
+                collection_name="popdensity",
+                patch_size=patch_size,
+                threshold_size=None,
+            )
+        dist_road = gu.get_distance_to_road_within_aoi(aoi, cell_size=30, radius_max=5000)
+        aux_data.update(dist_road)
+    return aux_data
 
 
-def get_bioclim_lc_from_coords_list(
+def get_aux_data_from_coords_list(
     coords_list,
     name_list=None,
     save_file=False,
-    save_folder=os.path.join(os.environ["PROJECT_ROOT"], "data/source/butterflies/"),
-    save_filename="bioclim_lc_data.csv",
+    save_folder=os.path.join(os.environ["DATA_DIR"], "s2bms/source/"),
+    save_filename="aux_data.csv",
+    patch_size=2560,
 ):
-    """Get both bioclimatic and land cover data from a list of coordinates."""
+    """Get all auxiliary data from a list of coordinates."""
     if name_list is not None:
         assert len(name_list) == len(
             coords_list
@@ -34,17 +71,17 @@ def get_bioclim_lc_from_coords_list(
         save_path = os.path.join(save_folder, save_filename)
         assert os.path.exists(save_folder), f"Save folder does not exist: {save_folder}"
         save_every_n = 100  # save every n samples to avoid data loss
-        print(
-            f"Will save bioclimatic and land cover data to {save_path} every {save_every_n} samples"
-        )
+        print(f"Will save auxiliary data to {save_path} every {save_every_n} samples")
+    else:
+        print("WARNING: Not saving auxiliary data to file.")
     results = {}
     with tqdm(
         total=len(coords_list),
-        desc="Collecting bioclimatic and land cover data",
+        desc="Collecting auxiliary data",
     ) as pbar:
         for i_coords, coords in enumerate(coords_list):
             try:
-                result = get_bioclim_lc_from_coords(coords)
+                result = get_aux_data_from_coords(coords, patch_size=patch_size)
                 result_keys = list(result.keys())
             except Exception as e:
                 print(f"Error occurred while processing coordinates {i_coords}, {coords}: {e}")
@@ -62,44 +99,44 @@ def get_bioclim_lc_from_coords_list(
                 results[k].append(v)
             pbar.update(1)
 
-        if save_file and (i_coords + 1) % save_every_n == 0:
-            temp_results = pd.DataFrame(results)
-            temp_results.to_csv(save_path, index=False)
-            print(
-                f"Intermediate save of bioclimatic and land cover data to {save_path} at {i_coords + 1} samples"
-            )
+            if save_file and (i_coords + 1) % save_every_n == 0:
+                temp_results = pd.DataFrame(results)
+                temp_results.to_csv(save_path, index=False)
 
     results = pd.DataFrame(results)
 
-    # Add top-5 corine cols
-    target_cols = [c for c in results.columns if ("corine" in c and "top" not in c)]
-    target_cols.sort()
-
-    sub_df = results[target_cols]
-    sub_np = sub_df.to_numpy()
-
-    # reproducible randomness
+    # Add top-5/top-3 corine cols per level
     rng = np.random.default_rng(seed=42)
-    noise = rng.uniform(0, 1e-8, size=sub_np.shape)
-    sub_np_noisy = sub_np + noise
+    for len_col, name_level in zip([15, 14, 13], ["lowlevel", "midlevel", "highlevel"]):
+        target_cols = sorted(
+            [
+                c
+                for c in results.columns
+                if ("corine" in c and "top" not in c and len(c) == len_col)
+            ]
+        )  # len 15: 'corine_frac_231' (i.e., specifically low-level LC only.)
+        sub_np = results[target_cols].to_numpy()
+        noise = rng.uniform(0, 1e-8, size=sub_np.shape)
+        sub_np_noisy = sub_np + noise
 
-    # top-5
-    top_k_idx = np.argsort(sub_np_noisy, axis=1)[:, -5:][:, ::-1]
-    target_cols_np = np.array(target_cols)
+        n_top = 5 if name_level == "lowlevel" else 3
+        top_k_idx = np.argsort(sub_np_noisy, axis=1)[:, -n_top:][:, ::-1]
+        target_cols_np = np.array(target_cols)
 
-    for i in range(5):
-        results[f"aux_corine_frac_top_{i + 1}"] = target_cols_np[top_k_idx[:, i]]
+        for i in range(n_top):
+            results[f"corine_frac_{name_level}_top_{i + 1}"] = target_cols_np[top_k_idx[:, i]]
 
     if save_file:
         results.to_csv(save_path, index=False)
-        print(f"Saved bioclimatic and land cover data to {save_path}")
-    return results
+        print(f"Saved auxiliary data to {save_path}")
+    return results, save_path
 
 
 def create_butterfly_aux_data(
     download_aux_data=False,
     data_dir=None,
-    filename="s2bms_bioclim_lc_data.csv",
+    filename_aux="s2bms_aux_data.csv",
+    filename_save="model_ready_s2bms.csv",
     prefix_aux="aux_",
     prefix_target="target_",
     save_file=True,
@@ -108,7 +145,7 @@ def create_butterfly_aux_data(
 
     Steps:
     - Load S2BMS presence data.
-    - Download bioclimatic and land cover data if needed, else open.
+    - Download auxiliary data if needed, else open.
     - Merge the presence (target) & auxiliary data. to one csv. Some renaming etc.
     """
     assert isinstance(prefix_aux, str), "prefix_aux must be a string"
@@ -117,32 +154,29 @@ def create_butterfly_aux_data(
 
     # Download auxiliary data if needed:
     if download_aux_data:
-        get_bioclim_lc_from_coords_list(
+        df_aux, path_butterfly_aux_target = get_aux_data_from_coords_list(
             coords_list=df_s2bms_presence.tuple_coords.values,
             name_list=df_s2bms_presence.name_loc.values,
-            save_file=False,
-            save_filename=filename,
+            save_file=True,
+            save_filename=filename_aux,
         )
-
-    # Load auxiliary data:
-    if data_dir is None:
-        data_dir = os.path.join(os.environ["PROJECT_ROOT"], "data")
-    path_butterfly_aux_target = os.path.join(data_dir, "source", "butterflies", filename)
-    assert os.path.exists(
-        path_butterfly_aux_target
-    ), f"Butterfly auxiliary data file does not exist: {path_butterfly_aux_target}"
-    df_bioclim_lc = pd.read_csv(path_butterfly_aux_target)
-    corine_keys = [k for k in df_bioclim_lc.iloc[0].index if "corine_frac_" in k]
+    else:
+        # Load auxiliary data:
+        if data_dir is None:
+            data_dir = os.environ["DATA_DIR"]
+        path_butterfly_aux_target = os.path.join(data_dir, "s2bms", "source", filename_aux)
+        assert os.path.exists(
+            path_butterfly_aux_target
+        ), f"Butterfly auxiliary data file does not exist: {path_butterfly_aux_target}"
+        df_aux = pd.read_csv(path_butterfly_aux_target)
 
     # rename columns:
-    df_bioclim_lc.rename(columns={"name": "name_loc"}, inplace=True)
+    df_aux.rename(columns={"name": "name_loc"}, inplace=True)
     if prefix_aux != "":
-        for c in df_bioclim_lc.columns:
-            if (
-                c in ["name_loc"] or c[: len(prefix_aux)] == prefix_aux
-            ):  # because aux_top_5 already start with aux_
+        for c in df_aux.columns:
+            if c in ["name_loc"] or c[: len(prefix_aux)] == prefix_aux:
                 continue
-            df_bioclim_lc.rename(columns={c: f"{prefix_aux}{c}"}, inplace=True)
+            df_aux.rename(columns={c: f"{prefix_aux}{c}"}, inplace=True)
 
     df_s2bms_presence.drop(columns=["geometry", "n_visits"], inplace=True)
     df_s2bms_presence.rename(columns={"tuple_coords": "coords"}, inplace=True)
@@ -157,7 +191,7 @@ def create_butterfly_aux_data(
 
     df_merged = pd.merge(
         df_s2bms_presence,
-        df_bioclim_lc,
+        df_aux,
         left_on="name_loc",
         right_on="name_loc",
         how="left",
@@ -177,16 +211,23 @@ def create_butterfly_aux_data(
             f"Warning: dropped {n_rows - n_rows_after} rows with missing auxiliary data. New number of rows: {n_rows_after}"
         )
     if save_file:
-        os.makedirs("../data/s2bms/", exist_ok=True)
-        df_merged.to_csv("../data/s2bms/model_ready_s2bms.csv", index=False)
+        os.makedirs(os.path.join(os.environ["DATA_DIR"], "s2bms"), exist_ok=True)
+        filepath = os.path.join(os.environ["DATA_DIR"], "s2bms", filename_save)
+        max_it, it = 10, 0
+        while os.path.exists(filepath) and it < max_it:
+            print(f"Changing name to avoid overwrite: {filepath}")
+            it += 1
+            filepath = filepath.replace(".csv", "_new.csv")
+        df_merged.to_csv(filepath, index=False)
     return df_merged
 
 
 if __name__ == "__main__":
     df_s2bms_presence = du.load_s2bms_presence()
-    get_bioclim_lc_from_coords_list(
+    _, __ = get_aux_data_from_coords_list(
         coords_list=df_s2bms_presence.tuple_coords.values,
         name_list=df_s2bms_presence.name_loc.values,
         save_file=True,
-        save_filename="s2bms_bioclim_lc_data.csv",
+        save_filename="s2bms_aux_data.csv",
+        patch_size=2560,
     )
