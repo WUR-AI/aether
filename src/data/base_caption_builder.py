@@ -56,19 +56,19 @@ class BaseCaptionBuilder(ABC):
         """Build caption text from template and row of auxiliary data."""
         pass
 
-    def random(self, row: List[Any], n_random=1) -> List[str]:
+    def random(self, aux_values: List[Any]) -> List[str]:
         """Return a caption from a randomly sampled template for each data point."""
         formatted_rows = []
         template_idx = random.choices(
             range(len(self.templates)),
-            k=n_random,
+            k=len(aux_values),
         )
-        for idx in template_idx:
+        for idx, row in zip(template_idx, aux_values):
             formatted_rows.append(self._build_from_template(idx, row))
 
         return formatted_rows
 
-    def all(self, aux_values: torch.Tensor) -> List[str]:
+    def all(self, aux_values: List[Any]) -> List[str]:
         """Return a list of captions from all available templates."""
         formatted_rows = []
         for row in aux_values:
@@ -89,7 +89,7 @@ class DummyCaptionBuilder(BaseCaptionBuilder):
     def sync_with_dataset(self, dataset) -> None:
         pass
 
-    def _build_from_template(self, template_idx: int, row: torch.Tensor) -> str:
+    def _build_from_template(self, template_idx: int, row: List[Any]) -> str:
         first_val = row[0].item() if torch.is_tensor(row) else row[0]
         return f"Location with value {first_val}"
 
