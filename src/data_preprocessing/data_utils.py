@@ -62,8 +62,11 @@ def process_bioclim_classes(input_path, output_path):
     print(f"Processed bioclimatic classes were saved to {output_path}")
 
 
-def corine_lc_schema(data_dir_dataset=os.path.join(os.environ.get("DATA_DIR"), "s2bms")):
+def corine_lc_schema(data_dir_dataset=None):
     """From https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_CORINE_V20_100m#bands"""
+    if data_dir_dataset is None:
+        data_dir_dataset = os.path.join(os.environ.get("DATA_DIR"), "s2bms")
+
     if not os.path.isfile(os.path.join(data_dir_dataset, "corine_classes.csv")):
         process_corine_classes(
             os.path.join(data_dir_dataset, "source/corine_classes.json"),
@@ -78,8 +81,10 @@ def corine_lc_schema(data_dir_dataset=os.path.join(os.environ.get("DATA_DIR"), "
     return corine_classes, df
 
 
-def bioclim_schema(data_dir_dataset=os.path.join(os.environ.get("DATA_DIR"), "s2bms")):
+def bioclim_schema(data_dir_dataset=None):
     """From https://developers.google.com/earth-engine/datasets/catalog/WORLDCLIM_V1_BIO"""
+    if data_dir_dataset is None:
+        data_dir_dataset = os.path.join(os.environ.get("DATA_DIR"), "s2bms")
 
     if not os.path.isfile(os.path.join(data_dir_dataset, "bioclim_classes.csv")):
         process_bioclim_classes(

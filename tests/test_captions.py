@@ -41,7 +41,7 @@ def test_datamodule_uses_collate_when_aux_data(request, sample_csv, tmp_path):
 
     batch = next(iter(dm.train_dataloader()))
     assert "text" in batch
-    assert len(batch["text"]) == dm.batch_size_per_device
+    assert len(batch["text"]) == dm.batch_size_per_device, batch
 
 
 def test_captionbuilder_generic_properties(tmp_path):
