@@ -44,6 +44,8 @@ class CNNEncoder(BaseEOEncoder):
         ), f"input_n_bands must be int >=3, got {self.input_n_bands}"
         self.output_dim = output_dim
         self.output_normalization = output_normalization
+        if self.output_normalization not in ["l2", "none"]:
+            raise ValueError(f"Unsupported output_normalization: {self.output_normalization}")
 
         self.eo_encoder = self.get_backbone()
 
@@ -142,6 +144,10 @@ class CNNEncoder(BaseEOEncoder):
         :return: extracted features
         """
         eo_data = batch.get("eo", {})
+
+        dtype = self.dtype
+        if eo_data.dtype != dtype:
+            eo_data = eo_data.to(dtype)
         feats = self.eo_encoder(eo_data[self.eo_data_name])
         # n_nans = torch.sum(torch.isnan(feats)).item()
         # assert (
@@ -149,12 +155,8 @@ class CNNEncoder(BaseEOEncoder):
         # ), f"CNNEncoder output contains {n_nans}/{feats.numel()} NaNs PRIOR to normalization with data min {eo_data[self.eo_data_name].min()} and max {eo_data[self.eo_data_name].max()}."
         if self.output_normalization == "l2":
             feats = F.normalize(feats, p=2, dim=1)  # L2 normalization (per feature vector)
-        elif self.output_normalization == "none":
-            pass
-        else:
-            raise ValueError(f"Unsupported output_normalization: {self.output_normalization}")
 
-        return feats
+        return feats.to(dtype)
 
 
 if __name__ == "__main__":
