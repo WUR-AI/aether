@@ -7,12 +7,16 @@ import torch
 
 from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
 from src.models.components.text_encoders.clip_text_encoder import ClipTextEncoder
+from src.models.components.text_encoders.llm2clip_text_encoder import (
+    LLM2CLIPTextEncoder,
+)
 
 
-# @pytest.mark.slow
+# Initialisation of text encoders involve downloading the large models
+@pytest.mark.slow
 def test_text_encoder_generic_properties(create_butterfly_dataset):
     """This test checks that all text encoders implement the basic properties and methods."""
-    list_text_encoders = [ClipTextEncoder]
+    list_text_encoders = [ClipTextEncoder, LLM2CLIPTextEncoder]
     ds, dm = create_butterfly_dataset
     batch = next(iter(dm.train_dataloader()))
     text_input = batch.get("text")

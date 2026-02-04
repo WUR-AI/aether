@@ -32,6 +32,7 @@ cd aether
 ```
 
 Then, create a virtual environment (or alternatively via conda):
+
 ```bash
 # Create venv
 python3 -m venv .venv
@@ -39,6 +40,7 @@ source .venv/bin/activate
 ```
 
 Then, install `uv` and use this to install all packages.
+
 ```bash
 # install uv manager
 pip install uv
@@ -59,7 +61,8 @@ Next, create a file in your local repo parent folder `aether/` called `.env` and
 ```bash
 cp .env.example .env
 ```
-Adjust the paths in `.env` to your local system. **At a minimum, you should set PROJECT_ROOT!**. 
+
+Adjust the paths in `.env` to your local system. **At a minimum, you should set PROJECT_ROOT!**.
 
 **Important**: `DATA_DIR` should either point to `aether/data/` (default setting) OR if it points to another folder (e.g., `my/local/data/`) then copy the contents of the `aether/data/` folder to `my/local/data/` to ensure the butterfly use case runs using the provided example data. Other data will automatically be downloaded and organised by `pooch` if possible into `DATA_DIR`, or should be copied manually.
 
@@ -85,11 +88,12 @@ Data folders should follow the following directory structure within `DATA_DIR`:
 ### Verify installation:
 
 To verify whether the installation was successful, run the tests in `aether/` using:
+
 ```bash
 pytest --use-mock -m "not slow"
 ```
-which should pass all tests.
 
+which should pass all tests.
 
 ## Training
 
@@ -129,7 +133,7 @@ logger:
 To execute this experiment run (inside your venv):
 
 ```bash
-python train.py experiment=prediction
+python src/train.py experiment=prediction
 ```
 
 Please see the [Hydra](https://hydra.cc/) and [Hydra-Lightning template](https://github.com/ashleve/lightning-hydra-template) documentation for further examples of how to configure training runs.

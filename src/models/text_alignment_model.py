@@ -66,8 +66,25 @@ class TextAlignmentModel(BaseModel):
             )
             self.prediction_head.configure_nn()
 
+        # Unify dtypes
+        if self.eo_encoder.dtype != self.text_encoder.dtype:
+            self.eo_encoder = self.eo_encoder.to(self.text_encoder.dtype)
+            print(f"Eo encoder dtype changed to {self.eo_encoder.dtype}")
+
         # Freezing requested parts
         self.freezer()
+
+        # Normalisation status for cosine similarity
+        if (
+            self.text_encoder.output_normalization
+            == "l2"
+            != self.eo_encoder.output_normalization
+            == "l2"
+        ):
+            # TODO think of how to make this consistent
+            raise ValueError("Only one modality is normalised")
+
+        self.normalised = self.text_encoder.output_normalization == "l2"
 
     @override
     def forward(
@@ -75,6 +92,7 @@ class TextAlignmentModel(BaseModel):
         batch: Dict[str, torch.Tensor],
         mode: str = "train",
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Model forward logic."""
 
         # Embed modalities
         eo_feats = self.eo_encoder(batch)
@@ -83,6 +101,8 @@ class TextAlignmentModel(BaseModel):
 
     @override
     def _step(self, batch: Dict[str, torch.Tensor], mode: str = "train") -> torch.Tensor:
+        """Model step logic."""
+
         # Embed
         eo_feats, text_feats = self.forward(batch, mode)
         local_batch_size = eo_feats.size(0)
@@ -125,7 +145,13 @@ class TextAlignmentModel(BaseModel):
     def _cos_sim_calc(self, eo_feats, text_feats, mode, log=True):
         """Calculate cosine similarity between eo and text embeddings and logs it."""
         # Similarity matrix
-        cos_sim_matrix = F.cosine_similarity(eo_feats[:, None, :], text_feats[None, :, :], dim=-1)
+        if self.normalised:
+            cos_sim_matrix = eo_feats @ text_feats.T
+        else:
+            cos_sim_matrix = F.cosine_similarity(
+                eo_feats[:, None, :], text_feats[None, :, :], dim=-1
+            )
+
         local_batch_size = eo_feats.size(0)
 
         # Average for positive and negative pairs
