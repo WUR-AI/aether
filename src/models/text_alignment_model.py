@@ -74,6 +74,19 @@ class TextAlignmentModel(BaseModel):
         # Freezing requested parts
         self.freezer()
 
+        if self.text_encoder.output_normalization == "l2":
+            if self.eo_encoder.output_normalization == "l2":
+                self.normalised = True
+            else:
+                # TODO think of how to make this consistent
+                raise "Only one modality is normalised"
+        elif self.eo_encoder.output_normalization == "l2":
+            # TODO think of how to make this consistent
+            raise "Only one modality is normalised"
+        else:
+
+            self.normalised = False
+
     @override
     def forward(
         self,
@@ -133,7 +146,13 @@ class TextAlignmentModel(BaseModel):
     def _cos_sim_calc(self, eo_feats, text_feats, mode, log=True):
         """Calculate cosine similarity between eo and text embeddings and logs it."""
         # Similarity matrix
-        cos_sim_matrix = eo_feats @ text_feats.T
+        if self.normalised:
+            cos_sim_matrix = eo_feats @ text_feats.T
+        else:
+            cos_sim_matrix = F.cosine_similarity(
+                eo_feats[:, None, :], text_feats[None, :, :], dim=-1
+            )
+
         local_batch_size = eo_feats.size(0)
 
         # Average for positive and negative pairs
