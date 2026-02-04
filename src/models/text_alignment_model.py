@@ -74,18 +74,17 @@ class TextAlignmentModel(BaseModel):
         # Freezing requested parts
         self.freezer()
 
-        if self.text_encoder.output_normalization == "l2":
-            if self.eo_encoder.output_normalization == "l2":
-                self.normalised = True
-            else:
-                # TODO think of how to make this consistent
-                raise "Only one modality is normalised"
-        elif self.eo_encoder.output_normalization == "l2":
+        # Normalisation status for cosine similarity
+        if (
+            self.text_encoder.output_normalization
+            == "l2"
+            != self.eo_encoder.output_normalization
+            == "l2"
+        ):
             # TODO think of how to make this consistent
-            raise "Only one modality is normalised"
-        else:
+            raise ValueError("Only one modality is normalised")
 
-            self.normalised = False
+        self.normalised = self.text_encoder.output_normalization == "l2"
 
     @override
     def forward(
