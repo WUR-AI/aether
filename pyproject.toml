@@ -28,7 +28,7 @@ dependencies = [
     "pre-commit>=4.5.1",
     "pooch>=1.8.2",
     "torchinfo>=1.8.0",
-    "transformers==4.57",
+    "transformers==5.1.0",
     "gdown>=5.2.1",
 ]
 
