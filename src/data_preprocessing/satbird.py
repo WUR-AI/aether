@@ -8,7 +8,35 @@ import torch
 from src.data_preprocessing.pooch_helpers import drive_downloader
 
 cache_dir = "data/cache"
-data_dir = "data/"
+data_dir = "/Volumes/KINGSTON/data/"
+study_site = 'USA-summer'
+registry_file=None
+unzip_dir =  "/Volumes/KINGSTON/data/satbird_USA-summer"
+
+def manual_unpacking(unzip_dir, data_dir, study_site='USA-summer'):
+    """Processed data when manually downloaded and unzipped from Google Drive"""
+
+    target_fnames = [os.path.join(r, f) for r, d, files in os.walk(unzip_dir + '/targets/') for f in files if '._' not in f]
+    split_files = [os.path.join(unzip_dir, f'{f}_split.csv') for f in ['train', 'valid', 'test']]
+
+    # Initialise model_ready csv extraction if it does not exist yet
+    model_ready_csv_path = os.path.join(data_dir, f"model_ready_satbird-{study_site}.csv")
+    df = None if os.path.exists(model_ready_csv_path) else pd.DataFrame()
+
+    # Iterate through all target names to compile model ready csv
+    for fname in target_fnames:
+        row_df = pd.read_json(fname, orient="index").T
+        df = pd.concat([df, row_df], ignore_index=True)
+
+    # Compile model ready csv and split file
+    split_df = pd.read_csv(split_files[0])
+    for fname in split_files[1:]:
+        split_df = pd.concat([pd.read_csv(fname), split_df], ignore_index=True)
+
+    make_model_ready_csv(df, split_df, model_ready_csv_path, study_site)
+
+    # fnames = [os.path.join(r, f) for r, d, files in os.walk(unzip_dir) for f in files if '._' not in f]
+    # extract_satbird_data(data_dir, fnames, study_site)
 
 
 def setup_satbird_from_pooch(
@@ -121,7 +149,6 @@ def extract_satbird_data(data_dir: str, fnames: list[str], study_site: str) -> N
     splits_file = []
 
     # Iterate through all file names from pooch
-
     for fname in fnames:
         # get the base name
         base = os.path.basename(fname)

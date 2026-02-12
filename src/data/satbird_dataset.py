@@ -32,8 +32,8 @@ class SatBirdDataset(BaseDataset):
         :param study_site: study site name [Kenya, USA_summer, USA_winter]
         :param mock: whether to mock csv file
         """
-        assert study_site in ["Kenya", "USA-summer", "USA-winter"]
-        # assert study_site in ["Kenya"]
+        # assert study_site in ["Kenya", "USA-summer", "USA-winter"]
+        assert study_site in ["Kenya", "USA-summer"]
         self.study_site = study_site
 
         super().__init__(
@@ -53,6 +53,7 @@ class SatBirdDataset(BaseDataset):
         """Setups the whole dataset, makes available data of requested modalities."""
 
         # Set up each requested modality
+
         for mod in self.modalities.keys():
             if mod == "coords" and len(self.modalities.keys()) == 1:
                 return
