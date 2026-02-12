@@ -27,7 +27,7 @@ class CNNEncoder(BaseEOEncoder):
         freezing_strategy="all",
         eo_data_name="s2",
         input_n_bands: int | None = None,
-        output_dim=512
+        output_dim=512,
     ) -> None:
         super().__init__()
 
@@ -36,7 +36,7 @@ class CNNEncoder(BaseEOEncoder):
         self.resnet_version = resnet_version
         self.freezing_strategy = freezing_strategy
 
-        self.allowed_eo_data_names = ['s2', 'aef', 'tessera']
+        self.allowed_eo_data_names = ["s2", "aef", "tessera"]
         assert eo_data_name in self.allowed_eo_data_names
         self.eo_data_name = eo_data_name
 

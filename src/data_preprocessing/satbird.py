@@ -9,15 +9,21 @@ from src.data_preprocessing.pooch_helpers import drive_downloader
 
 cache_dir = "data/cache"
 data_dir = "/Volumes/KINGSTON/data/"
-study_site = 'USA-summer'
-registry_file=None
-unzip_dir =  "/Volumes/KINGSTON/data/satbird_USA-summer"
+study_site = "USA-summer"
+registry_file = None
+unzip_dir = "/Volumes/KINGSTON/data/satbird_USA-summer"
 
-def manual_unpacking(unzip_dir, data_dir, study_site='USA-summer'):
-    """Processed data when manually downloaded and unzipped from Google Drive"""
 
-    target_fnames = [os.path.join(r, f) for r, d, files in os.walk(unzip_dir + '/targets/') for f in files if '._' not in f]
-    split_files = [os.path.join(unzip_dir, f'{f}_split.csv') for f in ['train', 'valid', 'test']]
+def manual_unpacking(unzip_dir, data_dir, study_site="USA-summer"):
+    """Processed data when manually downloaded and unzipped from Google Drive."""
+
+    target_fnames = [
+        os.path.join(r, f)
+        for r, d, files in os.walk(unzip_dir + "/targets/")
+        for f in files
+        if "._" not in f
+    ]
+    split_files = [os.path.join(unzip_dir, f"{f}_split.csv") for f in ["train", "valid", "test"]]
 
     # Initialise model_ready csv extraction if it does not exist yet
     model_ready_csv_path = os.path.join(data_dir, f"model_ready_satbird-{study_site}.csv")
@@ -84,8 +90,8 @@ def setup_satbird_from_pooch(
     """Gets satbird data from the source Google Drive using pooch, structurises this data for this
     project.
 
-    :param data_dir: data directory for the specific study site (e.g. data/satbird_Kenya)ore_index=True)
-
+    :param data_dir: data directory for the specific study site (e.g.
+        data/satbird_Kenya)ore_index=True)
     :param cache_dir: cache directory for pooch
     :param study_site: name of satbird sub dataset (Kenya, USA_summer, USA_winter)
     :param registry_file: path to registry file for pooch
@@ -285,7 +291,9 @@ def make_model_ready_csv(
     ]
 
     if study_site != "Kenya":
-        keep_col.extend(['bdticm', 'bldfie', 'cecsol', 'clyppt', 'orcdrc', 'phihox', 'sltppt', 'sndppt'])
+        keep_col.extend(
+            ["bdticm", "bldfie", "cecsol", "clyppt", "orcdrc", "phihox", "sltppt", "sndppt"]
+        )
 
     split_df = split_df[keep_col]
     split_df_indexed = split_df.set_index("hotspot_id")

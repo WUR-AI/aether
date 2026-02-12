@@ -65,7 +65,6 @@ class TextAlignmentModel(BaseModel):
         # Freezing requested parts
         self.freezer()
 
-
     @override
     def forward(
         self,

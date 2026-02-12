@@ -17,5 +17,6 @@ class BCELoss(BaseLossFn):
         # Normalise inputs
         return self.criterion(pred, labels)
 
+
 if __name__ == "__main__":
     _ = BCELoss()

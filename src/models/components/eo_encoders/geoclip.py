@@ -9,15 +9,17 @@ from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
 
 class GeoClipCoordinateEncoder(BaseEOEncoder):
     def __init__(
-            self,
-            eo_data_name="coords",
+        self,
+        eo_data_name="coords",
     ) -> None:
         super().__init__()
         self.eo_encoder = LocationEncoder()
         self.output_dim = self.eo_encoder.LocEnc0.head[0].out_features
-        self.allowed_eo_data_names = ['coords']
-        assert eo_data_name in self.allowed_eo_data_names,  f"eo_data_name must be one of {self.allowed_eo_data_names}, got {eo_data_name}"
-        self.eo_data_name =eo_data_name
+        self.allowed_eo_data_names = ["coords"]
+        assert (
+            eo_data_name in self.allowed_eo_data_names
+        ), f"eo_data_name must be one of {self.allowed_eo_data_names}, got {eo_data_name}"
+        self.eo_data_name = eo_data_name
 
     @override
     def forward(

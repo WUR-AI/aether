@@ -16,7 +16,7 @@ class AverageEncoder(BaseEOEncoder):
         super().__init__()
 
         dict_n_bands_default = {"s2": 4, "aef": 64, "tessera": 128}
-        self.allowed_eo_data_names: list[str]  = list(dict_n_bands_default.keys())
+        self.allowed_eo_data_names: list[str] = list(dict_n_bands_default.keys())
 
         assert (
             eo_data_name in dict_n_bands_default
