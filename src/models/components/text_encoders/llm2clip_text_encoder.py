@@ -58,10 +58,6 @@ class LLM2CLIPTextEncoder(BaseTextEncoder):
             llm_model, self.processor, pooling_mode="mean", max_length=512, doc_max_length=512
         )
 
-        self.output_normalization = output_normalization
-        if self.output_normalization not in ["l2", "none"]:
-            raise ValueError(f"Unsupported output_normalization: {self.output_normalization}")
-
         self.output_dim = 1280
 
     @override
@@ -98,10 +94,5 @@ class LLM2CLIPTextEncoder(BaseTextEncoder):
 
         if mode != "train":
             text_embeds = torch.stack(avr_embeds, dim=0)
-
-        if self.output_normalization == "l2":
-            text_embeds = F.normalize(
-                text_embeds, p=2, dim=-1
-            )  # L2 normalization (per feature vector)
 
         return text_embeds

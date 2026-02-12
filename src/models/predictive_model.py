@@ -50,6 +50,7 @@ class PredictiveModel(BaseModel):
     @override
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         feats = self.eo_encoder(batch)
+        feats = F.normalize(feats, dim=-1)
         return self.prediction_head(feats)
 
     @override

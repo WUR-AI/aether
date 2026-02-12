@@ -6,7 +6,6 @@ eo_encoder:
 text_encoder:
   _target_: src.models.components.text_encoders.llm2clip_text_encoder.LLM2CLIPTextEncoder
   hf_cache_dir: ${paths.huggingface_cache}
-  output_normalization: l2
 
 trainable_modules: [text_encoder.projector, loss_fn.log_temp]
 

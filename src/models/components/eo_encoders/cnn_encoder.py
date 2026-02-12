@@ -17,7 +17,6 @@ class CNNEncoder(BaseEOEncoder):
     :param freezing_strategy: freezing strategy to use (all, none)
     :param eo_data_name: name of the EO data modality (s2, aef, tessera)
     :param output_dim: output dimension of the encoder
-    :param output_normalization: output normalization method (l2)
     """
 
     def __init__(
@@ -28,8 +27,7 @@ class CNNEncoder(BaseEOEncoder):
         freezing_strategy="all",
         eo_data_name="s2",
         input_n_bands: int | None = None,
-        output_dim=512,
-        output_normalization="l2",
+        output_dim=512
     ) -> None:
         super().__init__()
 
@@ -37,15 +35,16 @@ class CNNEncoder(BaseEOEncoder):
         self.pretrained_cnn = pretrained_cnn
         self.resnet_version = resnet_version
         self.freezing_strategy = freezing_strategy
+
+        self.allowed_eo_data_names = ['s2', 'aef', 'tessera']
+        assert eo_data_name in self.allowed_eo_data_names
         self.eo_data_name = eo_data_name
+
         self.set_n_input_bands(input_n_bands)
         assert (
             self.input_n_bands >= 3 and type(self.input_n_bands) is int
         ), f"input_n_bands must be int >=3, got {self.input_n_bands}"
         self.output_dim = output_dim
-        self.output_normalization = output_normalization
-        if self.output_normalization not in ["l2", "none"]:
-            raise ValueError(f"Unsupported output_normalization: {self.output_normalization}")
 
         self.eo_encoder = self.get_backbone()
 
@@ -153,8 +152,6 @@ class CNNEncoder(BaseEOEncoder):
         # assert (
         #     n_nans == 0
         # ), f"CNNEncoder output contains {n_nans}/{feats.numel()} NaNs PRIOR to normalization with data min {eo_data[self.eo_data_name].min()} and max {eo_data[self.eo_data_name].max()}."
-        if self.output_normalization == "l2":
-            feats = F.normalize(feats, p=2, dim=1)  # L2 normalization (per feature vector)
 
         return feats.to(dtype)
 

@@ -11,6 +11,10 @@ class BaseEOEncoder(nn.Module, ABC):
         self.eo_encoder: nn.Module | None = None
         self.output_dim: int | None = None
 
+        # placeholders
+        self.allowed_eo_data_names: list[str] | None = None
+        self.eo_data_name: str | None = None
+
     @abstractmethod
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         pass
