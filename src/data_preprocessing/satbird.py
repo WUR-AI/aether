@@ -35,8 +35,47 @@ def manual_unpacking(unzip_dir, data_dir, study_site='USA-summer'):
 
     make_model_ready_csv(df, split_df, model_ready_csv_path, study_site)
 
-    # fnames = [os.path.join(r, f) for r, d, files in os.walk(unzip_dir) for f in files if '._' not in f]
-    # extract_satbird_data(data_dir, fnames, study_site)
+    split_name = os.path.join(data_dir, "splits", f"split_indices_satbird-{study_site}.pth")
+    if not os.path.exists(split_name):
+        df = pd.read_csv(model_ready_csv_path)
+
+        # Save split file based on split col
+        split_indices = {
+            "train_indices": df[df.split == "train"].name_loc,
+            "val_indices": df[df.split == "valid"].name_loc,
+            "test_indices": df[df.split == "test"].name_loc,
+        }
+
+        os.makedirs(os.path.dirname(split_name), exist_ok=True)
+        torch.save(split_indices, split_name)
+        print(f"Saved split indices to {split_name}")
+
+    # Moving
+    env_dir = os.path.join(data_dir, "eo", "environmental")
+    s2rgb_dir = os.path.join(data_dir, "eo", "s2rgb")
+    s2_dir = os.path.join(data_dir, "eo", "s2")
+
+    mapping = {
+        "environmental": (env_dir, "environmental_"),
+        "images": (s2_dir, "s2_"),
+        "images_visual": (s2rgb_dir, "s2rgb_"),
+    }
+
+    for folder, (target_dir, prefix) in mapping.items():
+        print(f"Processing {folder}")
+        dir = os.path.join(unzip_dir, folder)
+        if not os.path.exists(dir):
+            raise FileNotFoundError()
+
+        for base in os.listdir(dir):
+            if not base.startswith("._"):
+                if folder == "images_visual":
+                    base = base.replace("_visual", "")
+
+                dst = os.path.join(target_dir, f"{prefix}{base}")
+                if not os.path.exists(dst):
+                    shutil.move(os.path.join(unzip_dir, folder, base), str(dst))
+                    print(f"Moving {base} to {dst}")
 
 
 def setup_satbird_from_pooch(
@@ -45,7 +84,8 @@ def setup_satbird_from_pooch(
     """Gets satbird data from the source Google Drive using pooch, structurises this data for this
     project.
 
-    :param data_dir: data directory for the specific study site (e.g. data/satbird_Kenya)
+    :param data_dir: data directory for the specific study site (e.g. data/satbird_Kenya)ore_index=True)
+
     :param cache_dir: cache directory for pooch
     :param study_site: name of satbird sub dataset (Kenya, USA_summer, USA_winter)
     :param registry_file: path to registry file for pooch
@@ -206,7 +246,7 @@ def make_model_ready_csv(
     :param study_site: study site name (Kenya, USA_summer, USA_winter)
     """
 
-    if study_site != "Kenya":
+    if study_site not in ["Kenya", "USA-summer"]:
         raise NotImplementedError(f"Dataset not implemented for {study_site}")
     # Check for duplicates
     assert not df["hotspot_id"].duplicated().any()
@@ -242,7 +282,10 @@ def make_model_ready_csv(
         "bio_18",
         "bio_19",
         "split",
-    ]  # TODO USA
+    ]
+
+    if study_site != "Kenya":
+        keep_col.extend(['bdticm', 'bldfie', 'cecsol', 'clyppt', 'orcdrc', 'phihox', 'sltppt', 'sndppt'])
 
     split_df = split_df[keep_col]
     split_df_indexed = split_df.set_index("hotspot_id")
