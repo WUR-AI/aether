@@ -7,12 +7,6 @@ import torch
 
 from src.data_preprocessing.pooch_helpers import drive_downloader
 
-cache_dir = "data/cache"
-data_dir = "/Volumes/KINGSTON/data/"
-study_site = "USA-summer"
-registry_file = None
-unzip_dir = "/Volumes/KINGSTON/data/satbird_USA-summer"
-
 
 def manual_unpacking(unzip_dir, data_dir, study_site="USA-summer"):
     """Processed data when manually downloaded and unzipped from Google Drive."""
@@ -75,10 +69,13 @@ def manual_unpacking(unzip_dir, data_dir, study_site="USA-summer"):
 
         for base in os.listdir(dir):
             if not base.startswith("._"):
-                if folder == "images_visual":
-                    base = base.replace("_visual", "")
 
-                dst = os.path.join(target_dir, f"{prefix}{base}")
+                if folder == "images_visual":
+                    new_base = base.replace("_visual", "")
+                else:
+                    new_base = base
+
+                dst = os.path.join(target_dir, f"{prefix}{new_base}")
                 if not os.path.exists(dst):
                     shutil.move(os.path.join(unzip_dir, folder, base), str(dst))
                     print(f"Moving {base} to {dst}")
@@ -321,3 +318,9 @@ if __name__ == "__main__":
         study_site=study_site,
         registry_file="data/registry.txt",
     )
+
+    cache_dir = "/Volumes/KINGSTON/data/cache"
+    data_dir = "/Volumes/KINGSTON/data/satbird_USA-summer"
+    unzip_dir = "/Volumes/KINGSTON/data/unzip"
+
+    manual_unpacking(unzip_dir, data_dir, "USA-summer")
