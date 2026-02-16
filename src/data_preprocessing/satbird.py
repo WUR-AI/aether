@@ -41,9 +41,9 @@ def manual_unpacking(unzip_dir, data_dir, study_site="USA-summer"):
 
         # Save split file based on split col
         split_indices = {
-            "train_indices": df[df.split == "train"].name_loc,
-            "val_indices": df[df.split == "valid"].name_loc,
-            "test_indices": df[df.split == "test"].name_loc,
+            "train_indices": df[df.split == "train"].name_loc.astype(str),
+            "val_indices": df[df.split == "valid"].name_loc.astype(str),
+            "test_indices": df[df.split == "test"].name_loc.astype(str),
         }
 
         os.makedirs(os.path.dirname(split_name), exist_ok=True)
@@ -260,11 +260,9 @@ def make_model_ready_csv(
     df = pd.concat([df.drop(columns="probs"), probs_df], axis=1)
 
     # Clean split_df
-    keep_col = [
-        "hotspot_id",
-        "lon",
-        "lat",
-        "num_different_species",
+    keep_col_all = ["hotspot_id", "lon", "lat", "num_different_species", "split"]
+
+    keep_aux_col = [
         "bio_1",
         "bio_2",
         "bio_3",
@@ -284,22 +282,24 @@ def make_model_ready_csv(
         "bio_17",
         "bio_18",
         "bio_19",
-        "split",
     ]
 
+    ma = {f"targte_{str(i)}": f"target_{str(i)}" for i in range(0, 670)}
+
     if study_site != "Kenya":
-        keep_col.extend(
+        keep_aux_col.extend(
             ["bdticm", "bldfie", "cecsol", "clyppt", "orcdrc", "phihox", "sltppt", "sndppt"]
         )
 
-    split_df = split_df[keep_col]
+    keep_col_all.extend(keep_aux_col)
+    split_df = split_df[keep_col_all]
     split_df_indexed = split_df.set_index("hotspot_id")
 
     # Join with env var data and splits
     df_joined = df.join(split_df_indexed, on="hotspot_id", how="left")
 
-    # Standardise names TODO USA
-    rename_col = {bio: f"aux_{bio}" for bio in keep_col if "bio" in bio}
+    # Standardise names
+    rename_col = {aux: f"aux_{aux}" for aux in keep_aux_col}
     rename_col["hotspot_id"] = "name_loc"
 
     # Save model ready csv
@@ -310,10 +310,10 @@ def make_model_ready_csv(
 
 if __name__ == "__main__":
     print(os.getcwd())
-    study_site = "USA-winter"
+    study_site = "USA-summer"
 
     setup_satbird_from_pooch(
-        f"data/satbird-{study_site}/",
+        data_dir=f"data/satbird-{study_site}/",
         cache_dir="data/cache",
         study_site=study_site,
         registry_file="data/registry.txt",
