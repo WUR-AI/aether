@@ -11,9 +11,27 @@ class BaseEOEncoder(nn.Module, ABC):
         self.eo_encoder: nn.Module | None = None
         self.output_dim: int | None = None
 
+        # placeholders
+        self.allowed_eo_data_names: list[str] | None = None
+        self.eo_data_name: str | None = None
+
     @abstractmethod
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         pass
+
+    @property
+    def device(self) -> torch.device:
+        devices = {p.device for p in self.parameters()}
+        if len(devices) != 1:
+            raise RuntimeError("EO encoder is on multiple devices")
+        return devices.pop()
+
+    @property
+    def dtype(self) -> torch.dtype:
+        dtypes = {p.dtype for p in self.parameters()}
+        if len(dtypes) != 1:
+            raise RuntimeError("EO encoder has multiple dtypes")
+        return dtypes.pop()
 
 
 if __name__ == "__main__":

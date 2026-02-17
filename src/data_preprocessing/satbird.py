@@ -7,8 +7,78 @@ import torch
 
 from src.data_preprocessing.pooch_helpers import drive_downloader
 
-cache_dir = "data/cache"
-data_dir = "data/"
+
+def manual_unpacking(unzip_dir, data_dir, study_site="USA-summer"):
+    """Processed data when manually downloaded and unzipped from Google Drive."""
+
+    target_fnames = [
+        os.path.join(r, f)
+        for r, d, files in os.walk(unzip_dir + "/targets/")
+        for f in files
+        if "._" not in f
+    ]
+    split_files = [os.path.join(unzip_dir, f"{f}_split.csv") for f in ["train", "valid", "test"]]
+
+    # Initialise model_ready csv extraction if it does not exist yet
+    model_ready_csv_path = os.path.join(data_dir, f"model_ready_satbird-{study_site}.csv")
+    df = None if os.path.exists(model_ready_csv_path) else pd.DataFrame()
+
+    # Iterate through all target names to compile model ready csv
+    for fname in target_fnames:
+        row_df = pd.read_json(fname, orient="index").T
+        df = pd.concat([df, row_df], ignore_index=True)
+
+    # Compile model ready csv and split file
+    split_df = pd.read_csv(split_files[0])
+    for fname in split_files[1:]:
+        split_df = pd.concat([pd.read_csv(fname), split_df], ignore_index=True)
+
+    make_model_ready_csv(df, split_df, model_ready_csv_path, study_site)
+
+    split_name = os.path.join(data_dir, "splits", f"split_indices_satbird-{study_site}.pth")
+    if not os.path.exists(split_name):
+        df = pd.read_csv(model_ready_csv_path)
+
+        # Save split file based on split col
+        split_indices = {
+            "train_indices": df[df.split == "train"].name_loc.astype(str),
+            "val_indices": df[df.split == "valid"].name_loc.astype(str),
+            "test_indices": df[df.split == "test"].name_loc.astype(str),
+        }
+
+        os.makedirs(os.path.dirname(split_name), exist_ok=True)
+        torch.save(split_indices, split_name)
+        print(f"Saved split indices to {split_name}")
+
+    # Moving
+    env_dir = os.path.join(data_dir, "eo", "environmental")
+    s2rgb_dir = os.path.join(data_dir, "eo", "s2rgb")
+    s2_dir = os.path.join(data_dir, "eo", "s2")
+
+    mapping = {
+        "environmental": (env_dir, "environmental_"),
+        "images": (s2_dir, "s2_"),
+        "images_visual": (s2rgb_dir, "s2rgb_"),
+    }
+
+    for folder, (target_dir, prefix) in mapping.items():
+        print(f"Processing {folder}")
+        dir = os.path.join(unzip_dir, folder)
+        if not os.path.exists(dir):
+            raise FileNotFoundError()
+
+        for base in os.listdir(dir):
+            if not base.startswith("._"):
+
+                if folder == "images_visual":
+                    new_base = base.replace("_visual", "")
+                else:
+                    new_base = base
+
+                dst = os.path.join(target_dir, f"{prefix}{new_base}")
+                if not os.path.exists(dst):
+                    shutil.move(os.path.join(unzip_dir, folder, base), str(dst))
+                    print(f"Moving {base} to {dst}")
 
 
 def setup_satbird_from_pooch(
@@ -17,7 +87,8 @@ def setup_satbird_from_pooch(
     """Gets satbird data from the source Google Drive using pooch, structurises this data for this
     project.
 
-    :param data_dir: data directory for the specific study site (e.g. data/satbird_Kenya)
+    :param data_dir: data directory for the specific study site (e.g.
+        data/satbird_Kenya)ore_index=True)
     :param cache_dir: cache directory for pooch
     :param study_site: name of satbird sub dataset (Kenya, USA_summer, USA_winter)
     :param registry_file: path to registry file for pooch
@@ -121,7 +192,6 @@ def extract_satbird_data(data_dir: str, fnames: list[str], study_site: str) -> N
     splits_file = []
 
     # Iterate through all file names from pooch
-
     for fname in fnames:
         # get the base name
         base = os.path.basename(fname)
@@ -179,7 +249,7 @@ def make_model_ready_csv(
     :param study_site: study site name (Kenya, USA_summer, USA_winter)
     """
 
-    if study_site != "Kenya":
+    if study_site not in ["Kenya", "USA-summer"]:
         raise NotImplementedError(f"Dataset not implemented for {study_site}")
     # Check for duplicates
     assert not df["hotspot_id"].duplicated().any()
@@ -190,11 +260,9 @@ def make_model_ready_csv(
     df = pd.concat([df.drop(columns="probs"), probs_df], axis=1)
 
     # Clean split_df
-    keep_col = [
-        "hotspot_id",
-        "lon",
-        "lat",
-        "num_different_species",
+    keep_col_all = ["hotspot_id", "lon", "lat", "num_different_species", "split"]
+
+    keep_aux_col = [
         "bio_1",
         "bio_2",
         "bio_3",
@@ -214,17 +282,22 @@ def make_model_ready_csv(
         "bio_17",
         "bio_18",
         "bio_19",
-        "split",
-    ]  # TODO USA
+    ]
 
-    split_df = split_df[keep_col]
+    if study_site != "Kenya":
+        keep_aux_col.extend(
+            ["bdticm", "bldfie", "cecsol", "clyppt", "orcdrc", "phihox", "sltppt", "sndppt"]
+        )
+
+    keep_col_all.extend(keep_aux_col)
+    split_df = split_df[keep_col_all]
     split_df_indexed = split_df.set_index("hotspot_id")
 
     # Join with env var data and splits
     df_joined = df.join(split_df_indexed, on="hotspot_id", how="left")
 
-    # Standardise names TODO USA
-    rename_col = {bio: f"aux_{bio}" for bio in keep_col if "bio" in bio}
+    # Standardise names
+    rename_col = {aux: f"aux_{aux}" for aux in keep_aux_col}
     rename_col["hotspot_id"] = "name_loc"
 
     # Save model ready csv
@@ -235,11 +308,17 @@ def make_model_ready_csv(
 
 if __name__ == "__main__":
     print(os.getcwd())
-    study_site = "USA-winter"
+    study_site = "USA-summer"
 
     setup_satbird_from_pooch(
-        f"data/satbird-{study_site}/",
+        data_dir=f"data/satbird-{study_site}/",
         cache_dir="data/cache",
         study_site=study_site,
         registry_file="data/registry.txt",
     )
+
+    cache_dir = "/Volumes/KINGSTON/data/cache"
+    data_dir = "/Volumes/KINGSTON/data/satbird_USA-summer"
+    unzip_dir = "/Volumes/KINGSTON/data/unzip"
+
+    manual_unpacking(unzip_dir, data_dir, "USA-summer")

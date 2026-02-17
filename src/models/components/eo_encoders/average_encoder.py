@@ -12,16 +12,16 @@ class AverageEncoder(BaseEOEncoder):
         self,
         output_dim: int | None = None,
         eo_data_name="aef",
-        output_normalization="l2",
     ) -> None:
         super().__init__()
 
         dict_n_bands_default = {"s2": 4, "aef": 64, "tessera": 128}
+        self.allowed_eo_data_names: list[str] = list(dict_n_bands_default.keys())
+
         assert (
             eo_data_name in dict_n_bands_default
-        ), f"eo_data_name must be one of {list(dict_n_bands_default.keys())}, got {eo_data_name}"
+        ), f"eo_data_name must be one of {self.allowed_eo_data_names}, got {eo_data_name}"
         self.eo_data_name = eo_data_name
-        self.output_normalization = output_normalization
 
         if output_dim is None or output_dim == dict_n_bands_default[eo_data_name]:
             self.output_dim = dict_n_bands_default[eo_data_name]
@@ -56,19 +56,16 @@ class AverageEncoder(BaseEOEncoder):
     @override
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         eo_data = batch.get("eo", {})
+        dtype = self.dtype
+        if eo_data.dtype != dtype:
+            eo_data = eo_data.to(dtype)
         feats = self.eo_encoder(eo_data[self.eo_data_name])
         # n_nans = torch.sum(torch.isnan(feats)).item()
         # assert (
         #     n_nans == 0
         # ), f"AverageEncoder output contains {n_nans}/{feats.numel()} NaNs PRIOR to normalization with data min {eo_data[self.eo_data_name].min()} and max {eo_data[self.eo_data_name].max()}."
-        if self.output_normalization == "l2":
-            feats = F.normalize(feats, p=2, dim=1)  # L2 normalization (per feature vector)
-        elif self.output_normalization == "none":
-            pass
-        else:
-            raise ValueError(f"Unsupported output_normalization: {self.output_normalization}")
 
-        return feats
+        return feats.to(dtype)
 
 
 if __name__ == "__main__":

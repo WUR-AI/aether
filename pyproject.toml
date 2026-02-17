@@ -30,6 +30,9 @@ dependencies = [
     "torchinfo>=1.8.0",
     "transformers==4.57",
     "gdown>=5.2.1",
+    "peft>=0.18.1",
+    "llm2vec",
+    "setuptools<81",
 ]
 
 [project.optional-dependencies]
@@ -66,3 +69,6 @@ exclude_lines = [
     "raise NotImplementedError()",
     "if __name__ == .__main__.:",
 ]
+
+[tool.uv.sources]
+llm2vec = { git = "https://github.com/gabrieletijunaityte/llm2vec.git", rev = "445a831479748460eddc1e537ab31031cfd1a1e1" }
