@@ -1,0 +1,21 @@
+_target_: src.data.base_datamodule.BaseDataModule
+
+dataset:
+  _target_: src.data.satbird_dataset.SatBirdDataset
+
+  data_dir: ${paths.data_dir}
+  modalities:
+    coords:
+  use_target_data: true
+  use_aux_data: false
+  seed: ${seed}
+  cache_dir: ${paths.cache_dir}
+  study_site: USA-summer
+
+batch_size: 16
+num_workers: 8
+pin_memory: true
+split_mode: "from_file"
+save_split: false
+saved_split_file_name: "split_indices_satbird-USA-summer.pth"
+seed: ${seed}

@@ -8,14 +8,18 @@ from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
 
 
 class GeoClipCoordinateEncoder(BaseEOEncoder):
-    def __init__(self, output_normalization="l2") -> None:
+    def __init__(
+        self,
+        eo_data_name="coords",
+    ) -> None:
         super().__init__()
         self.eo_encoder = LocationEncoder()
         self.output_dim = self.eo_encoder.LocEnc0.head[0].out_features
-
-        self.output_normalization = output_normalization
-        if self.output_normalization not in ["l2", "none"]:
-            raise ValueError(f"Unsupported output_normalization: {self.output_normalization}")
+        self.allowed_eo_data_names = ["coords"]
+        assert (
+            eo_data_name in self.allowed_eo_data_names
+        ), f"eo_data_name must be one of {self.allowed_eo_data_names}, got {eo_data_name}"
+        self.eo_data_name = eo_data_name
 
     @override
     def forward(
@@ -29,9 +33,6 @@ class GeoClipCoordinateEncoder(BaseEOEncoder):
         if coords.dtype != dtype:
             coords = coords.to(dtype)
         feats = self.eo_encoder(coords)
-
-        if self.output_normalization == "l2":
-            feats = F.normalize(feats, p=2, dim=-1)  # L2 normalization (per feature vector)
 
         return feats.to(dtype)
 

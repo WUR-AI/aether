@@ -9,7 +9,6 @@ from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 class BCELoss(BaseLossFn):
     def __init__(self) -> None:
         super().__init__()
-        # self.criterion = nn.BCEWithLogitsLoss()
         self.criterion = nn.BCELoss(reduction="mean")
 
     @override
