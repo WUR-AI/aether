@@ -284,8 +284,6 @@ def make_model_ready_csv(
         "bio_19",
     ]
 
-    ma = {f"targte_{str(i)}": f"target_{str(i)}" for i in range(0, 670)}
-
     if study_site != "Kenya":
         keep_aux_col.extend(
             ["bdticm", "bldfie", "cecsol", "clyppt", "orcdrc", "phihox", "sltppt", "sndppt"]
