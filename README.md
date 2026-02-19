@@ -198,7 +198,7 @@ We follow the directory structure from the [Hydra-Lightning template](https://gi
 The diagram below shows how configuration files, datasets, and model components
 relate to each other in the AETHER framework.
 
-![Framework Architecture](diagram.png)
+![Framework Architecture](docs/figures/diagram.png)
 
 
 
