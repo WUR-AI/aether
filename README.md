@@ -196,6 +196,16 @@ We follow the directory structure from the [Hydra-Lightning template](https://gi
 └── README.md
 ```
 
+
+## Architecture Overview
+
+The diagram below shows how configuration files, datasets, and model components
+relate to each other in the AETHER framework.
+
+![Framework Architecture](diagram.png)
+
+
+
 ## Attribution
 
 This repo is based on the [Hydra-Lightning template](https://github.com/ashleve/lightning-hydra-template).
