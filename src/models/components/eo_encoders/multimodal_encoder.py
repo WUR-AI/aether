@@ -1,20 +1,11 @@
 """
 Unified multimodal encoder for EO data.
 
-Replaces the three separate encoders:
-  - GeoClipCoordinateEncoder         (coords only)
-  - TabularOnlyEncoder               (tabular only)
-  - GeoClipCoordsTabularFusionEncoder (both)
 
 Controlled entirely via constructor flags:
   - use_coords:   encode lat/lon with GeoClip
   - use_tabular:  encode feat_* tabular columns
 
-tabular_dim is NOT required at construction time when use_tabular=True.
-Call encoder.build_tabular_branch(tabular_dim) before the first forward
-pass (done automatically by PredictiveRegressionModel.setup()).
-
-Location: src/models/components/eo_encoders/multimodal_encoder.py
 """
 
 from typing import Dict, override
@@ -28,7 +19,6 @@ from src.models.components.eo_encoders.geoclip import GeoClipCoordinateEncoder
 
 class MultiModalEncoder(BaseEOEncoder):
     """
-    Flexible encoder that supports:
       - coords only         (use_coords=True,  use_tabular=False)
       - tabular only        (use_coords=False, use_tabular=True)
       - coords + tabular    (use_coords=True,  use_tabular=True)
@@ -40,7 +30,7 @@ class MultiModalEncoder(BaseEOEncoder):
         use_tabular: bool = False,
         tab_embed_dim: int = 64,
         output_normalization: str = "l2",
-        tabular_dim: int = None,       # set here OR via build_tabular_branch()
+        tabular_dim: int = None,      
     ) -> None:
         super().__init__()
 
@@ -63,11 +53,10 @@ class MultiModalEncoder(BaseEOEncoder):
 
         self._coords_dim = coords_dim
 
-        # Build tabular branch now only if dim is already known
+        # Built only if dim is already known
         if use_tabular and tabular_dim is not None:
             self.build_tabular_branch(tabular_dim)
         elif use_tabular:
-            # Will be built later by PredictiveRegressionModel.setup()
             self.tabular_proj = None
         else:
             self.output_dim = coords_dim
@@ -79,10 +68,6 @@ class MultiModalEncoder(BaseEOEncoder):
     def build_tabular_branch(self, tabular_dim: int) -> None:
         """
         Build (or rebuild) the tabular projection layer.
-        Safe to call multiple times — idempotent if dim is the same.
-
-        Called automatically by PredictiveRegressionModel.setup()
-        once the datamodule is ready.
         """
         if self._tabular_ready and hasattr(self, "_last_tabular_dim"):
             if self._last_tabular_dim == tabular_dim:
