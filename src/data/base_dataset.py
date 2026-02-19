@@ -36,7 +36,7 @@ class BaseDataset(Dataset, ABC):
         The requested training modality(-ies) are specified through `modalities` parameter.
 
         :param data_dir: data directory
-        :param modalities: a list of modalities needed as EO data (for EO encoder)
+        :param modalities: a dict of modalities needed as EO data (for EO encoder) (e.g., {"coords": None, "s2": {"channels": "rgb", "preprocessing": "zscored"}})
         :param use_target_data: if target values should be returned
         :param use_aux_data: if auxiliary values should be returned
         :param dataset_name: dataset name

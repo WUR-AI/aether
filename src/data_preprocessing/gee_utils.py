@@ -6,6 +6,7 @@ Many functions were adapted from github.com/vdplasthijs/NeurEO.
 import json
 import os
 import sys
+from collections import defaultdict
 
 import ee
 import geemap
@@ -114,6 +115,8 @@ def get_gee_image_from_coord(
         collection = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
     elif collection_name == "dynamicworld":
         collection = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
+    elif collection_name == "popdensity":
+        collection = ee.ImageCollection("WorldPop/GP/100m/pop")
     else:
         raise NotImplementedError(f"Unknown collection_name: {collection_name}")
     if collection is None:
@@ -162,7 +165,13 @@ def get_gee_image_from_coord(
             .reproject(f"EPSG:{epsg_code}", scale=10)  # reproject to 10m
             .clip(aoi)
         )
-
+    elif collection_name == "popdensity":
+        # Get population density image for the given year. DOES NOT CLIP TO AOI, to prevent scaling issues.
+        im_gee = ee.Image(
+            collection.filterDate(ee.Date(f"{year}-01-01"), ee.Date(f"{year}-12-31"))
+            .mosaic()
+            .unmask(0)  # set unmasked values to 0 (water bodies)
+        )
     if verbose:
         im_dims = im_gee.getInfo()["bands"][0]["dimensions"]
         print(f"Downloaded image dimensions: {im_dims}")
@@ -172,7 +181,7 @@ def get_gee_image_from_coord(
         if im_dims[0] < threshold_size or im_dims[1] < threshold_size:
             print(f"WARNING: image too small before downloading, returning None ({im_dims})")
             return None
-    return im_gee
+    return im_gee, aoi
 
 
 def convert_corine_lc_im_to_tab(lc_im):
@@ -194,7 +203,7 @@ def convert_corine_lc_im_to_tab(lc_im):
     for k, v in pixel_counts.items():
         assert (
             k in df_lc_classes["code"].values
-        ), f"Land cover code {k} not found in land cover classes."
+        ), f"Land cover code {k} not found in land cover classes {df_lc_classes['code'].values}."
 
     sum_counts = sum(pixel_counts.values())
     assert sum_counts > 0, "No pixels found in the land cover image."
@@ -202,7 +211,48 @@ def convert_corine_lc_im_to_tab(lc_im):
         f"corine_frac_{int(k)}": (0 if k not in pixel_counts else pixel_counts[k] / sum_counts)
         for k in df_lc_classes["code"].values
     }
+    dict_lc_counts_include_higher = defaultdict(float)
+    for k, v in dict_lc_counts.items():
+        dict_lc_counts_include_higher[k[:-2]] += v
+    for k, v in dict_lc_counts.items():  # using two separate loops so it's sorted by key length
+        dict_lc_counts_include_higher[k[:-1]] += v
+    dict_lc_counts.update(dict_lc_counts_include_higher)
+
     return dict_lc_counts
+
+
+def convert_popdensity_im_to_sum(popdensity_im, aoi):
+    """Convert a population density image to a total population count in the area."""
+    assert ONLINE_ACCESS_TO_GEE, "ONLINE_ACCESS_TO_GEE is set to False, so no access to GEE"
+    sum_dict = popdensity_im.reduceRegion(
+        reducer=ee.Reducer.sum(),
+        geometry=aoi,
+        scale=100,  # match the original worldpop image resolution
+        maxPixels=1e9,
+    )
+    total_pop = sum_dict.getInfo().get(
+        "population", 0
+    )  # get total population, default to 0 if not found
+    pop_density = total_pop / (aoi.area(maxError=1).getInfo() / 1e6)  # people per km^2
+    return {"total_population": int(total_pop), "pop_density": int(pop_density)}
+
+
+def get_distance_to_road_within_aoi(aoi, cell_size=30, radius_max=5000):
+    """Calculates for each pixel in AOI the distance to the nearest road within radius_max and
+    returns the maximum distance inside the AOI."""
+    roads = ee.FeatureCollection("projects/sat-io/open-datasets/GRIP4/Europe")
+    distance = roads.distance(searchRadius=radius_max, maxError=50)
+    distance_masked = distance.clip(aoi).rename("distance")
+    max_distance = distance_masked.reduceRegion(
+        reducer=ee.Reducer.max(), geometry=aoi, scale=cell_size, maxPixels=1e9
+    )
+    mean_distance = distance_masked.reduceRegion(
+        reducer=ee.Reducer.mean(), geometry=aoi, scale=cell_size, maxPixels=1e9
+    )
+    return {
+        "maxdist_road": int(max_distance.get("distance").getInfo()),
+        "meandist_road": int(mean_distance.get("distance").getInfo()),
+    }
 
 
 def create_filename(
@@ -268,7 +318,7 @@ def download_gee_image(
     patch_size = (
         pixel_patch_size + 20
     ) * gsd_resolution  # adding a bit extra in case of minor misalignment
-    im_gee = get_gee_image_from_coord(
+    im_gee, aoi = get_gee_image_from_coord(
         coords=coords,
         patch_size=patch_size,
         year=year,

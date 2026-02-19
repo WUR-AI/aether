@@ -1,6 +1,5 @@
 from typing import override
 
-import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -22,7 +21,10 @@ class ClipLoss(BaseLossFn):
         eo_mod: torch.Tensor,
         text_mod: torch.Tensor,
     ) -> torch.Tensor:
-        """Assumes eo_mod and text_mod are already L2-normalized."""
+
+        # Normalise inputs
+        eo_mod = F.normalize(eo_mod, dim=-1)
+        text_mod = F.normalize(text_mod, dim=-1)
 
         # Clip temperature to not exceed 100
         temperature = torch.clamp(self.log_temp.exp(), max=100)

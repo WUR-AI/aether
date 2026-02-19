@@ -44,15 +44,6 @@ class TextAlignmentModel(BaseModel):
         self.text_encoder = text_encoder
         # TODO: if eo==geoclip_img pass on shared mlp
 
-        # Assert normalization compatibility
-        desired_norm = "l2"
-        assert (
-            self.eo_encoder.output_normalization == desired_norm
-        ), self.eo_encoder.output_normalization
-        assert (
-            self.text_encoder.output_normalization == desired_norm
-        ), self.text_encoder.output_normalization
-
         # Extra projector for text encoder if eo and text dim not match
         if self.eo_encoder.output_dim != self.text_encoder.output_dim:
             self.text_encoder.add_projector(projected_dim=self.eo_encoder.output_dim)
@@ -66,6 +57,11 @@ class TextAlignmentModel(BaseModel):
             )
             self.prediction_head.configure_nn()
 
+        # Unify dtypes
+        if self.eo_encoder.dtype != self.text_encoder.dtype:
+            self.eo_encoder = self.eo_encoder.to(self.text_encoder.dtype)
+            print(f"Eo encoder dtype changed to {self.eo_encoder.dtype}")
+
         # Freezing requested parts
         self.freezer()
 
@@ -75,6 +71,7 @@ class TextAlignmentModel(BaseModel):
         batch: Dict[str, torch.Tensor],
         mode: str = "train",
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Model forward logic."""
 
         # Embed modalities
         eo_feats = self.eo_encoder(batch)
@@ -83,6 +80,8 @@ class TextAlignmentModel(BaseModel):
 
     @override
     def _step(self, batch: Dict[str, torch.Tensor], mode: str = "train") -> torch.Tensor:
+        """Model step logic."""
+
         # Embed
         eo_feats, text_feats = self.forward(batch, mode)
         local_batch_size = eo_feats.size(0)
@@ -126,6 +125,7 @@ class TextAlignmentModel(BaseModel):
         """Calculate cosine similarity between eo and text embeddings and logs it."""
         # Similarity matrix
         cos_sim_matrix = F.cosine_similarity(eo_feats[:, None, :], text_feats[None, :, :], dim=-1)
+
         local_batch_size = eo_feats.size(0)
 
         # Average for positive and negative pairs
