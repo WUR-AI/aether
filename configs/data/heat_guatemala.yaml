@@ -1,0 +1,31 @@
+# configs/data/heat_guatemala.yaml
+#
+# Renamed from: heat_guatemala_coords.yaml
+# Reason: this config is shared by ALL three model variants (coords, tabular,
+#         fusion). The old name was misleading — it implied coords-only.
+#
+# Note: tabular features are loaded automatically from feat_* CSV columns.
+#       No modality entry needed for tabular data.
+
+_target_: src.data.base_datamodule.BaseDataModule
+
+dataset:
+  _target_: src.data.heat_guatemala_dataset.HeatGuatemalaDataset
+  data_dir: ${paths.data_dir}
+  modalities:
+    coords: {}
+  use_target_data: true
+  use_aux_data: false
+  seed: ${seed}
+  cache_dir: ${paths.cache_dir}
+
+batch_size: 64
+num_workers: 8
+pin_memory: true
+
+split_mode: "spatial_clusters"
+spatial_split_distance_m: 300
+
+train_val_test_split: [0.7, 0.15, 0.15]
+save_split: false
+seed: ${seed}
