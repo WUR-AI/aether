@@ -33,6 +33,7 @@ class BaseDataModule(LightningDataModule):
         saved_split_file_name: str | None = None,
         caption_builder: BaseCaptionBuilder = None,
         seed: int = 12345,
+        spatial_split_distance_m: int = 1000,
     ) -> None:
         """Datamodule class which handles dataset splits and batching.
 
@@ -47,6 +48,8 @@ class BaseDataModule(LightningDataModule):
         :param save_split: if to save split file
         :param saved_split_file_name: file name to save split file
         :param caption_builder: instance of BaseCaptionBuilder for generating textual captions
+        :param spatial_split_distance_m: minimum distance in metres between clusters
+            when split_mode is 'spatial_clusters'. Default 1000 m.
         """
         super().__init__()
         self.save_hyperparameters(logger=False)
@@ -62,7 +65,15 @@ class BaseDataModule(LightningDataModule):
             self.caption_builder.sync_with_dataset(self.dataset)
 
         self.split_data()
-
+    
+    @property
+    def tabular_dim(self):
+        dataset = self.data_train
+        # Unwrap Subset wrappers (e.g. from random_split)
+        while hasattr(dataset, "dataset"):
+            dataset = dataset.dataset
+        return dataset.tabular_dim
+    
     @property
     def num_classes(self) -> int:
         """Number of classes in the dataset."""
@@ -120,7 +131,7 @@ class BaseDataModule(LightningDataModule):
                     "Warning: DBSCAN clustering on more than 2000 samples may be slow. Maybe set n_jobs in DBScan?"
                 )
             # 4000 m distance between points. Use geodist to calculate true distance.
-            min_dist = 4000
+            min_dist = self.hparams.spatial_split_distance_m
             clustering = DBSCAN(
                 eps=min_dist,
                 metric=lambda u, v: geodist(u, v).meters,

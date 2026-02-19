@@ -112,6 +112,10 @@ class BaseDataset(Dataset, ABC):
         if self.use_aux_data:
             self.aux_names = [c for c in self.df.columns if "aux_" in c]
             columns.extend(self.aux_names)
+        
+        # Include tabular features
+        self.feat_names = [c for c in self.df.columns if c.startswith("feat_")]
+        columns.extend(self.feat_names)
 
         return self.df.loc[:, columns].to_dict("records")
 
@@ -119,6 +123,11 @@ class BaseDataset(Dataset, ABC):
     def __len__(self) -> int:
         """Returns the length of the dataset."""
         return len(self.records)
+
+    @final
+    @property
+    def tabular_dim(self) -> int:
+        return len(getattr(self, "feat_names", []))
 
     @abstractmethod
     def __getitem__(self, idx: int) -> Dict[str, Any]:
