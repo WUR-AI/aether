@@ -12,7 +12,6 @@ eo_encoder:
   _target_: src.models.components.eo_encoders.multimodal_encoder.MultiModalEncoder
   use_coords: true
   use_tabular: false
-  output_normalization: l2
 
 prediction_head:
   _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead

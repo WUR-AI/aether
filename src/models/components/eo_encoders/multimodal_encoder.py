@@ -29,7 +29,6 @@ class MultiModalEncoder(BaseEOEncoder):
         use_coords: bool = True,
         use_tabular: bool = False,
         tab_embed_dim: int = 64,
-        output_normalization: str = "l2",
         tabular_dim: int = None,      
     ) -> None:
         super().__init__()
@@ -41,14 +40,11 @@ class MultiModalEncoder(BaseEOEncoder):
         self.use_coords = use_coords
         self.use_tabular = use_tabular
         self.tab_embed_dim = tab_embed_dim
-        self.output_normalization = output_normalization
         self._tabular_ready = False
 
         coords_dim = 0
         if use_coords:
-            self.coords_encoder = GeoClipCoordinateEncoder(
-                output_normalization=output_normalization
-            )
+            self.coords_encoder = GeoClipCoordinateEncoder()
             coords_dim = self.coords_encoder.output_dim   # 512
 
         self._coords_dim = coords_dim

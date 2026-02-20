@@ -13,7 +13,6 @@ eo_encoder:
   use_coords: true
   use_tabular: true
   tab_embed_dim: 64
-  output_normalization: l2
 
 prediction_head:
   _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
