@@ -100,7 +100,7 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         self,
         template_idx: int,
         row: List[Any],
-        convert_corine_perc: bool = False,
+        convert_corine_perc: bool = True,
     ) -> str:
         """Create caption from template and row of auxiliary data."""
         template = self.templates[template_idx]
