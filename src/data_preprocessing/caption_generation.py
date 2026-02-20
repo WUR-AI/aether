@@ -115,6 +115,10 @@ ENTITIES = [
     "habitat",
     "ecosystem",
     "habitat region",
+    "satellite image",
+    "overhead view",
+    "earth observation image",
+    "geospatial area",
 ]
 
 ENTITY_TEMPLATES = [
