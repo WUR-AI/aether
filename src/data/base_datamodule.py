@@ -34,6 +34,7 @@ class BaseDataModule(LightningDataModule):
         caption_builder: BaseCaptionBuilder = None,
         seed: int = 12345,
         spatial_split_distance_m: int = 1000,
+        split_dir: str | None = None,
     ) -> None:
         """Datamodule class which handles dataset splits and batching.
 
@@ -50,6 +51,7 @@ class BaseDataModule(LightningDataModule):
         :param caption_builder: instance of BaseCaptionBuilder for generating textual captions
         :param spatial_split_distance_m: minimum distance in metres between clusters
             when split_mode is 'spatial_clusters'. Default 1000 m.
+        :param split_dir: directory to save split indices when save_split is True.
         """
         super().__init__()
         self.save_hyperparameters(logger=False)
