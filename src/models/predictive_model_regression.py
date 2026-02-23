@@ -48,7 +48,6 @@ class PredictiveRegressionModel(BaseModel):
         if not (
             isinstance(self.eo_encoder, MultiModalEncoder)
             and self.eo_encoder.use_tabular
-            and not self.eo_encoder._tabular_ready
         ):
             self._wire_head()
             self.freezer() 
