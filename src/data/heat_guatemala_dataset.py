@@ -48,6 +48,7 @@ class HeatGuatemalaDataset(BaseDataset):
         seed: int = 12345,
         cache_dir: str = None,
         mock: bool = False,
+        use_features: bool = True,
     ) -> None:
         super().__init__(
             data_dir=data_dir,
@@ -59,6 +60,7 @@ class HeatGuatemalaDataset(BaseDataset):
             cache_dir=cache_dir,
             implemented_mod={"coords"},
             mock=mock,
+            use_features=use_features,
         )
 
     # ------------------------------------------------------------------
@@ -91,7 +93,7 @@ class HeatGuatemalaDataset(BaseDataset):
                 )
 
         # --- Tabular features (always included if present in CSV) ---
-        if self.feat_names:
+        if self.use_features and self.feat_names:
             sample["eo"]["tabular"] = torch.tensor(
                 [row[k] for k in self.feat_names], dtype=torch.float32
             )

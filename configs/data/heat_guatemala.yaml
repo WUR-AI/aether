@@ -6,6 +6,7 @@ dataset:
   modalities:
     coords: {}
   use_target_data: true
+  use_features: true
   use_aux_data: false
   seed: ${seed}
   cache_dir: ${paths.cache_dir}
