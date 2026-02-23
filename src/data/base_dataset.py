@@ -23,6 +23,7 @@ class BaseDataset(Dataset, ABC):
         cache_dir: str = None,
         implemented_mod: set[str] = None,
         mock: bool = False,
+        use_features: bool = True,
     ) -> None:
         """Interface for any use case dataset.
 
@@ -45,6 +46,7 @@ class BaseDataset(Dataset, ABC):
         :param cache_dir: directory to save cached data
         :param implemented_mod: implemented modalities for each dataset
         :param mock: whether to mock csv file
+        :param use_features: if tabular feat_* columns should be included. Default True.
         """
 
         if mock:
@@ -79,6 +81,7 @@ class BaseDataset(Dataset, ABC):
         self.use_aux_data: bool = use_aux_data
         self.records: dict[str, Any] = self.get_records()
         self.pooch_cli = None
+        self.use_features = use_features
 
     @final
     def get_records(self) -> dict[str, Any]:
@@ -127,6 +130,8 @@ class BaseDataset(Dataset, ABC):
     @final
     @property
     def tabular_dim(self) -> int:
+        if not self.use_features:
+            return 0
         return len(getattr(self, "feat_names", []))
 
     @abstractmethod

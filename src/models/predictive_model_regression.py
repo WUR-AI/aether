@@ -51,6 +51,7 @@ class PredictiveRegressionModel(BaseModel):
             and not self.eo_encoder._tabular_ready
         ):
             self._wire_head()
+            self.freezer() 
 
     # ------------------------------------------------------------------
     # Lightning hooks
@@ -72,7 +73,7 @@ class PredictiveRegressionModel(BaseModel):
             self.eo_encoder.build_tabular_branch(tabular_dim)
             self._wire_head()
 
-        self.freezer()
+            self.freezer()
 
     # ------------------------------------------------------------------
     # Internals
@@ -85,6 +86,8 @@ class PredictiveRegressionModel(BaseModel):
             output_dim=self.num_classes,
         )
         self.prediction_head.configure_nn()
+        if "prediction_head" not in self.trainable_modules:  
+            self.trainable_modules.append("prediction_head")
 
     # ------------------------------------------------------------------
     # Forward & step
@@ -93,6 +96,7 @@ class PredictiveRegressionModel(BaseModel):
     @override
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         feats = self.eo_encoder(batch)
+        feats = F.normalize(feats, dim=-1)
         return self.prediction_head(feats)
 
     @override
