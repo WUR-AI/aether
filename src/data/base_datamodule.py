@@ -34,7 +34,6 @@ class BaseDataModule(LightningDataModule):
         caption_builder: BaseCaptionBuilder = None,
         seed: int = 12345,
         spatial_split_distance_m: int = 1000,
-        split_dir: str | None = None,
     ) -> None:
         """Datamodule class which handles dataset splits and batching.
 
@@ -49,9 +48,8 @@ class BaseDataModule(LightningDataModule):
         :param save_split: if to save split file
         :param saved_split_file_name: file name to save split file
         :param caption_builder: instance of BaseCaptionBuilder for generating textual captions
-        :param spatial_split_distance_m: minimum distance in metres between clusters
-            when split_mode is 'spatial_clusters'. Default 1000 m.
-        :param split_dir: directory to save split indices when save_split is True.
+        :param spatial_split_distance_m: minimum distance in metres between clusters when
+            split_mode is 'spatial_clusters'. Default 1000 m.
         """
         super().__init__()
         self.save_hyperparameters(logger=False)
@@ -67,7 +65,7 @@ class BaseDataModule(LightningDataModule):
             self.caption_builder.sync_with_dataset(self.dataset)
 
         self.split_data()
-    
+
     @property
     def tabular_dim(self):
         dataset = self.data_train
@@ -75,7 +73,7 @@ class BaseDataModule(LightningDataModule):
         while hasattr(dataset, "dataset"):
             dataset = dataset.dataset
         return dataset.tabular_dim
-    
+
     @property
     def num_classes(self) -> int:
         """Number of classes in the dataset."""
@@ -257,19 +255,14 @@ class BaseDataModule(LightningDataModule):
 
     def save_split_indices(self, split_indices: dict[str, Any] | dict):
         """Save split indices into file."""
-        assert (
-            self.hparams.split_dir is not None
-        ), "split_dir must be provided when saving a new data split."
-        assert os.path.exists(
-            self.hparams.split_dir
-        ), f"Directory to save split indices does not exist: {self.hparams.split_dir}"
-        assert isinstance(split_indices, dict), "split_indices must be a dictionary to be saved."
+        self.split_dir = os.path.join(self.hparams.dataset.data_dir, "splits")
+        os.makedirs(self.split_dir, exist_ok=True)
 
         timestamp = create_timestamp()
         torch.save(
             split_indices,
             os.path.join(
-                self.hparams.split_dir,
+                self.split_dir,
                 f"split_indices_{self.hparams.dataset_name}_{timestamp}.pth",
             ),
         )
