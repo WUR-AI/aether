@@ -100,7 +100,7 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         self,
         template_idx: int,
         row: List[Any],
-        convert_corine_perc: bool = False,
+        convert_corine_perc: bool = True,
     ) -> str:
         """Create caption from template and row of auxiliary data."""
         template = self.templates[template_idx]
@@ -108,7 +108,12 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         replacements = {}
         for token in tokens:
             if "aux_corine_frac" in token and "top" in token:
-                values_dict_top = self.column_to_metadata_map[token]
+                try:
+                    values_dict_top = self.column_to_metadata_map[token]
+                except KeyError:
+                    raise KeyError(
+                        f"Token {token} not found in column_to_metadata_map {self.column_to_metadata_map}. Check if the token in the template matches the column names in the dataset."
+                    )
                 idx_top = values_dict_top["id"]
                 referral_token = row[
                     idx_top
