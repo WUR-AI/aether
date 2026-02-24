@@ -6,6 +6,7 @@
 defaults:
   - override /model: predictive_geoclip
   - override /data: butterfly_coords
+  - override /metrics: butterfly_predictive
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters

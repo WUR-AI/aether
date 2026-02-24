@@ -2,10 +2,10 @@
 # configs/experiment/heat_guatemala_tabular_reg.yaml
 # Variant B: tabular features only
 
-
 defaults:
   - override /model: heat_tabular_reg
   - override /data: heat_guatemala
+  - override /metrics: guatemala_regression
 
 tags: ["heat_island", "guatemala", "tabular_only", "regression"]
 seed: 12345

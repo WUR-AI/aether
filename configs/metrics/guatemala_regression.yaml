@@ -1,0 +1,7 @@
+_target_: src.models.components.metrics.metrics_wrapper.MetricsWrapper
+
+metrics:
+  - _target_: src.models.components.loss_fns.mse_loss.MSELoss
+  - _target_: src.models.components.loss_fns.rmse_loss.RMSELoss
+  - _target_: src.models.components.loss_fns.mae_loss.MAELoss
+  - _target_: src.models.components.metrics.r2.RSquared

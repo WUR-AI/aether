@@ -9,6 +9,8 @@ text_encoder:
 
 trainable_modules: [text_encoder.projector, loss_fn.log_temp]
 
+metrics: ${metrics}
+
 optimizer:
   _target_: torch.optim.Adam
   _partial_: true
