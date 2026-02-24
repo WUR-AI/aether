@@ -12,19 +12,13 @@ class MetricsWrapper(nn.Module):
         super().__init__()
         self.metrics = metrics
 
-    def forward(
-            self,
-            pred: torch.Tensor,
-            batch: torch.Tensor,
-            mode='train',
-            **kwargs
-    ) -> Dict[str, torch.float]:
-        """Calculates all metrics and adds all the results into one dictionary for logging"""
+    def forward(self, mode="train", **kwargs) -> Dict[str, torch.float]:
+        """Calculates all metrics and adds all the results into one dictionary for logging."""
         compiled_dict = {}
 
         for metric in self.metrics:
-            metric_results = metric(pred, batch, return_label=True, **kwargs)
+            metric_results = metric(mode=mode, return_label=True, **kwargs)
             for k, v in metric_results.items():
-                compiled_dict[f'{mode}_{k}'] = v
+                compiled_dict[f"{mode}_{k}"] = v
 
         return compiled_dict

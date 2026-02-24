@@ -11,9 +11,9 @@ class BaseMetrics(nn.Module, ABC):
 
     @abstractmethod
     def forward(
-            self, pred: torch.Tensor,
-            labels: torch.Tensor,
-            batch: Dict[str, torch.Tensor] | None = None,
-            **kwargs
+        self,
+        pred: torch.Tensor,
+        batch: Dict[str, torch.Tensor],
+        **kwargs,
     ) -> Dict[str, torch.float]:
         pass
