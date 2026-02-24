@@ -62,15 +62,6 @@ class HeatGuatemalaDataset(BaseDataset):
         )
 
     # ------------------------------------------------------------------
-    # Properties
-    # ------------------------------------------------------------------
-
-    @property
-    def tabular_dim(self) -> int:
-        """Number of tabular features (feat_* columns). 0 if none."""
-        return len(self.feat_names)
-
-    # ------------------------------------------------------------------
     # Required overrides
     # ------------------------------------------------------------------
 
