@@ -74,14 +74,16 @@ class BaseDataset(Dataset, ABC):
         self.df: pd.DataFrame = pd.read_csv(path_csv)
 
         # Other attributes or placeholders
-        self.seed = seed
+        self.pooch_cli = None
         self.num_classes = None
-        self.mode: str = mode  # 'train', 'val', 'test'
+        self.tabular_dim = None
+        self.seed = seed
         self.use_target_data: bool = use_target_data
         self.use_aux_data: bool = use_aux_data
-        self.records: dict[str, Any] = self.get_records()
-        self.pooch_cli = None
         self.use_features = use_features
+
+        self.mode: str = mode  # 'train', 'val', 'test'
+        self.records: dict[str, Any] = self.get_records()
 
     @final
     def get_records(self) -> dict[str, Any]:
@@ -115,10 +117,12 @@ class BaseDataset(Dataset, ABC):
         if self.use_aux_data:
             self.aux_names = [c for c in self.df.columns if "aux_" in c]
             columns.extend(self.aux_names)
-        
+
         # Include tabular features
-        self.feat_names = [c for c in self.df.columns if c.startswith("feat_")]
-        columns.extend(self.feat_names)
+        if self.use_features:
+            self.feat_names = [c for c in self.df.columns if c.startswith("feat_")]
+            columns.extend(self.feat_names)
+            self.tabular_dim = len(self.feat_names)
 
         return self.df.loc[:, columns].to_dict("records")
 
@@ -126,13 +130,6 @@ class BaseDataset(Dataset, ABC):
     def __len__(self) -> int:
         """Returns the length of the dataset."""
         return len(self.records)
-
-    @final
-    @property
-    def tabular_dim(self) -> int:
-        if not self.use_features:
-            return 0
-        return len(getattr(self, "feat_names", []))
 
     @abstractmethod
     def __getitem__(self, idx: int) -> Dict[str, Any]:
