@@ -1,0 +1,25 @@
+# @package _global_
+# configs/experiment/heat_guatemala_tabular_reg.yaml
+# Variant B: tabular features only
+
+
+defaults:
+  - override /model: heat_tabular_reg
+  - override /data: heat_guatemala
+
+tags: ["heat_island", "guatemala", "tabular_only", "regression"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 50
+
+data:
+  batch_size: 64
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "heat_island"
+  aim:
+    experiment: "heat_island"
