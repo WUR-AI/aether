@@ -2,10 +2,10 @@
 # configs/experiment/heat_guatemala_fusion_reg.yaml
 # Variant C: GeoClip + tabular fusion
 
-
 defaults:
   - override /model: heat_fusion_reg
   - override /data: heat_guatemala
+  - override /metrics: guatemala_regression
 
 tags: ["heat_island", "guatemala", "fusion", "regression"]
 seed: 12345

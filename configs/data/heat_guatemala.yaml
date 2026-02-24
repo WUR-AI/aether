@@ -19,6 +19,5 @@ split_mode: "from_file"
 save_split: false
 saved_split_file_name: "split_indices_heat_guatemala_2026-02-20-1148.pth"
 
-
 train_val_test_split: [0.7, 0.15, 0.15]
 seed: ${seed}

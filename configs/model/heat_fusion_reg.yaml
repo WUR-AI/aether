@@ -6,13 +6,13 @@
 # Variant: GeoClip (coords) + tabular fusion
 #   Encoder output = GeoClip (512) + tabular projection (64) = 576-dim
 
-_target_: src.models.predictive_model_regression.PredictiveRegressionModel
+_target_: src.models.predictive_model.PredictiveModel
 
 eo_encoder:
   _target_: src.models.components.eo_encoders.multimodal_encoder.MultiModalEncoder
   use_coords: true
   use_tabular: true
-  tab_embed_dim: 64
+#  tab_embed_dim: 64
 
 prediction_head:
   _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
@@ -21,6 +21,8 @@ prediction_head:
 
 # GeoClip frozen; tabular projection + head are trained.
 trainable_modules: [eo_encoder, prediction_head]
+
+metrics: ${metrics}
 
 optimizer:
   _target_: torch.optim.Adam
