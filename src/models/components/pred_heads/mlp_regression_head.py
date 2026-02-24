@@ -1,5 +1,4 @@
-"""
-MLP regression prediction head.
+"""MLP regression prediction head.
 
 Renamed from: mlp_reg_pred_head.py  →  mlp_regression_head.py
 Location:     src/models/components/pred_heads/mlp_regression_head.py
