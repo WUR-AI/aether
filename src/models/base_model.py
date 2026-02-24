@@ -5,6 +5,7 @@ import torch
 from lightning import LightningModule
 
 from src.models.components.loss_fns.base_loss_fn import BaseLossFn
+from src.models.components.metrics.metrics_wrapper import MetricsWrapper
 
 
 class BaseModel(LightningModule, ABC):
@@ -14,26 +15,29 @@ class BaseModel(LightningModule, ABC):
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
         loss_fn: BaseLossFn,
+        metrics: MetricsWrapper,
         num_classes: int | None = None,
+        tabular_dim: int | None = None,
     ) -> None:
         """Interface for any model.
 
-        :param trainable_modules:
-        :param optimizer:
-        :param scheduler:
-        :param loss_fn:
-        :param num_classes:
+        :param trainable_modules: which modules to train
+        :param optimizer: optimizer for the model weight update
+        :param scheduler: scheduler for the model weight update
+        :param loss_fn: loss function
+        :param metrics: metrics to track for model performance estimation
+        :param num_classes: number of classes to predict
         """
         super().__init__()
         self.save_hyperparameters(
-            ignore=["loss_fn", "eo_encoder", "prediction_head", "text_encoder"]
+            ignore=["loss_fn", "eo_encoder", "prediction_head", "text_encoder", "metrics"]
         )
 
         self.trainable_modules = trainable_modules
-        self.num_classes: int = num_classes
-
-        # Loss
+        self.num_classes = num_classes
+        self.tabular_dim = tabular_dim
         self.loss_fn = loss_fn
+        self.metrics = metrics
 
     @final
     def freezer(self) -> None:

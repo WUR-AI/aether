@@ -5,7 +5,9 @@ import torch.nn.functional as F
 
 from src.models.base_model import BaseModel
 from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
+from src.models.components.eo_encoders.multimodal_encoder import MultiModalEncoder
 from src.models.components.loss_fns.base_loss_fn import BaseLossFn
+from src.models.components.metrics.metrics_wrapper import MetricsWrapper
 from src.models.components.pred_heads.linear_pred_head import (
     BasePredictionHead,
 )
@@ -22,9 +24,11 @@ class TextAlignmentModel(BaseModel):
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
         loss_fn: BaseLossFn,
-        trainable_modules: list[str] | None = None,
-        prediction_head: BasePredictionHead | None = None,
+        trainable_modules: list[str],
+        metrics: MetricsWrapper,
         num_classes: int | None = None,
+        tabular_dim: int | None = None,
+        prediction_head: BasePredictionHead | None = None,
     ) -> None:
         """Implementation of contrastive text-eo modality alignment model.
 
@@ -34,13 +38,25 @@ class TextAlignmentModel(BaseModel):
         :param scheduler: scheduler to use for training
         :param loss_fn: loss function to use (contrastive)
         :param trainable_modules: list of modules to train (parts/modules or modules, modules)
-        :param prediction_head: optional prediction head module
+        :param metrics: metrics to use for model performance evaluation
         :param num_classes: number of target classes
+        :param tabular_dim: number of tabular features
+        :param prediction_head: prediction head
         """
-        super().__init__(trainable_modules, optimizer, scheduler, loss_fn, num_classes)
+        super().__init__(
+            trainable_modules, optimizer, scheduler, loss_fn, metrics, num_classes, tabular_dim
+        )
 
         # Encoders configuration
         self.eo_encoder = eo_encoder
+        # TODO: move to multi-modal eo encoder
+        if (
+            isinstance(self.eo_encoder, MultiModalEncoder)
+            and self.eo_encoder.use_tabular
+            and not self.eo_encoder._tabular_ready
+        ):
+            self.eo_encoder.build_tabular_branch(tabular_dim)
+
         self.text_encoder = text_encoder
         # TODO: if eo==geoclip_img pass on shared mlp
 
@@ -93,94 +109,31 @@ class TextAlignmentModel(BaseModel):
             feats = feats.reshape(2, -1, feats.size(-1))
             eo_feats, text_feats = feats[0], feats[1]
 
-        # Get similarities
-        with torch.no_grad():
-            _ = self._cos_sim_calc(eo_feats, text_feats, mode)
-
         # Get loss
         loss = self.loss_fn(eo_feats, text_feats)
-        self.log(
-            f"{mode}_loss",
-            loss,
+
+        # Get similarities
+        with torch.no_grad():
+            metrics = self.metrics(
+                mode=mode,
+                eo_feats=eo_feats,
+                text_feats=text_feats,
+                local_batch_size=local_batch_size,
+            )
+
+        # Logging
+        log_kwargs = dict(
             on_step=False,
             on_epoch=True,
             prog_bar=True,
             sync_dist=True,
             batch_size=local_batch_size,
         )
+        self.log(f"{mode}_loss", loss, **log_kwargs)
+
         if self.loss_fn.__getattr__("log_temp") and mode == "train":
-            self.log(
-                "temp",
-                self.loss_fn.__getattr__("log_temp").exp(),
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                sync_dist=True,
-                batch_size=local_batch_size,
-            )
+            self.log("temp", self.loss_fn.__getattr__("log_temp").exp(), **log_kwargs)
+
+        self.log_dict(metrics, **log_kwargs)
 
         return loss
-
-    def _cos_sim_calc(self, eo_feats, text_feats, mode, log=True):
-        """Calculate cosine similarity between eo and text embeddings and logs it."""
-        # Similarity matrix
-        cos_sim_matrix = F.cosine_similarity(eo_feats[:, None, :], text_feats[None, :, :], dim=-1)
-
-        local_batch_size = eo_feats.size(0)
-
-        # Average for positive and negative pairs
-        # TODO change label option if we change what gets treated to be pos/neg
-        id_matrix = torch.eye(cos_sim_matrix.shape[0], dtype=torch.bool)
-        pos_sim = cos_sim_matrix[id_matrix]
-        neg_sim = cos_sim_matrix[~id_matrix]
-
-        # Average
-        avr_sim = torch.mean(cos_sim_matrix)
-        sub_neg_sim = neg_sim[
-            torch.randperm(len(neg_sim))[: len(pos_sim)]
-        ]  # pick same amount of negatives as positives
-        balanced_sim = torch.cat([pos_sim, sub_neg_sim], dim=0)
-        balanced_avr_sim = torch.mean(balanced_sim)
-
-        if log:
-            self.log(
-                f"{mode}_avr_sim",
-                avr_sim,
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                sync_dist=True,
-                batch_size=local_batch_size,
-            )
-            self.log(
-                f"{mode}_avr_sim_balanced",
-                balanced_avr_sim,
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                sync_dist=True,
-                batch_size=local_batch_size,
-            )
-            self.log(
-                f"{mode}_pos_sim",
-                torch.mean(pos_sim),
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                sync_dist=True,
-                batch_size=local_batch_size,
-            )
-            self.log(
-                f"{mode}_neg_sim",
-                torch.mean(neg_sim),
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                sync_dist=True,
-                batch_size=local_batch_size,
-            )
-        return avr_sim, pos_sim, neg_sim
-
-
-if __name__ == "__main__":
-    _ = TextAlignmentModel(None, None, None, None, None, None, None)
