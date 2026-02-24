@@ -1,6 +1,5 @@
-"""
-Build model-ready CSV for the Heat Guatemala use case (data/heat_guatemala/model_ready_heat_guatemala.csv).
-"""
+"""Build model-ready CSV for the Heat Guatemala use case
+(data/heat_guatemala/model_ready_heat_guatemala.csv)."""
 
 import argparse
 import re
@@ -87,19 +86,23 @@ def main(source_csv: str, out_csv: str, drop_zero_lst: bool = True) -> None:
     # ------------------------------------------------------------------ #
     # 2. Build output skeleton                                            #
     # ------------------------------------------------------------------ #
-    out = pd.DataFrame({
-        "name_loc":   [f"heat_{i:06d}" for i in range(len(df))],
-        "lat":        df["LAT"].astype(float),
-        "lon":        df["LONG"].astype(float),
-        "target_lst": df[target_col].astype(float),
-    })
+    out = pd.DataFrame(
+        {
+            "name_loc": [f"heat_{i:06d}" for i in range(len(df))],
+            "lat": df["LAT"].astype(float),
+            "lon": df["LONG"].astype(float),
+            "target_lst": df[target_col].astype(float),
+        }
+    )
 
     # Verify target is clean
     assert out["target_lst"].isna().sum() == 0, "BUG: NaN in target after cleaning"
-    print(f"Target stats:  mean={out['target_lst'].mean():.2f}  "
-          f"std={out['target_lst'].std():.2f}  "
-          f"min={out['target_lst'].min():.2f}  "
-          f"max={out['target_lst'].max():.2f}")
+    print(
+        f"Target stats:  mean={out['target_lst'].mean():.2f}  "
+        f"std={out['target_lst'].std():.2f}  "
+        f"min={out['target_lst'].min():.2f}  "
+        f"max={out['target_lst'].max():.2f}"
+    )
 
     # ------------------------------------------------------------------ #
     # 3. Numeric features — impute or drop                                #
@@ -168,7 +171,7 @@ def main(source_csv: str, out_csv: str, drop_zero_lst: bool = True) -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--source_csv", required=True)
-    ap.add_argument("--out_csv",    required=True)
+    ap.add_argument("--out_csv", required=True)
     ap.add_argument("--drop_zero_lst", type=lambda x: x.lower() != "false", default=True)
     args = ap.parse_args()
     main(args.source_csv, args.out_csv, args.drop_zero_lst)
