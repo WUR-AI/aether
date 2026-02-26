@@ -2,10 +2,10 @@
 # configs/experiment/heat_guatemala_coords_reg.yaml
 # Variant A: GeoClip coordinates only
 
-
 defaults:
   - override /model: heat_geoclip_reg
   - override /data: heat_guatemala
+  - override /metrics: guatemala_regression
 
 tags: ["heat_island", "guatemala", "coords_only", "regression"]
 seed: 12345

@@ -6,7 +6,7 @@
 #
 # Variant: coords only (GeoClip encodes lat/lon → 512-dim embedding)
 
-_target_: src.models.predictive_model_regression.PredictiveRegressionModel
+_target_: src.models.predictive_model.PredictiveModel
 
 eo_encoder:
   _target_: src.models.components.eo_encoders.multimodal_encoder.MultiModalEncoder
@@ -20,6 +20,8 @@ prediction_head:
 
 # Only the prediction head is trained; GeoClip encoder is frozen.
 trainable_modules: [prediction_head]
+
+metrics: ${metrics}
 
 optimizer:
   _target_: torch.optim.Adam

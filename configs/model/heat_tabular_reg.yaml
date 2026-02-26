@@ -12,7 +12,9 @@
 #   3. PredictiveRegressionModel.setup() calls
 #      self.eo_encoder.build_tabular_branch(self.trainer.datamodule.tabular_dim)
 
-_target_: src.models.predictive_model_regression.PredictiveRegressionModel
+_target_: src.models.predictive_model.PredictiveModel
+
+metrics: ${metrics}
 
 eo_encoder:
   _target_: src.models.components.eo_encoders.multimodal_encoder.MultiModalEncoder

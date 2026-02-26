@@ -1,5 +1,4 @@
-"""
-Heat Guatemala LST dataset.
+"""Heat Guatemala LST dataset.
 
 Location: src/data/heat_guatemala_dataset.py
 
@@ -21,8 +20,7 @@ from src.data.base_dataset import BaseDataset
 
 
 class HeatGuatemalaDataset(BaseDataset):
-    """
-    Dataset for the urban heat island use case (Guatemala City, LST regression).
+    """Dataset for the urban heat island use case (Guatemala City, LST regression).
 
     CSV layout expected (produced by scripts/make_model_ready_heat_guatemala.py):
       - name_loc          : unique location identifier
@@ -62,15 +60,6 @@ class HeatGuatemalaDataset(BaseDataset):
             mock=mock,
             use_features=use_features,
         )
-
-    # ------------------------------------------------------------------
-    # Properties
-    # ------------------------------------------------------------------
-
-    @property
-    def tabular_dim(self) -> int:
-        """Number of tabular features (feat_* columns). 0 if none."""
-        return len(self.feat_names)
 
     # ------------------------------------------------------------------
     # Required overrides

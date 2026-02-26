@@ -68,11 +68,7 @@ class BaseDataModule(LightningDataModule):
 
     @property
     def tabular_dim(self):
-        dataset = self.data_train
-        # Unwrap Subset wrappers (e.g. from random_split)
-        while hasattr(dataset, "dataset"):
-            dataset = dataset.dataset
-        return dataset.tabular_dim
+        return self.dataset.tabular_dim
 
     @property
     def num_classes(self) -> int:
