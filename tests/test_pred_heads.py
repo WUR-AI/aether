@@ -9,6 +9,9 @@ from src.models.components.eo_encoders.geoclip import GeoClipCoordinateEncoder
 from src.models.components.pred_heads.base_pred_head import BasePredictionHead
 from src.models.components.pred_heads.linear_pred_head import LinearPredictionHead
 from src.models.components.pred_heads.mlp_pred_head import MLPPredictionHead
+from src.models.components.pred_heads.mlp_regression_head import (
+    MLPRegressionPredictionHead,
+)
 
 
 # @pytest.mark.slow
@@ -18,7 +21,7 @@ def test_pred_head_generic_properties(create_butterfly_dataset):
     eo_encoder = GeoClipCoordinateEncoder()
     feats = eo_encoder.forward(batch)
 
-    list_pred_heads = [LinearPredictionHead, MLPPredictionHead]
+    list_pred_heads = [LinearPredictionHead, MLPPredictionHead, MLPRegressionPredictionHead]
     for pred_head_class in list_pred_heads:
         pred_head = pred_head_class()
         assert hasattr(

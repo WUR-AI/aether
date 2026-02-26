@@ -9,6 +9,7 @@ from src.models.components.eo_encoders.average_encoder import AverageEncoder
 from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
 from src.models.components.eo_encoders.cnn_encoder import CNNEncoder
 from src.models.components.eo_encoders.geoclip import GeoClipCoordinateEncoder
+from src.models.components.eo_encoders.multimodal_encoder import MultiModalEncoder
 
 
 # @pytest.mark.slow
@@ -18,6 +19,7 @@ def test_eo_encoder_generic_properties(create_butterfly_dataset):
         "geoclip_coords": GeoClipCoordinateEncoder,
         "cnn": CNNEncoder,
         "average": AverageEncoder,
+        "multimodal_coords": MultiModalEncoder,
     }
     ds, dm = create_butterfly_dataset
     batch = next(iter(dm.train_dataloader()))
