@@ -3,7 +3,7 @@ import os
 import random
 import re
 from abc import ABC, abstractmethod
-from typing import Dict, List, final
+from typing import Any, Dict, List, final
 
 import torch
 
@@ -21,7 +21,7 @@ class BaseCaptionBuilder(ABC):
         """
 
         self.data_dir = data_dir
-        templates_path = os.path.join(self.data_dir, templates_fname)
+        templates_path = os.path.join(self.data_dir, "caption_templates", templates_fname)
         self.templates = json.load(open(templates_path))
         self.tokens_in_template = [self._extract_tokens(t) for t in self.templates]
 
@@ -52,13 +52,12 @@ class BaseCaptionBuilder(ABC):
         return template
 
     @abstractmethod
-    def _build_from_template(self, template_idx: int, row: torch.Tensor) -> str:
+    def _build_from_template(self, template_idx: int, row: List[Any]) -> str:
         """Build caption text from template and row of auxiliary data."""
         pass
 
-    def random(self, aux_values: torch.Tensor, n_random=1) -> List[str]:
+    def random(self, aux_values: List[Any]) -> List[str]:
         """Return a caption from a randomly sampled template for each data point."""
-        n_random = min(n_random, len(aux_values))  # TODO unused
         formatted_rows = []
         template_idx = random.choices(
             range(len(self.templates)),
@@ -69,7 +68,7 @@ class BaseCaptionBuilder(ABC):
 
         return formatted_rows
 
-    def all(self, aux_values: torch.Tensor) -> List[str]:
+    def all(self, aux_values: List[Any]) -> List[str]:
         """Return a list of captions from all available templates."""
         formatted_rows = []
         for row in aux_values:
@@ -90,7 +89,7 @@ class DummyCaptionBuilder(BaseCaptionBuilder):
     def sync_with_dataset(self, dataset) -> None:
         pass
 
-    def _build_from_template(self, template_idx: int, row: torch.Tensor) -> str:
+    def _build_from_template(self, template_idx: int, row: List[Any]) -> str:
         first_val = row[0].item() if torch.is_tensor(row) else row[0]
         return f"Location with value {first_val}"
 

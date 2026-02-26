@@ -227,3 +227,4 @@ uv.lock
 notebooks/01-TvdP-tmp.ipynb
 */source/*
 *.tif # for now
+..env.swp

@@ -1,0 +1,7 @@
+# S2BMS dataset (butterfly, ecology UC)
+S2BMS.zip md5:af98bf3d1d0c4645c3c5787d49f59a70 https://zenodo.org/records/15198884/files/S2BMS.zip?download=1
+
+# Satbird (birds, ecology UC)
+Kenya.zip None https://drive.google.com/uc?id=19PSNaKQn1papoT-jN5FkzTp7Xf4M1juD
+USA_summer.tar.gz None https://drive.google.com/uc?id=1TwVpSdX97k3Y0ckeKl2u-B6W4llj9h11
+USA_winter.tar.gz None https://drive.google.com/uc?id=1EHUjUhmtGRmQfK0iCO2p0WCFxqqnEyWS

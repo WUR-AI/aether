@@ -24,7 +24,7 @@ class ClipTextEncoder(BaseTextEncoder):
         )
 
         self.projector = GeoCLIP().image_encoder.mlp
-        self.output_normalization = output_normalization
+
         self.output_dim = 512
 
     @override
@@ -56,14 +56,5 @@ class ClipTextEncoder(BaseTextEncoder):
 
         if mode != "train":
             text_embeds = torch.stack(avr_embeds, dim=0)
-
-        if self.output_normalization == "l2":
-            text_embeds = F.normalize(
-                text_embeds, p=2, dim=-1
-            )  # L2 normalization (per feature vector)
-        elif self.output_normalization == "none":
-            pass
-        else:
-            raise ValueError(f"Unsupported output_normalization: {self.output_normalization}")
 
         return text_embeds

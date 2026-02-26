@@ -1,6 +1,5 @@
-from typing import override
+from typing import Dict, override
 
-import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -15,14 +14,19 @@ class ClipLoss(BaseLossFn):
     ) -> None:
         super().__init__()
         self.log_temp = nn.Parameter(torch.log(torch.tensor(temperature)))
+        self.name = "CLIPLoss"
 
     @override
     def forward(
         self,
         eo_mod: torch.Tensor,
         text_mod: torch.Tensor,
-    ) -> torch.Tensor:
-        """Assumes eo_mod and text_mod are already L2-normalized."""
+        **kwargs,
+    ) -> torch.Tensor | Dict[str, torch.Tensor]:
+
+        # Normalise inputs
+        eo_mod = F.normalize(eo_mod, dim=-1)
+        text_mod = F.normalize(text_mod, dim=-1)
 
         # Clip temperature to not exceed 100
         temperature = torch.clamp(self.log_temp.exp(), max=100)
@@ -35,7 +39,11 @@ class ClipLoss(BaseLossFn):
         loss1 = F.cross_entropy(dot_product, targets)
         loss2 = F.cross_entropy(dot_product.T, targets)
 
-        return (loss1 + loss2) / 2
+        loss = (loss1 + loss2) / 2
+        if "return_label" in kwargs:
+            return {self.name: loss}
+        else:
+            return loss
 
 
 if __name__ == "__main__":

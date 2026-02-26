@@ -6,6 +6,7 @@ Many functions were adapted from github.com/vdplasthijs/NeurEO.
 import json
 import os
 import sys
+from collections import defaultdict
 
 import ee
 import geemap
@@ -83,21 +84,28 @@ def convert_bioclim_to_units(bioclim_dict):
 
 def get_gee_image_from_coord(
     coords,
+    aoi=None,
     collection_name="corine",
     patch_size=2000,
     year=2017,
     sentinel_month_start=3,
     sentinel_month_end=9,
     threshold_size: int | None = None,
+    verbose=0,
 ):
     """Get a GEE image from coordinates, for a given collection.
 
     Collections can have slightly different parameters/logic, hence they are split up in different
     if statements.
     """
-    aoi = create_aoi_from_coord_buffer(coords, buffer_m=patch_size // 2, bool_buffer_in_deg=False)
+    if aoi is None:
+        aoi = create_aoi_from_coord_buffer(
+            coords, buffer_m=patch_size // 2, bool_buffer_in_deg=False
+        )
     lon, lat = coords
     epsg_code = get_epsg_from_latlon(lat=lat, lon=lon)
+    if verbose:
+        print(f"Using EPSG:{epsg_code} for coords: {coords}")
     if collection_name == "corine":
         assert year == 2017, "GEE CORINE collection only has data for year 2017 I believe"
         collection = ee.ImageCollection("COPERNICUS/CORINE/V20/100m")
@@ -107,6 +115,8 @@ def get_gee_image_from_coord(
         collection = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
     elif collection_name == "dynamicworld":
         collection = ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
+    elif collection_name == "popdensity":
+        collection = ee.ImageCollection("WorldPop/GP/100m/pop")
     else:
         raise NotImplementedError(f"Unknown collection_name: {collection_name}")
     if collection is None:
@@ -116,7 +126,7 @@ def get_gee_image_from_coord(
         im_gee = ee.Image(
             collection.filterBounds(aoi)
             .filterDate(f"{year}-01-01", f"{year}-12-31")
-            .first()
+            .mosaic()  # use mosaic to get full coverage when multiple non-overlapping images
             .reproject(f"EPSG:{epsg_code}", scale=10)
             .clip(aoi)
         )
@@ -155,13 +165,23 @@ def get_gee_image_from_coord(
             .reproject(f"EPSG:{epsg_code}", scale=10)  # reproject to 10m
             .clip(aoi)
         )
+    elif collection_name == "popdensity":
+        # Get population density image for the given year. DOES NOT CLIP TO AOI, to prevent scaling issues.
+        im_gee = ee.Image(
+            collection.filterDate(ee.Date(f"{year}-01-01"), ee.Date(f"{year}-12-31"))
+            .mosaic()
+            .unmask(0)  # set unmasked values to 0 (water bodies)
+        )
+    if verbose:
+        im_dims = im_gee.getInfo()["bands"][0]["dimensions"]
+        print(f"Downloaded image dimensions: {im_dims}")
 
     if threshold_size is not None:
         im_dims = im_gee.getInfo()["bands"][0]["dimensions"]
         if im_dims[0] < threshold_size or im_dims[1] < threshold_size:
-            print("WARNING: image too small, returning None")
+            print(f"WARNING: image too small before downloading, returning None ({im_dims})")
             return None
-    return im_gee
+    return im_gee, aoi
 
 
 def convert_corine_lc_im_to_tab(lc_im):
@@ -183,7 +203,7 @@ def convert_corine_lc_im_to_tab(lc_im):
     for k, v in pixel_counts.items():
         assert (
             k in df_lc_classes["code"].values
-        ), f"Land cover code {k} not found in land cover classes."
+        ), f"Land cover code {k} not found in land cover classes {df_lc_classes['code'].values}."
 
     sum_counts = sum(pixel_counts.values())
     assert sum_counts > 0, "No pixels found in the land cover image."
@@ -191,7 +211,48 @@ def convert_corine_lc_im_to_tab(lc_im):
         f"corine_frac_{int(k)}": (0 if k not in pixel_counts else pixel_counts[k] / sum_counts)
         for k in df_lc_classes["code"].values
     }
+    dict_lc_counts_include_higher = defaultdict(float)
+    for k, v in dict_lc_counts.items():
+        dict_lc_counts_include_higher[k[:-2]] += v
+    for k, v in dict_lc_counts.items():  # using two separate loops so it's sorted by key length
+        dict_lc_counts_include_higher[k[:-1]] += v
+    dict_lc_counts.update(dict_lc_counts_include_higher)
+
     return dict_lc_counts
+
+
+def convert_popdensity_im_to_sum(popdensity_im, aoi):
+    """Convert a population density image to a total population count in the area."""
+    assert ONLINE_ACCESS_TO_GEE, "ONLINE_ACCESS_TO_GEE is set to False, so no access to GEE"
+    sum_dict = popdensity_im.reduceRegion(
+        reducer=ee.Reducer.sum(),
+        geometry=aoi,
+        scale=100,  # match the original worldpop image resolution
+        maxPixels=1e9,
+    )
+    total_pop = sum_dict.getInfo().get(
+        "population", 0
+    )  # get total population, default to 0 if not found
+    pop_density = total_pop / (aoi.area(maxError=1).getInfo() / 1e6)  # people per km^2
+    return {"total_population": int(total_pop), "pop_density": int(pop_density)}
+
+
+def get_distance_to_road_within_aoi(aoi, cell_size=30, radius_max=5000):
+    """Calculates for each pixel in AOI the distance to the nearest road within radius_max and
+    returns the maximum distance inside the AOI."""
+    roads = ee.FeatureCollection("projects/sat-io/open-datasets/GRIP4/Europe")
+    distance = roads.distance(searchRadius=radius_max, maxError=50)
+    distance_masked = distance.clip(aoi).rename("distance")
+    max_distance = distance_masked.reduceRegion(
+        reducer=ee.Reducer.max(), geometry=aoi, scale=cell_size, maxPixels=1e9
+    )
+    mean_distance = distance_masked.reduceRegion(
+        reducer=ee.Reducer.mean(), geometry=aoi, scale=cell_size, maxPixels=1e9
+    )
+    return {
+        "maxdist_road": int(max_distance.get("distance").getInfo()),
+        "meandist_road": int(mean_distance.get("distance").getInfo()),
+    }
 
 
 def create_filename(
@@ -257,7 +318,7 @@ def download_gee_image(
     patch_size = (
         pixel_patch_size + 20
     ) * gsd_resolution  # adding a bit extra in case of minor misalignment
-    im_gee = get_gee_image_from_coord(
+    im_gee, aoi = get_gee_image_from_coord(
         coords=coords,
         patch_size=patch_size,
         year=year,
@@ -265,6 +326,7 @@ def download_gee_image(
         sentinel_month_end=sentinel_month_end,
         collection_name=collection_name,
         threshold_size=pixel_patch_size,
+        verbose=verbose,
     )
     if im_gee is None:  # if image was too small it was discarded
         if verbose:
@@ -282,6 +344,9 @@ def download_gee_image(
     )
     filepath = os.path.join(path_save, filename)
 
+    if verbose:
+        print(f"Downloading image to {filepath} ...")
+
     geemap.ee_export_image(
         im_gee,
         filename=filepath,
@@ -289,6 +354,9 @@ def download_gee_image(
         file_per_band=False,  # crs='EPSG:32630'
         verbose=False,
     )
+
+    if verbose:
+        print(f"Saved image to {filepath}")
 
     if resize_image:  # load & crop & save to size correctly (because of buffer):
         remove_if_too_small = (
@@ -298,7 +366,7 @@ def download_gee_image(
         if verbose:
             print("Original size: ", im.shape)
         if im.shape[1] < pixel_patch_size or im.shape[2] < pixel_patch_size:
-            print("WARNING: image too small, returning None")
+            print(f"WARNING: image too small after loading, returning None ({im.shape})")
             if remove_if_too_small:
                 os.remove(filepath)
             return None, None
@@ -334,6 +402,7 @@ def download_list_coord(
     stop_index=None,
     resize_image=True,
     list_collections=["sentinel2", "alphaearth"],
+    verbose=0,
 ):
     """For a list of coordinates (and optional names), download GEE images for each coordinate and
     save them locally."""
@@ -368,12 +437,16 @@ def download_list_coord(
             name = f"{name_group}_{i}"
         for im_collection in list_collections:
             try:
+                if verbose:
+                    print(
+                        f"Downloading image {i} and {name}, collection: {im_collection}. Coords: {coords}. Patch size: {pixel_patch_size}. path: {path_save}. resize: {resize_image}"
+                    )
                 im, path_im = download_gee_image(
                     coords=coords,
                     name=name,
                     pixel_patch_size=pixel_patch_size,
                     path_save=path_save,
-                    verbose=0,
+                    verbose=verbose,
                     resize_image=resize_image,
                     collection_name=im_collection,
                 )

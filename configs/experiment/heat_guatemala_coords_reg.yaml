@@ -1,0 +1,25 @@
+# @package _global_
+# configs/experiment/heat_guatemala_coords_reg.yaml
+# Variant A: GeoClip coordinates only
+
+defaults:
+  - override /model: heat_geoclip_reg
+  - override /data: heat_guatemala
+  - override /metrics: guatemala_regression
+
+tags: ["heat_island", "guatemala", "coords_only", "regression"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 50
+
+data:
+  batch_size: 64
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "heat_island"
+  aim:
+    experiment: "heat_island"
