@@ -42,7 +42,7 @@ class HeatGuatemalaDataset(BaseDataset):
         data_dir: str,
         modalities: dict,
         use_target_data: bool = True,
-        use_aux_data: Dict[Any] | str = "all",
+        use_aux_data: Dict[str, Any] | str = "all",
         seed: int = 12345,
         cache_dir: str = None,
         mock: bool = False,

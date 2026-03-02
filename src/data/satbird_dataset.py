@@ -16,7 +16,7 @@ class SatBirdDataset(BaseDataset):
         modalities: dict,
         use_target_data: bool,
         seed: int,
-        use_aux_data: Dict[Any] | str = "all",
+        use_aux_data: Dict[str, Any] | str = "all",
         study_site: str = "Kenya",
         cache_dir: str = None,
         mock: bool = False,
