@@ -1,10 +1,12 @@
+from src.data.base_dataset import BaseDataset
 from src.data.butterfly_dataset import ButterflyDataset
+from src.data.heat_guatemala_dataset import HeatGuatemalaDataset
 from src.data.satbird_dataset import SatBirdDataset
 
 
 def test_datasets_generic_properties(request, tmp_path, sample_csv):
     """This test checks that all datasets implement the basic properties and methods."""
-    list_datasets = [ButterflyDataset, SatBirdDataset]
+    list_datasets = [ButterflyDataset, SatBirdDataset, HeatGuatemalaDataset]
     use_mock = request.config.getoption("--use-mock")
     if use_mock:
         csv_dir = sample_csv
@@ -41,6 +43,22 @@ def test_datasets_generic_properties(request, tmp_path, sample_csv):
             dataset, "dataset_name"
         ), f"'dataset_name' attribute missing in {ds_class.__name__}."
         assert hasattr(dataset, "mode"), f"'mode' attribute missing in {ds_class.__name__}."
+        assert hasattr(
+            dataset, "use_features"
+        ), f"'use_features' attribute missing in {ds_class.__name__}."
+        assert hasattr(
+            dataset, "use_aux_data"
+        ), f"'use_aux_data' attribute missing in {ds_class.__name__}."
+        assert hasattr(
+            dataset, "use_target_data"
+        ), f"'use_target_data' attribute missing in {ds_class.__name__}."
+        assert hasattr(
+            dataset, "tabular_dim"
+        ), f"'tabular_dim' attribute missing in {ds_class.__name__}."
+        assert hasattr(dataset, "setup"), f"'setup' method missing in {ds_class.__name__}."
+        assert hasattr(
+            dataset, "get_records"
+        ), f"'get_records' method missing in {ds_class.__name__}."
 
 
 def test_datamodule_random_split_and_loaders(create_butterfly_dataset):
