@@ -24,7 +24,7 @@ def test_datamodule_uses_collate_when_aux_data(request, sample_csv, tmp_path):
         cache_dir=str(tmp_path),
         modalities={"coords": None},
         use_target_data=True,
-        use_aux_data=True,
+        use_aux_data="all",
         seed=0,
         mock=use_mock,
     )

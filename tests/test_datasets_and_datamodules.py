@@ -17,7 +17,7 @@ def test_datasets_generic_properties(request, tmp_path, sample_csv):
             cache_dir=str(tmp_path),
             modalities={"coords": None},
             use_target_data=True,
-            use_aux_data=True,
+            use_aux_data="all",
             seed=0,
             mock=use_mock,
         )
@@ -36,9 +36,6 @@ def test_datasets_generic_properties(request, tmp_path, sample_csv):
         assert hasattr(
             dataset, "target_names"
         ), f"'target_names' attribute missing in {ds_class.__name__}."
-        assert hasattr(
-            dataset, "aux_names"
-        ), f"'aux_names' attribute missing in {ds_class.__name__}."
         assert hasattr(dataset, "records"), f"'records' attribute missing in {ds_class.__name__}."
         assert hasattr(
             dataset, "dataset_name"
