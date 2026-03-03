@@ -52,32 +52,52 @@ class BaseCaptionBuilder(ABC):
         return template
 
     @abstractmethod
-    def _build_from_template(self, template_idx: int, row: List[Any]) -> str:
+    def _build_from_template(
+        self, template_idx: int, aux: torch.Tensor, top: List[str] | None = None
+    ) -> str:
         """Build caption text from template and row of auxiliary data."""
         pass
 
-    def random(self, aux_values: List[Any]) -> List[str]:
+    def random(self, aux_values) -> List[str]:
         """Return a caption from a randomly sampled template for each data point."""
         formatted_rows = []
-        template_idx = random.choices(
+
+        batch_size = len(aux_values["aux"])
+
+        template_ids = random.choices(
             range(len(self.templates)),
-            k=len(aux_values),
+            k=batch_size,
         )
-        for idx, row in zip(template_idx, aux_values):
-            formatted_rows.append(self._build_from_template(idx, row))
+        for (
+            i,
+            template_idx,
+        ) in enumerate(template_ids):
+            row_aux = aux_values["aux"][i]
+            row_top = aux_values.get("top")[i] if aux_values.get("top") else None
+            formatted_rows.append(
+                self._build_from_template(template_idx, aux=row_aux, top=row_top)
+            )
 
         return formatted_rows
 
-    def all(self, aux_values: List[Any]) -> List[str]:
+    def all(self, aux_values) -> List[str]:
         """Return a list of captions from all available templates."""
         formatted_rows = []
-        for row in aux_values:
+        for i in range(0, len(aux_values["aux"])):
             descriptions = []
+            row_aux = aux_values["aux"][i]
+            row_top = aux_values.get("top")[i] if aux_values.get("top") else None
+
             for template_idx in range(0, len(self)):
-                descriptions.append(self._build_from_template(template_idx, row))
+                descriptions.append(
+                    self._build_from_template(template_idx, aux=row_aux, top=row_top)
+                )
             formatted_rows.append(descriptions)
 
         return formatted_rows
+
+    def build_concepts(self, aux_values) -> List[str]:
+        pass
 
 
 class DummyCaptionBuilder(BaseCaptionBuilder):
@@ -89,8 +109,10 @@ class DummyCaptionBuilder(BaseCaptionBuilder):
     def sync_with_dataset(self, dataset) -> None:
         pass
 
-    def _build_from_template(self, template_idx: int, row: List[Any]) -> str:
-        first_val = row[0].item() if torch.is_tensor(row) else row[0]
+    def _build_from_template(
+        self, template_idx: int, aux: torch.Tensor, top: List[str] | None = None
+    ) -> str:
+        first_val = aux[0].item()
         return f"Location with value {first_val}"
 
 

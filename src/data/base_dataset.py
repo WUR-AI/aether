@@ -1,6 +1,7 @@
 import os
+import re
 from abc import ABC, abstractmethod
-from typing import Any, Dict, final
+from typing import Any, Dict, List, final
 
 import numpy as np
 import pandas as pd
@@ -16,7 +17,7 @@ class BaseDataset(Dataset, ABC):
         data_dir: str,
         modalities: dict,
         use_target_data: bool = True,
-        use_aux_data: bool = False,
+        use_aux_data: Dict[str, List[str] | str] | str | None = None,
         dataset_name: str = "BaseDataset",
         seed: int = 12345,
         mode: str = "train",
@@ -78,9 +79,25 @@ class BaseDataset(Dataset, ABC):
         self.num_classes = None
         self.tabular_dim = None
         self.seed = seed
-        self.use_target_data: bool = use_target_data
-        self.use_aux_data: bool = use_aux_data
+        self.use_target_data = use_target_data
         self.use_features = use_features
+
+        if use_aux_data is None or use_aux_data == "all":
+            self.use_aux_data = {
+                "aux": {
+                    "pattern": "^aux_(?!.*top).*",
+                    #     'columns' : []
+                },
+                "top": {
+                    "pattern": "^aux_.*top.*",
+                    #     'columns' : []
+                },
+            }
+
+        elif type(use_aux_data) is dict:
+            self.use_aux_data = use_aux_data
+        else:
+            self.use_aux_data = None
 
         self.mode: str = mode  # 'train', 'val', 'test'
         self.records: dict[str, Any] = self.get_records()
@@ -107,16 +124,25 @@ class BaseDataset(Dataset, ABC):
                 )
                 columns.append(f"{modality}_path")
 
-        # Include targets
+        # Include targets TODO: this could be moved under geo-modalities
         if self.use_target_data:
             self.target_names = [c for c in self.df.columns if "target_" in c]
             columns.extend(self.target_names)
             self.num_classes = len(self.target_names)
 
         # Include aux data
-        if self.use_aux_data:
-            self.aux_names = [c for c in self.df.columns if "aux_" in c]
-            columns.extend(self.aux_names)
+        if self.use_aux_data is not None:
+            for k, val in self.use_aux_data.items():
+                if val.get("pattern"):
+                    pattern = re.compile(val["pattern"])
+                    aux_names = [x for x in self.df.columns if pattern.match(x)]
+                else:
+                    aux_names = val.get(
+                        "columns",
+                        ValueError('use_aux_data should have "pattern" or "columns" defined'),
+                    )
+                self.use_aux_data[k] = aux_names
+                columns.extend(aux_names)
 
         # Include tabular features
         if self.use_features:

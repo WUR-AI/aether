@@ -42,7 +42,7 @@ class HeatGuatemalaDataset(BaseDataset):
         data_dir: str,
         modalities: dict,
         use_target_data: bool = True,
-        use_aux_data: bool = False,
+        use_aux_data: Dict[str, Any] | str = "all",
         seed: int = 12345,
         cache_dir: str = None,
         mock: bool = False,
@@ -95,6 +95,13 @@ class HeatGuatemalaDataset(BaseDataset):
 
         # --- Auxiliary data ---
         if self.use_aux_data:
-            sample["aux"] = [row[k] for k in self.aux_names]
+            sample["aux"] = {}
+            for aux_cat, vals in self.use_aux_data.items():
+                if aux_cat == "aux":
+                    sample["aux"][aux_cat] = torch.tensor(
+                        [row[v] for v in vals], dtype=torch.float32
+                    )
+                else:
+                    sample["aux"][aux_cat] = [row[v] for v in vals]
 
         return sample
