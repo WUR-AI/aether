@@ -1,8 +1,8 @@
-import math
 import os
 from typing import Any, List, override
 
 import pandas as pd
+import torch
 
 from src.data.base_caption_builder import (
     BaseCaptionBuilder,
@@ -21,25 +21,26 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
 
     @override
     def sync_with_dataset(self, dataset: BaseDataset) -> None:
-        """Synchronize the dataset with bioclimatic and corine column metadata."""
+        """Synchronize the dataset with bioclimatic, corine, and human footprint column
+        metadata."""
         bioclim_columns = self.get_bioclim_column_keys()
         corine_columns = self.get_corine_column_keys()
+        humanfootprint_columns = self.get_humanfootprint_column_keys()
+        aux_columns = {**bioclim_columns, **corine_columns, **humanfootprint_columns}
+        self.column_to_metadata_map = {k: {} for k in dataset.use_aux_data.keys()}
 
-        self.column_to_metadata_map = {}
+        for aux_cat, cols in dataset.use_aux_data.items():
+            for i, c in enumerate(cols):
+                if "top" in aux_cat:
+                    description, units = None, None
+                else:
+                    description, units = aux_columns.get(c) or (None, None)
 
-        for id, key in enumerate(dataset.aux_names):
-            if key.startswith("aux_corine_frac_top"):  # to avoid assert statement
-                description, units = None, None
-            else:
-                description, units = (
-                    bioclim_columns.get(key) or corine_columns.get(key) or (None, None)
-                )
-                assert description is not None, f"Key {key} not found in bioclim or corine columns"
-            self.column_to_metadata_map[key] = {
-                "id": id,
-                "description": description,
-                "units": units,
-            }
+                self.column_to_metadata_map[aux_cat][c] = {
+                    "id": i,
+                    "description": description,
+                    "units": units,
+                }
 
     def get_corine_column_keys(self):
         """Returns metadata for corine columns."""
@@ -50,12 +51,29 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
             )
         df = pd.read_csv(os.path.join(self.data_dir, "corine_classes.csv"))
 
-        return dict(
+        legend_lowlevel = dict(
             zip(
                 df["code"],
                 zip(df["category_level_3"], ["%"] * len(df["category_level_3"])),
             )
         )
+
+        legend_midlevel = dict(
+            zip(
+                df["code"].apply(lambda x: x[:-1]),
+                zip(df["category_level_2"], ["%"] * len(df["category_level_2"])),
+            )
+        )
+
+        legend_highlevel = dict(
+            zip(
+                df["code"].apply(lambda x: x[:-2]),
+                zip(df["category_level_1"], ["%"] * len(df["category_level_1"])),
+            )
+        )
+
+        combined_legend = {**legend_lowlevel, **legend_midlevel, **legend_highlevel}
+        return combined_legend
 
     def get_bioclim_column_keys(self):
         """Returns metadata for bioclim columns."""
@@ -69,31 +87,41 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         df.sort_values(by=["name"], inplace=True)
         return dict(zip(df["name"], zip(df["description"], df["units"])))
 
+    def get_humanfootprint_column_keys(self):
+        """Returns metadata for human footprint columns."""
+        dict_hf = {
+            "aux_maxdist_road": ("farthest distance to road", "m"),
+            "aux_meandist_road": ("mean distance to road", "m"),
+            "aux_pop_density": ("population density", "people/km²"),
+            "aux_total_population": ("total population", "people"),
+        }
+        return dict_hf
+
     def _build_from_template(
         self,
         template_idx: int,
-        row: List[Any],
-        convert_corine_perc: bool = False,
+        aux: torch.Tensor,
+        top: List[str] | None = None,
+        convert_corine_perc: bool = True,
     ) -> str:
         """Create caption from template and row of auxiliary data."""
         template = self.templates[template_idx]
         tokens = self.tokens_in_template[template_idx]
         replacements = {}
         for token in tokens:
-            if token.startswith("aux_corine_frac_top_"):
-                values_dict_top = self.column_to_metadata_map[token]
-                idx_top = values_dict_top["id"]
-                referral_token = row[
-                    idx_top
-                ]  # e.g., token 'aux_corine_frac_top_1' might refer to 'corine_frac_211' in this row
-                referral_token = (
-                    "aux_" + referral_token if "aux_" not in referral_token else referral_token
+            init_token = token
+            if "top" in token:
+                idx = self.column_to_metadata_map["top"][token]["id"]
+                token = f"aux_{top[idx]}"
+            try:
+                values_dict = self.column_to_metadata_map["aux"][token]
+            except KeyError:
+                raise KeyError(
+                    f"Token {token} not found in column_to_metadata_map {self.column_to_metadata_map}. Check if the token in the template matches the column names in the dataset."
                 )
-                values_dict = self.column_to_metadata_map[referral_token]
-            else:
-                values_dict = self.column_to_metadata_map[token]
+
             idx = values_dict["id"]
-            value = row[idx]
+            value = aux[idx].item()
 
             formatted_desc = values_dict["description"].lower() or ""
             units = values_dict["units"]
@@ -104,10 +132,10 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                     adjective = get_adjective_for_percentage(value)
                     formatted_desc = f"{adjective} {formatted_desc}"
                 else:
-                    formatted_desc = formatted_desc + f' ({round(value)}{units if units else ""})'
-            elif "bioclim" in token:
-                formatted_desc = formatted_desc + f' of {round(value)}{units if units else ""}'
-            replacements[token] = formatted_desc
+                    formatted_desc = formatted_desc + f' ({round(value)} {units if units else ""})'
+            else:
+                formatted_desc = formatted_desc + f' of {round(value)} {units if units else ""}'
+            replacements[init_token] = formatted_desc
 
         template = self._fill(template, replacements)
         return template

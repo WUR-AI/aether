@@ -7,13 +7,13 @@ dataset:
   modalities:
     coords:
   use_target_data: false
-  use_aux_data: true
+  use_aux_data: "all"
   seed: ${seed}
   cache_dir: ${paths.cache_dir}
 
 caption_builder:
   _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
-  templates_fname: v1.json
+  templates_fname: v3.json
   data_dir: ${paths.data_dir}/s2bms
   seed: ${seed}
 

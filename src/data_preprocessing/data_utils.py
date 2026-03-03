@@ -9,13 +9,9 @@ import pandas as pd
 import rasterio
 import rioxarray as rxr
 import xarray as xr
-from hydra import compose, initialize
-from omegaconf import OmegaConf
 
-
-# TODO: is this still used? works?
-def get_hydra_paths():
-    assert False, "Deprecated. Use hydra config or environment variables instead."
+# from hydra import compose, initialize
+# from omegaconf import OmegaConf
 
 
 def process_corine_classes(input_path, output_path):
@@ -24,11 +20,9 @@ def process_corine_classes(input_path, output_path):
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"File {input_path} for Corine classes does not exist")
 
-    # read-in org file
     with open(input_path) as f:
         corine_classes = json.load(f)
 
-    # format it into pandas
     keys = list(corine_classes[0].keys())
     keys.extend(["category_level_1", "category_level_2", "category_level_3"])
 
@@ -46,7 +40,6 @@ def process_corine_classes(input_path, output_path):
                 dict_all["category_level_3"].append(levels[2])
     df = pd.DataFrame(dict_all)
 
-    # save csv
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     df.to_csv(output_path, index=False)
     print(f"Processed Corine classes were saved to {output_path}")
@@ -61,7 +54,6 @@ def process_bioclim_classes(input_path, output_path):
     with open(input_path) as f:
         bioclim_classes = json.load(f)
 
-    # Create and save pandas df
     df = pd.DataFrame(bioclim_classes)
     df["name"] = df["name"].apply(lambda x: x.replace("bio", "aux_bioclim_"))
 
@@ -70,63 +62,52 @@ def process_bioclim_classes(input_path, output_path):
     print(f"Processed bioclimatic classes were saved to {output_path}")
 
 
-def corine_lc_schema(data_dir="data/"):
+def corine_lc_schema(data_dir_dataset=None):
     """From https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_CORINE_V20_100m#bands"""
-    if not os.path.isfile(os.path.join(data_dir, "caption_templates/corine_classes.csv")):
+    if data_dir_dataset is None:
+        data_dir_dataset = os.path.join(os.environ.get("DATA_DIR"), "s2bms")
+
+    if not os.path.isfile(os.path.join(data_dir_dataset, "corine_classes.csv")):
         process_corine_classes(
-            os.path.join(data_dir, "source/corine_classes.json"),
-            os.path.join(data_dir, "caption_templates/corine_classes.csv"),
+            os.path.join(data_dir_dataset, "source/corine_classes.json"),
+            os.path.join(data_dir_dataset, "corine_classes.csv"),
         )
-    df = pd.read_csv(os.path.join(data_dir, ("caption_templates/corine_classes.csv")))
+    df = pd.read_csv(os.path.join(data_dir_dataset, ("corine_classes.csv")))
 
     corine_classes = df.to_dict("records")
     for c in corine_classes:
         c["code"] = int(c["code"].replace("aux_corine_frac_", ""))
-
+    df["code"] = df["code"].apply(lambda x: int(x.replace("aux_corine_frac_", "")))
     return corine_classes, df
 
 
-def bioclim_schema(data_dir="data/"):
+def bioclim_schema(data_dir_dataset=None):
     """From https://developers.google.com/earth-engine/datasets/catalog/WORLDCLIM_V1_BIO"""
+    if data_dir_dataset is None:
+        data_dir_dataset = os.path.join(os.environ.get("DATA_DIR"), "s2bms")
 
-    if not os.path.isfile(os.path.join(data_dir, "caption_templates/bioclim_classes.csv")):
+    if not os.path.isfile(os.path.join(data_dir_dataset, "bioclim_classes.csv")):
         process_bioclim_classes(
-            os.path.join(data_dir, "source/bioclim_classes.json"),
-            os.path.join(data_dir, "caption_templates/bioclim_classes.csv"),
+            os.path.join(data_dir_dataset, "source/bioclim_classes.json"),
+            os.path.join(data_dir_dataset, "bioclim_classes.csv"),
         )
 
-    df = pd.read_csv(os.path.join(data_dir, "caption_templates/bioclim_classes.csv"))
+    df = pd.read_csv(os.path.join(data_dir_dataset, "bioclim_classes.csv"))
     df.sort_values(by=["name"], inplace=True)
     bioclim_variables = df.to_dict("records")
     for v in bioclim_variables:
         v["name"] = v["name"].replace("aux_bioclim_", "bio")
-
+    df["name"] = df["name"].apply(lambda x: x.replace("aux_bioclim_", "bio"))
     return bioclim_variables, df
-
-
-def get_path_s2bms():
-    """Get the path to the Sentinel-2 BMS data directory."""
-    if "S2BMS_IMAGES" in os.environ:
-        im_path = os.environ.get("S2BMS_IMAGES")
-        assert os.path.exists(im_path), f"Sentinel-2 BMS image path does not exist: {im_path}"
-    else:
-        im_path = None
-    if "S2BMS_PRESENCE" in os.environ:
-        presence_path = os.environ.get("S2BMS_PRESENCE")
-    else:
-        presence_path = os.path.join(
-            os.environ.get("PROJECT_ROOT", "."),
-            "data/source/butterflies/S2BMS/ukbms_species-presence/bms_presence_y-2018-2019_th-200.shp",
-        )
-    assert os.path.exists(
-        presence_path
-    ), f"Sentinel-2 BMS presence path does not exist: {presence_path}"
-    return im_path, presence_path
 
 
 def load_s2bms_presence():
     """Load the Sentinel-2 BMS species presence GeoDataFrame."""
-    _, s2bms_presence_path = get_path_s2bms()
+    s2bms_presence_path = os.path.join(
+        os.environ.get("DATA_DIR"),
+        "s2bms/source/ukbms_species-presence/bms_presence_y-2018-2019_th-200.shp",
+    )
+    assert os.path.exists(s2bms_presence_path), s2bms_presence_path
     df_s2bms_presence = gpd.read_file(s2bms_presence_path)
     # convert to WGS84
     df_s2bms_presence = df_s2bms_presence.to_crs(epsg=4326)
@@ -170,7 +151,7 @@ def create_timestamp(include_seconds=False):
 
 
 def load_aux_data(
-    filepath="../data/model_ready/s2bms_bioclim_lc_data.csv",
+    filepath="../data/s2bms/source/s2bms_bioclim_lc_data.csv",
     col_identifier="name",
 ):
     """Load auxiliary bioclimatic and land cover data."""

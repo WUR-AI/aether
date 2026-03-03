@@ -1,5 +1,5 @@
 import os
-from typing import override
+from typing import Any, Dict, override
 
 import torch
 from rasterio import open as ropen
@@ -15,8 +15,8 @@ class SatBirdDataset(BaseDataset):
         data_dir: str,
         modalities: dict,
         use_target_data: bool,
-        use_aux_data: bool,
         seed: int,
+        use_aux_data: Dict[str, Any] | str = "all",
         study_site: str = "Kenya",
         cache_dir: str = None,
         mock: bool = False,
@@ -32,8 +32,8 @@ class SatBirdDataset(BaseDataset):
         :param study_site: study site name [Kenya, USA_summer, USA_winter]
         :param mock: whether to mock csv file
         """
-        assert study_site in ["Kenya", "USA-summer", "USA-winter"]
-        # assert study_site in ["Kenya"]
+        # assert study_site in ["Kenya", "USA-summer", "USA-winter"]
+        assert study_site in ["Kenya", "USA-summer"]
         self.study_site = study_site
 
         super().__init__(
@@ -53,6 +53,7 @@ class SatBirdDataset(BaseDataset):
         """Setups the whole dataset, makes available data of requested modalities."""
 
         # Set up each requested modality
+
         for mod in self.modalities.keys():
             if mod == "coords" and len(self.modalities.keys()) == 1:
                 return
@@ -107,7 +108,14 @@ class SatBirdDataset(BaseDataset):
             )
 
         if self.use_aux_data:
-            formatted_row["aux"] = [row[i] for i in self.aux_names]
+            formatted_row["aux"] = {}
+            for aux_cat, vals in self.use_aux_data.items():
+                if aux_cat == "aux":
+                    formatted_row["aux"][aux_cat] = torch.tensor(
+                        [row[v] for v in vals], dtype=torch.float32
+                    )
+                else:
+                    formatted_row["aux"][aux_cat] = [row[v] for v in vals]
 
         return formatted_row
 

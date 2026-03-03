@@ -103,8 +103,8 @@ def test_train_resume(tmp_path: Path, cfg_train: DictConfig) -> None:
     metric_dict_2, _ = train(cfg_train)
 
     files = os.listdir(tmp_path / "checkpoints")
-    assert "epoch_001.ckpt" in files
-    assert "epoch_002.ckpt" not in files
+    assert len([x for x in files if x.endswith(".ckpt")]) == 2
+    assert "last.ckpt" in files
 
     # assert metric_dict_1["train/acc"] < metric_dict_2["train/acc"]
     # assert metric_dict_1["val/acc"] < metric_dict_2["val/acc"]

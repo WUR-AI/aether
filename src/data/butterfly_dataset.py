@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, override
+from typing import Any, Dict, List, override
 
 import numpy as np
 import pooch
@@ -17,7 +17,7 @@ class ButterflyDataset(BaseDataset):
         data_dir: str,
         modalities: dict,
         use_target_data: bool = True,
-        use_aux_data: bool = False,
+        use_aux_data: Dict[str, List[str] | str] | None = None,
         seed: int = 12345,
         cache_dir: str = None,
         mock: bool = False,
@@ -25,7 +25,8 @@ class ButterflyDataset(BaseDataset):
         """A dataset implementation for the Butterfly diversity use case.
 
         :param data_dir: path to data dir
-        :param modalities: a list of modalities needed as EO data (for EO encoder)
+        :param modalities: a dict of modalities needed as EO data (for EO encoder) (e.g.,
+            {"coords": None, "s2": {"channels": "rgb", "preprocessing": "zscored"}})
         :param use_target_data: if target values should be returned
         :param use_aux_data: if auxiliary values should be returned
         :param seed: random seed
@@ -164,7 +165,14 @@ class ButterflyDataset(BaseDataset):
             )
 
         if self.use_aux_data:
-            formatted_row["aux"] = [row[i] for i in self.aux_names]
+            formatted_row["aux"] = {}
+            for aux_cat, vals in self.use_aux_data.items():
+                if aux_cat == "aux":
+                    formatted_row["aux"][aux_cat] = torch.tensor(
+                        [row[v] for v in vals], dtype=torch.float32
+                    )
+                else:
+                    formatted_row["aux"][aux_cat] = [row[v] for v in vals]
 
         return formatted_row
 

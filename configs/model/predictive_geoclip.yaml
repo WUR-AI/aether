@@ -8,6 +8,8 @@ prediction_head:
 
 trainable_modules: [prediction_head]
 
+metrics: ${metrics}
+
 optimizer:
   _target_: torch.optim.Adam
   _partial_: true

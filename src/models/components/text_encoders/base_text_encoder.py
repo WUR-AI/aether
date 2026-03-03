@@ -23,5 +23,22 @@ class BaseTextEncoder(nn.Module, ABC):
 
         NB: is not used by default, needs to be called explicitly in forward().
         """
-        self.extra_projector = nn.Linear(self.output_dim, projected_dim)
+        self.extra_projector = nn.Linear(self.output_dim, projected_dim, dtype=self.dtype)
+        print(
+            f"Extra linear projection layer added with mapping dimension {self.output_dim} to {projected_dim}"
+        )
         self.output_dim = projected_dim
+
+    @property
+    def device(self) -> torch.device:
+        devices = {p.device for p in self.parameters()}
+        if len(devices) != 1:
+            raise RuntimeError("Text encoder is on multiple devices")
+        return devices.pop()
+
+    @property
+    def dtype(self) -> torch.dtype:
+        dtypes = {p.dtype for p in self.parameters()}
+        if len(dtypes) != 1:
+            raise RuntimeError("Text encoder has multiple dtypes")
+        return dtypes.pop()

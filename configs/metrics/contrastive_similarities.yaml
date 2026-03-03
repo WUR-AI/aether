@@ -1,0 +1,4 @@
+_target_: src.models.components.metrics.metrics_wrapper.MetricsWrapper
+
+metrics:
+  - _target_: src.models.components.metrics.contrastive_similarities.CosineSimilarities

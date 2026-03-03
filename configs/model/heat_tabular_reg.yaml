@@ -1,0 +1,47 @@
+# configs/model/heat_tabular_reg.yaml
+#
+# Renamed from: predictive_tabular_regression.yaml
+# Reason: prefixed with "heat_" to scope to this use case.
+#
+# Variant: tabular only (feat_* CSV columns encoded by a small MLP)
+#
+# NOTE: tabular_dim is NOT hardcoded here.
+# It is resolved automatically at runtime:
+#   1. HeatGuatemalaDataset.tabular_dim reads len(feat_names) from the CSV.
+#   2. BaseDataModule.tabular_dim delegates to the train dataset.
+#   3. PredictiveRegressionModel.setup() calls
+#      self.eo_encoder.build_tabular_branch(self.trainer.datamodule.tabular_dim)
+
+_target_: src.models.predictive_model.PredictiveModel
+
+metrics: ${metrics}
+
+eo_encoder:
+  _target_: src.models.components.eo_encoders.multimodal_encoder.MultiModalEncoder
+  use_coords: false
+  use_tabular: true
+  tab_embed_dim: 64
+
+prediction_head:
+  _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
+  nn_layers: 2
+  hidden_dim: 256
+
+# Both encoder and head have trainable parameters.
+trainable_modules: [eo_encoder, prediction_head]
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.0001
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+
+loss_fn:
+  _target_: torch.nn.MSELoss
