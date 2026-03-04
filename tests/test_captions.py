@@ -14,7 +14,21 @@ def test_datamodule_uses_collate_when_aux_data(request, sample_csv, tmp_path):
     print(f"Mock captions written to {templates_path}")
     templates_path.write_text(json.dumps(["<name_loc> text"]))
 
-    caption_builder = DummyCaptionBuilder("v1.json", data_dir=str(tmp_path), seed=0)
+    concepts_path = tmp_path / "concept_captions" / "v1.json"
+    os.makedirs(str(tmp_path / "concept_captions"), exist_ok=True)
+    print(f"Concept captions written to {concepts_path}")
+    concepts_path.write_text(
+        json.dumps(
+            """[{
+            "concept_caption": "Forested area",
+            "is_max": true,
+            "theta_k": 0.5,
+            "col": "aux_corine_frac_311"
+          }]"""
+        )
+    )
+
+    caption_builder = DummyCaptionBuilder("v1.json", "v1.json", data_dir=str(tmp_path), seed=0)
 
     dataset = ButterflyDataset(
         data_dir=sample_csv,
@@ -46,6 +60,7 @@ def test_captionbuilder_generic_properties(tmp_path):
     dict_caption_builders = {"butterfly": ButterflyCaptionBuilder, "dummy": DummyCaptionBuilder}
 
     templates_fname = "v1.json"
+    concepts_fname = "v1.json"
 
     for name_cb, cb_class in dict_caption_builders.items():
         # There is no data on git anymore
@@ -53,21 +68,38 @@ def test_captionbuilder_generic_properties(tmp_path):
         #     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         #     templates_path = os.path.join(repo_root, "data", "s2bms")
         # else:
-        templates_path = tmp_path
-        templates_fpath = templates_path / "location_caption_templates" / templates_fname
-        os.makedirs(str(templates_path / "location_caption_templates"), exist_ok=True)
-        templates_fpath.write_text(json.dumps(["<name_loc> text"]))
-        print(f"written to {templates_path}")
+        templates_path = tmp_path / "location_caption_templates" / templates_fname
+        os.makedirs(str(tmp_path / "location_caption_templates"), exist_ok=True)
+        print(f"Mock captions written to {templates_path}")
+        templates_path.write_text(json.dumps(["<name_loc> text"]))
+
+        concepts_path = tmp_path / "concept_captions" / concepts_fname
+        os.makedirs(str(tmp_path / "concept_captions"), exist_ok=True)
+        print(f"Concept captions written to {concepts_path}")
+        concepts_path.write_text(
+            json.dumps(
+                """[{
+                "concept_caption": "Forested area",
+                "is_max": true,
+                "theta_k": 0.5,
+                "col": "aux_corine_frac_311"
+              }]"""
+            )
+        )
 
         caption_builder = cb_class(
             templates_fname=templates_fname,
-            data_dir=templates_path,
+            concepts_fname=concepts_fname,
+            data_dir=tmp_path,
             seed=0,
         )
 
         assert hasattr(
             caption_builder, "templates"
         ), f"'templates' attribute missing in {cb_class.__name__}."
+        assert hasattr(
+            caption_builder, "concepts"
+        ), f"'concepts' attribute missing in {cb_class.__name__}."
         assert hasattr(
             caption_builder, "data_dir"
         ), f"'data_dir' attribute missing in {cb_class.__name__}."

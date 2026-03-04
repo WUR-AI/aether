@@ -178,6 +178,7 @@ class TextAlignmentModel(BaseModel):
         similarity = self.concept_similarities(eo_feats)
 
         avr_scores, concept_scores = self.contrastive_val(similarity, aux_values=aux_vals)
+        # TODO pearson
 
         self.log_dict(avr_scores)
         for i, result in enumerate(concept_scores):

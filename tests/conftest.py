@@ -169,8 +169,23 @@ def create_butterfly_dataset(request, sample_csv, tmp_path):
     print(f"Mock captions written to {templates_path}")
     templates_path.write_text(json.dumps(["<name_loc> text"]))
 
+    concepts_path = tmp_path / "concept_captions" / "v1.json"
+    os.makedirs(str(tmp_path / "concept_captions"), exist_ok=True)
+    print(f"Concept captions written to {concepts_path}")
+    concepts_path.write_text(
+        json.dumps(
+            """[{
+            "concept_caption": "Forested area",
+            "is_max": true,
+            "theta_k": 0.5,
+            "col": "aux_corine_frac_311"
+          }]"""
+        )
+    )
+
     caption_builder = DummyCaptionBuilder(
         templates_fname="v1.json",
+        concepts_fname="v1.json",
         data_dir=str(tmp_path),
         seed=0,
     )

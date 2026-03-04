@@ -111,8 +111,10 @@ class BaseCaptionBuilder(ABC):
 class DummyCaptionBuilder(BaseCaptionBuilder):
     """Dummy caption builder for testing purposes."""
 
-    def __init__(self, templates_fname: str, data_dir: str, seed: int) -> None:
-        super().__init__(templates_fname, data_dir, seed)
+    def __init__(
+        self, templates_fname: str, concepts_fname: str, data_dir: str, seed: int
+    ) -> None:
+        super().__init__(templates_fname, concepts_fname, data_dir, seed)
 
     def sync_with_dataset(self, dataset) -> None:
         pass
