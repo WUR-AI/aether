@@ -1,10 +1,7 @@
 import json
 import os
 
-import pandas as pd
-import pytest
-
-from src.data.base_caption_builder import BaseCaptionBuilder, DummyCaptionBuilder
+from src.data.base_caption_builder import DummyCaptionBuilder
 from src.data.base_datamodule import BaseDataModule
 from src.data.butterfly_caption_builder import ButterflyCaptionBuilder
 from src.data.butterfly_dataset import ButterflyDataset
@@ -12,8 +9,8 @@ from src.data.butterfly_dataset import ButterflyDataset
 
 def test_datamodule_uses_collate_when_aux_data(request, sample_csv, tmp_path):
     use_mock = request.config.getoption("--use-mock")
-    templates_path = tmp_path / "caption_templates" / "v1.json"
-    os.makedirs(str(tmp_path / "caption_templates"), exist_ok=True)
+    templates_path = tmp_path / "location_caption_templates" / "v1.json"
+    os.makedirs(str(tmp_path / "location_caption_templates"), exist_ok=True)
     print(f"Mock captions written to {templates_path}")
     templates_path.write_text(json.dumps(["<name_loc> text"]))
 
@@ -57,8 +54,8 @@ def test_captionbuilder_generic_properties(tmp_path):
         #     templates_path = os.path.join(repo_root, "data", "s2bms")
         # else:
         templates_path = tmp_path
-        templates_fpath = templates_path / "caption_templates" / templates_fname
-        os.makedirs(str(templates_path / "caption_templates"), exist_ok=True)
+        templates_fpath = templates_path / "location_caption_templates" / templates_fname
+        os.makedirs(str(templates_path / "location_caption_templates"), exist_ok=True)
         templates_fpath.write_text(json.dumps(["<name_loc> text"]))
         print(f"written to {templates_path}")
 

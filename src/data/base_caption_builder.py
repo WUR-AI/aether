@@ -21,7 +21,7 @@ class BaseCaptionBuilder(ABC):
         """
 
         self.data_dir = data_dir
-        templates_path = os.path.join(self.data_dir, "caption_templates", templates_fname)
+        templates_path = os.path.join(self.data_dir, "location_caption_templates", templates_fname)
         self.templates = json.load(open(templates_path))
         self.tokens_in_template = [self._extract_tokens(t) for t in self.templates]
 
@@ -42,7 +42,9 @@ class BaseCaptionBuilder(ABC):
     @staticmethod
     def _extract_tokens(template: str) -> List[str]:
         """Extract tokens in template and return a list of tokens."""
-        return re.findall(r"<([^<>]+)>", template)
+        tokens = re.findall(r"<([^<>]+)>", template)
+        # TODO: check if those columns exist in the dataset maps
+        return tokens
 
     @staticmethod
     def _fill(template: str, fillers: Dict[str, str]) -> str:

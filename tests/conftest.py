@@ -7,12 +7,11 @@ from pathlib import Path
 import pandas as pd
 import pytest
 import rootutils
-import torch
 from hydra import compose, initialize
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, open_dict
 
-from src.data.base_caption_builder import BaseCaptionBuilder, DummyCaptionBuilder
+from src.data.base_caption_builder import DummyCaptionBuilder
 from src.data.base_datamodule import BaseDataModule
 from src.data.butterfly_dataset import ButterflyDataset
 
@@ -165,8 +164,8 @@ def create_butterfly_dataset(request, sample_csv, tmp_path):
         mock=use_mock,
     )
 
-    templates_path = tmp_path / "caption_templates" / "v1.json"
-    os.makedirs(str(tmp_path / "caption_templates"), exist_ok=True)
+    templates_path = tmp_path / "location_caption_templates" / "v1.json"
+    os.makedirs(str(tmp_path / "location_caption_templates"), exist_ok=True)
     print(f"Mock captions written to {templates_path}")
     templates_path.write_text(json.dumps(["<name_loc> text"]))
 
