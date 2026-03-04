@@ -156,7 +156,7 @@ class TextAlignmentModel(BaseModel):
 
         self.log_dict(metrics, batch_size=local_batch_size, **self.log_kwargs)
 
-        if mode == "val":
+        if mode in ["val", "test"]:
             self.outputs_epoch_memory.append(
                 {
                     "eo_feats": eo_feats.detach(),
@@ -167,7 +167,7 @@ class TextAlignmentModel(BaseModel):
         return loss
 
     @override
-    def on_validation_epoch_end(self):
+    def on_x_epoch_end(self):
 
         # Combine batches
         eo_feats = torch.cat([x["eo_feats"] for x in self.outputs_epoch_memory], dim=0)
@@ -187,6 +187,14 @@ class TextAlignmentModel(BaseModel):
 
         # Reset memory
         self.outputs_epoch_memory.clear()
+
+    @override
+    def on_validation_epoch_end(self):
+        return self.on_x_epoch_end()
+
+    @override
+    def on_test_epoch_end(self):
+        return self.on_x_epoch_end()
 
     def concept_similarities(self, eo_embeds, concept=None) -> torch.Tensor:
         # Get concept embeddings
