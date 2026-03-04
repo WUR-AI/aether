@@ -16,8 +16,10 @@ from src.data_preprocessing.data_utils import (
 
 
 class ButterflyCaptionBuilder(BaseCaptionBuilder):
-    def __init__(self, templates_fname: str, data_dir: str, seed: int):
-        super().__init__(templates_fname, data_dir, seed)
+    def __init__(
+        self, templates_fname: str, concepts_fname: str, data_dir: str, seed: int
+    ) -> None:
+        super().__init__(templates_fname, concepts_fname, data_dir, seed)
 
     @override
     def sync_with_dataset(self, dataset: BaseDataset) -> None:
@@ -41,6 +43,8 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                     "description": description,
                     "units": units,
                 }
+
+        self.sync_concepts()
 
     def get_corine_column_keys(self):
         """Returns metadata for corine columns."""

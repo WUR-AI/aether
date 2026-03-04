@@ -11,7 +11,9 @@ from src.data.base_dataset import BaseDataset
 
 
 class BaseCaptionBuilder(ABC):
-    def __init__(self, templates_fname: str, data_dir: str, seed: int) -> None:
+    def __init__(
+        self, templates_fname: str, concepts_fname: str, data_dir: str, seed: int
+    ) -> None:
         """Interface of caption builder class for converting numerical auxiliary data values into
         textual descriptions from provided caption templates.
 
@@ -24,6 +26,9 @@ class BaseCaptionBuilder(ABC):
         templates_path = os.path.join(self.data_dir, "location_caption_templates", templates_fname)
         self.templates = json.load(open(templates_path))
         self.tokens_in_template = [self._extract_tokens(t) for t in self.templates]
+
+        concepts_path = os.path.join(self.data_dir, "concept_captions", concepts_fname)
+        self.concepts = json.load(open(concepts_path))
 
         self.column_to_metadata_map: Dict[str] | None = None
         self.seed = seed
@@ -98,8 +103,9 @@ class BaseCaptionBuilder(ABC):
 
         return formatted_rows
 
-    def build_concepts(self, aux_values) -> List[str]:
-        pass
+    def sync_concepts(self) -> List[str]:
+        for concept in self.concepts:
+            concept["id"] = self.column_to_metadata_map["aux"][concept["col"]]["id"]
 
 
 class DummyCaptionBuilder(BaseCaptionBuilder):

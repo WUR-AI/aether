@@ -14,6 +14,7 @@ dataset:
 caption_builder:
   _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
   templates_fname: v3.json
+  concepts_fname: v1.json
   data_dir: ${paths.data_dir}/s2bms
   seed: ${seed}
 
