@@ -19,7 +19,7 @@ class ContrastiveValidation(BaseMetrics):
 
         self.ks = ks
         if any("theta_k" in c for c in self.concept_configs):
-            self.ks.append("theta_k")
+            self.ks.append("dynamic_k")
 
     @override
     def forward(
@@ -61,7 +61,7 @@ class ContrastiveValidation(BaseMetrics):
         return return_scores, concept_scores
 
     @staticmethod
-    def topk_rank_agreement(gt_vals, pred_vals, ks, is_max=True, theta_k=None):
+    def topk_rank_agreement(gt_vals, pred_vals, ks, is_max=True, dynamic_k=None):
         """Get how much of top-k concept retrievals are predicted correctly."""
         num_candidates = len(gt_vals)
 
@@ -78,9 +78,9 @@ class ContrastiveValidation(BaseMetrics):
 
         for k in ks:
             k_key = k
-            if k == "theta_k":
-                if theta_k != 0:
-                    k = theta_k
+            if k == "dynamic_k":
+                if dynamic_k != 0:
+                    k = dynamic_k
                 else:
                     continue
 
