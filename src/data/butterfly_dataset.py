@@ -17,7 +17,7 @@ class ButterflyDataset(BaseDataset):
         data_dir: str,
         modalities: dict,
         use_target_data: bool = True,
-        use_aux_data: Dict[str, List[str] | str] | None = None,
+        use_aux_data: Any = None,
         seed: int = 12345,
         cache_dir: str = None,
         mock: bool = False,
@@ -28,7 +28,7 @@ class ButterflyDataset(BaseDataset):
         :param modalities: a dict of modalities needed as EO data (for EO encoder) (e.g.,
             {"coords": None, "s2": {"channels": "rgb", "preprocessing": "zscored"}})
         :param use_target_data: if target values should be returned
-        :param use_aux_data: if auxiliary values should be returned
+        :param use_aux_data: which (if any) auxiliary values should be returned
         :param seed: random seed
         :param cache_dir: path to cache dir
         :param mock: whether to mock csv file

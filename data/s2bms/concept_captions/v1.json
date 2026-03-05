@@ -1,0 +1,14 @@
+[
+ {
+    "concept_caption": "Forested area",
+    "is_max": true,
+    "theta_k": 0.5,
+    "col": "aux_corine_frac_3"
+  },
+  {
+    "concept_caption": "Sparsely populated area",
+    "is_max": false,
+    "theta_k": 0.2,
+    "col": "aux_corine_frac_11"
+  }
+]

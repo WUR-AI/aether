@@ -63,6 +63,7 @@ class BaseDataModule(LightningDataModule):
             assert caption_builder is not None, "Caption_builder cannot be None"
             self.caption_builder = caption_builder
             self.caption_builder.sync_with_dataset(self.dataset)
+            self.concept_configs = caption_builder.concepts
 
         self.split_data()
 
