@@ -8,7 +8,9 @@ from src.models.base_model import BaseModel
 from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
 from src.models.components.eo_encoders.multimodal_encoder import MultiModalEncoder
 from src.models.components.loss_fns.base_loss_fn import BaseLossFn
-from src.models.components.metrics.contrastive_validation import ContrastiveValidation
+from src.models.components.metrics.contrastive_validation import (
+    RetrievalContrastiveValidation,
+)
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
 from src.models.components.pred_heads.linear_pred_head import (
     BasePredictionHead,
@@ -103,7 +105,7 @@ class TextAlignmentModel(BaseModel):
         self.concept_configs = self.trainer.datamodule.concept_configs
         self.concepts = [c["concept_caption"] for c in self.concept_configs]
 
-        self.contrastive_val = ContrastiveValidation(self.ks, self.concept_configs)
+        self.contrastive_val = RetrievalContrastiveValidation(self.ks, self.concept_configs)
         self.outputs_epoch_memory = []
 
         for trainable_module in self.trainable_modules:
@@ -189,14 +191,20 @@ class TextAlignmentModel(BaseModel):
         # Rank on similarity
         similarity = self.concept_similarities(eo_feats)
 
-        avr_scores, concept_scores = self.contrastive_val(similarity, aux_values=aux_vals)
+        concept_scores = self.contrastive_val(similarity, aux_values=aux_vals)
         # TODO pearson
 
-        self.log_dict(avr_scores)
-        for i, result in enumerate(concept_scores):
+        avr_scores = {f"{mode}_avr_top-{k}": [] for k in self.ks}
+        for i, result in concept_scores.items():
             print(f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:')
             for k, v in result.items():
                 print(f"Top-{k}: {v:.1f}%")
+                avr_scores[f"{mode}_avr_top-{k}"].append(v)
+
+        for k, v in avr_scores.items():
+            avr_scores[k] = sum(v) / len(v)
+
+        self.log_dict(avr_scores)
 
         # Reset memory
         self.outputs_epoch_memory.clear()
