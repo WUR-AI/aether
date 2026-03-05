@@ -37,15 +37,18 @@ class ContrastiveValidation(BaseMetrics):
         for i, configs in enumerate(self.concept_configs):
             idx = configs["id"]
             is_max = configs["is_max"]
-            theta_k = configs.get("theta_k")
-            if theta_k and aux_vals is not None:
-                aux_val = aux_vals[idx]
-                theta_k = (
-                    sum(aux_val >= theta_k).item() if is_max else sum(aux_val <= theta_k).item()
+            k_threshold = configs.get("theta_k")
+            aux_val = aux_vals[idx]
+
+            if k_threshold:
+                k_threshold = (
+                    sum(aux_val >= k_threshold).item()
+                    if is_max
+                    else sum(aux_val <= k_threshold).item()
                 )
 
             score = self.topk_rank_agreement(
-                aux_val, similarity_matrix[i], self.ks, is_max, theta_k
+                aux_val, similarity_matrix[i], self.ks, is_max, k_threshold
             )
             concept_scores.append(score)
             for k, v in score.items():
