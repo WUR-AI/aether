@@ -30,8 +30,6 @@ class TextAlignmentModel(BaseModel):
         loss_fn: BaseLossFn,
         trainable_modules: list[str],
         metrics: MetricsWrapper,
-        num_classes: int | None = None,
-        tabular_dim: int | None = None,
         prediction_head: BasePredictionHead | None = None,
         ks: list[int] | None = [5, 10, 15],
     ) -> None:
@@ -48,36 +46,52 @@ class TextAlignmentModel(BaseModel):
         :param tabular_dim: number of tabular features
         :param prediction_head: prediction head
         """
-        super().__init__(
-            trainable_modules, optimizer, scheduler, loss_fn, metrics, num_classes, tabular_dim
-        )
+        super().__init__(trainable_modules, optimizer, scheduler, loss_fn, metrics)
 
         self.ks = ks
         self.log_kwargs = dict(on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
 
         # Encoders configuration
         self.eo_encoder = eo_encoder
+        self.text_encoder = text_encoder
+
+        # Prediction head
+        self.prediction_head = prediction_head
+
+    @override
+    def setup(self, stage: str) -> None:
+        self.num_classes = self.trainer.datamodule.num_classes
+        self.tabular_dim = self.trainer.datamodule.tabular_dim
+
+        # Set up encoders and missing adapters/projectors
+        self.setup_encoders_adapters()
+
+        # Freeze requested parts
+        self.freezer()
+
+        # Configure contrastive retrieval evaluation
+        self.setup_retrieval_evaluation()
+
+    def setup_encoders_adapters(self):
+        """Set up encoders and missing adapters/projectors."""
         # TODO: move to multi-modal eo encoder
         if (
             isinstance(self.eo_encoder, MultiModalEncoder)
             and self.eo_encoder.use_tabular
             and not self.eo_encoder._tabular_ready
         ):
-            self.eo_encoder.build_tabular_branch(tabular_dim)
-
-        self.text_encoder = text_encoder
-        # TODO: if eo==geoclip_img pass on shared mlp
+            self.eo_encoder.build_tabular_branch(self.tabular_dim)
 
         # Extra projector for text encoder if eo and text dim not match
         if self.eo_encoder.output_dim != self.text_encoder.output_dim:
             self.text_encoder.add_projector(projected_dim=self.eo_encoder.output_dim)
             self.trainable_modules.append("text_encoder.extra_projector")
 
-        # Prediction head
-        self.prediction_head = prediction_head
+        # TODO: if eo==geoclip_img pass on shared mlp
+
         if self.prediction_head is not None:
             self.prediction_head.set_dim(
-                input_dim=self.eo_encoder.output_dim, output_dim=num_classes
+                input_dim=self.eo_encoder.output_dim, output_dim=self.num_classes
             )
             self.prediction_head.configure_nn()
 
@@ -86,10 +100,7 @@ class TextAlignmentModel(BaseModel):
             self.eo_encoder = self.eo_encoder.to(self.text_encoder.dtype)
             print(f"Eo encoder dtype changed to {self.eo_encoder.dtype}")
 
-        # Freezing requested parts
-        self.freezer()
-
-    def setup(self, stage: str) -> None:
+    def setup_retrieval_evaluation(self):
         self.concept_configs = self.trainer.datamodule.concept_configs
         self.concepts = [c["concept_caption"] for c in self.concept_configs]
 
