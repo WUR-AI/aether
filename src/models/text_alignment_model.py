@@ -56,9 +56,8 @@ class TextAlignmentModel(BaseModel):
         # Prediction head
         self.prediction_head = prediction_head
 
+    @override
     def setup(self, stage: str) -> None:
-        """Configures model based on the parameters provided by dataset (through datamodule) This
-        method is called after trainer is initialized and datamodule is available."""
         self.num_classes = self.trainer.datamodule.num_classes
         self.tabular_dim = self.trainer.datamodule.tabular_dim
 

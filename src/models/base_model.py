@@ -38,7 +38,8 @@ class BaseModel(LightningModule, ABC):
 
     @abstractmethod
     def setup(self, stage: str) -> None:
-        """Updates model based data-bound configurations."""
+        """Updates model based data-bound configurations (through datamodule), This method is
+        called after trainer is initialized and datamodule is available."""
         pass
 
     @final

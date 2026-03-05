@@ -45,8 +45,8 @@ class PredictiveModel(BaseModel):
         # Prediction head
         self.prediction_head = prediction_head
 
+    @override
     def setup(self, stage: str) -> None:
-        """Setup the predictive model."""
         self.num_classes = self.trainer.datamodule.num_classes
         self.tabular_dim = self.trainer.datamodule.tabular_dim
 
