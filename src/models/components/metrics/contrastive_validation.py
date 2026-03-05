@@ -34,28 +34,24 @@ class RetrievalContrastiveValidation(BaseMetrics):
 
         concept_scores = {}
         for i, configs in enumerate(self.concept_configs):
-            avr_scores = {k: [] for k in self.ks}
-
             idx = configs["id"]
             is_max = configs["is_max"]
             k_threshold = configs.get("theta_k")
             aux_val = aux_vals[idx]
 
             if k_threshold:
-                k_threshold = (
+                dynamic_k = (
                     sum(aux_val >= k_threshold).item()
                     if is_max
                     else sum(aux_val <= k_threshold).item()
                 )
+            else:
+                dynamic_k = None
 
-            score = self.topk_rank_agreement(
-                aux_val, similarity_matrix[i], self.ks, is_max, k_threshold
-            )
+            sim_val = similarity_matrix[i]
+            scores = self.topk_rank_agreement(aux_val, sim_val, self.ks, is_max, dynamic_k)
 
-            for k, v in score.items():
-                avr_scores[k] = v
-
-            concept_scores[i] = avr_scores
+            concept_scores[i] = scores
 
         return concept_scores
 
