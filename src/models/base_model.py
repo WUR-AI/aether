@@ -36,6 +36,11 @@ class BaseModel(LightningModule, ABC):
         self.loss_fn = loss_fn
         self.metrics = metrics
 
+    @abstractmethod
+    def setup(self, stage: str) -> None:
+        """Updates model based data-bound configurations."""
+        pass
+
     @final
     def freezer(self) -> None:
         """Freezes modules based on provided trainable modules."""
