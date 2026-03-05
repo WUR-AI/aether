@@ -100,7 +100,8 @@ class TextAlignmentModel(BaseModel):
                 return
 
         # Encode concepts if text branch is frozen
-        self.concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
+        with torch.no_grad():
+            self.concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
 
     @override
     def forward(
@@ -143,7 +144,6 @@ class TextAlignmentModel(BaseModel):
             )
 
         # Logging
-
         self.log(f"{mode}_loss", loss, batch_size=local_batch_size, **self.log_kwargs)
 
         if self.loss_fn.__getattr__("log_temp") and mode == "train":
@@ -167,7 +167,7 @@ class TextAlignmentModel(BaseModel):
         return loss
 
     @override
-    def on_x_epoch_end(self):
+    def _on_epoch_end(self, mode: str):
 
         # Combine batches
         eo_feats = torch.cat([x["eo_feats"] for x in self.outputs_epoch_memory], dim=0)
@@ -182,7 +182,7 @@ class TextAlignmentModel(BaseModel):
 
         self.log_dict(avr_scores)
         for i, result in enumerate(concept_scores):
-            print(f'\nConcept "{self.concepts[i]}" average top-k accuracies:')
+            print(f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:')
             for k, v in result.items():
                 print(f"Top-{k}: {v:.1f}%")
 
@@ -191,11 +191,11 @@ class TextAlignmentModel(BaseModel):
 
     @override
     def on_validation_epoch_end(self):
-        return self.on_x_epoch_end()
+        return self._on_epoch_end("val")
 
     @override
     def on_test_epoch_end(self):
-        return self.on_x_epoch_end()
+        return self._on_epoch_end("test")
 
     def concept_similarities(self, eo_embeds, concept=None) -> torch.Tensor:
         # Get concept embeddings
@@ -203,13 +203,14 @@ class TextAlignmentModel(BaseModel):
             # If only one concept is provided
             if isinstance(concept, str):
                 concept = [concept]
-
-            concept_embeds = self.text_encoder({"text": concept}, mode="train")
+            with torch.no_grad():
+                concept_embeds = self.text_encoder({"text": concept}, mode="train")
 
         elif self.concept_embeds is not None:
             concept_embeds = self.concept_embeds
         else:
-            concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
+            with torch.no_grad():
+                concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
 
         # Similarity
         eo_embeds = F.normalize(eo_embeds, dim=1)
