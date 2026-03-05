@@ -16,8 +16,6 @@ class BaseModel(LightningModule, ABC):
         scheduler: torch.optim.lr_scheduler,
         loss_fn: BaseLossFn,
         metrics: MetricsWrapper,
-        num_classes: int | None = None,
-        tabular_dim: int | None = None,
     ) -> None:
         """Interface for any model.
 
@@ -26,7 +24,6 @@ class BaseModel(LightningModule, ABC):
         :param scheduler: scheduler for the model weight update
         :param loss_fn: loss function
         :param metrics: metrics to track for model performance estimation
-        :param num_classes: number of classes to predict
         """
         super().__init__()
         self.save_hyperparameters(
@@ -34,8 +31,8 @@ class BaseModel(LightningModule, ABC):
         )
 
         self.trainable_modules = trainable_modules
-        self.num_classes = num_classes
-        self.tabular_dim = tabular_dim
+        self.num_classes: int | None = None
+        self.tabular_dim: int | None = None
         self.loss_fn = loss_fn
         self.metrics = metrics
 
