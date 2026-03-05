@@ -5,7 +5,7 @@ import torch
 from src.models.components.metrics.base_metrics import BaseMetrics
 
 
-class ContrastiveValidation(BaseMetrics):
+class RetrievalContrastiveValidation(BaseMetrics):
     def __init__(self, ks: List[Any], concept_configs: List[Any]) -> None:
         """Evaluates how many eo embeddings are retrieved in top-k metrics based the GT labels.
 
@@ -32,9 +32,10 @@ class ContrastiveValidation(BaseMetrics):
 
         aux_vals = aux_values.T
 
-        avr_scores = {k: [] for k in self.ks}
-        concept_scores = []
+        concept_scores = {}
         for i, configs in enumerate(self.concept_configs):
+            avr_scores = {k: [] for k in self.ks}
+
             idx = configs["id"]
             is_max = configs["is_max"]
             k_threshold = configs.get("theta_k")
@@ -50,15 +51,13 @@ class ContrastiveValidation(BaseMetrics):
             score = self.topk_rank_agreement(
                 aux_val, similarity_matrix[i], self.ks, is_max, k_threshold
             )
-            concept_scores.append(score)
+
             for k, v in score.items():
-                avr_scores[k].append(v)
+                avr_scores[k] = v
 
-        return_scores = {}
-        for k, v in avr_scores.items():
-            return_scores[f"avr_top-{k}"] = sum(v) / len(v)
+            concept_scores[i] = avr_scores
 
-        return return_scores, concept_scores
+        return concept_scores
 
     @staticmethod
     def topk_rank_agreement(gt_vals, pred_vals, ks, is_max=True, dynamic_k=None):
