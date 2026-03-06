@@ -11,7 +11,9 @@ from src.data.base_dataset import BaseDataset
 
 
 class BaseCaptionBuilder(ABC):
-    def __init__(self, templates_fname: str, data_dir: str, seed: int) -> None:
+    def __init__(
+        self, templates_fname: str, concepts_fname: str, data_dir: str, seed: int
+    ) -> None:
         """Interface of caption builder class for converting numerical auxiliary data values into
         textual descriptions from provided caption templates.
 
@@ -21,9 +23,12 @@ class BaseCaptionBuilder(ABC):
         """
 
         self.data_dir = data_dir
-        templates_path = os.path.join(self.data_dir, "caption_templates", templates_fname)
+        templates_path = os.path.join(self.data_dir, "location_caption_templates", templates_fname)
         self.templates = json.load(open(templates_path))
         self.tokens_in_template = [self._extract_tokens(t) for t in self.templates]
+
+        concepts_path = os.path.join(self.data_dir, "concept_captions", concepts_fname)
+        self.concepts = json.load(open(concepts_path))
 
         self.column_to_metadata_map: Dict[str] | None = None
         self.seed = seed
@@ -42,7 +47,9 @@ class BaseCaptionBuilder(ABC):
     @staticmethod
     def _extract_tokens(template: str) -> List[str]:
         """Extract tokens in template and return a list of tokens."""
-        return re.findall(r"<([^<>]+)>", template)
+        tokens = re.findall(r"<([^<>]+)>", template)
+        # TODO: check if those columns exist in the dataset maps
+        return tokens
 
     @staticmethod
     def _fill(template: str, fillers: Dict[str, str]) -> str:
@@ -52,45 +59,70 @@ class BaseCaptionBuilder(ABC):
         return template
 
     @abstractmethod
-    def _build_from_template(self, template_idx: int, row: List[Any]) -> str:
+    def _build_from_template(
+        self, template_idx: int, aux: torch.Tensor, top: List[str] | None = None
+    ) -> str:
         """Build caption text from template and row of auxiliary data."""
         pass
 
-    def random(self, aux_values: List[Any]) -> List[str]:
+    def random(self, aux_values) -> List[str]:
         """Return a caption from a randomly sampled template for each data point."""
         formatted_rows = []
-        template_idx = random.choices(
+
+        batch_size = len(aux_values["aux"])
+
+        template_ids = random.choices(
             range(len(self.templates)),
-            k=len(aux_values),
+            k=batch_size,
         )
-        for idx, row in zip(template_idx, aux_values):
-            formatted_rows.append(self._build_from_template(idx, row))
+        for (
+            i,
+            template_idx,
+        ) in enumerate(template_ids):
+            row_aux = aux_values["aux"][i]
+            row_top = aux_values.get("top")[i] if aux_values.get("top") else None
+            formatted_rows.append(
+                self._build_from_template(template_idx, aux=row_aux, top=row_top)
+            )
 
         return formatted_rows
 
-    def all(self, aux_values: List[Any]) -> List[str]:
+    def all(self, aux_values) -> List[str]:
         """Return a list of captions from all available templates."""
         formatted_rows = []
-        for row in aux_values:
+        for i in range(0, len(aux_values["aux"])):
             descriptions = []
+            row_aux = aux_values["aux"][i]
+            row_top = aux_values.get("top")[i] if aux_values.get("top") else None
+
             for template_idx in range(0, len(self)):
-                descriptions.append(self._build_from_template(template_idx, row))
+                descriptions.append(
+                    self._build_from_template(template_idx, aux=row_aux, top=row_top)
+                )
             formatted_rows.append(descriptions)
 
         return formatted_rows
+
+    def sync_concepts(self) -> List[str]:
+        for concept in self.concepts:
+            concept["id"] = self.column_to_metadata_map["aux"][concept["col"]]["id"]
 
 
 class DummyCaptionBuilder(BaseCaptionBuilder):
     """Dummy caption builder for testing purposes."""
 
-    def __init__(self, templates_fname: str, data_dir: str, seed: int) -> None:
-        super().__init__(templates_fname, data_dir, seed)
+    def __init__(
+        self, templates_fname: str, concepts_fname: str, data_dir: str, seed: int
+    ) -> None:
+        super().__init__(templates_fname, concepts_fname, data_dir, seed)
 
     def sync_with_dataset(self, dataset) -> None:
         pass
 
-    def _build_from_template(self, template_idx: int, row: List[Any]) -> str:
-        first_val = row[0].item() if torch.is_tensor(row) else row[0]
+    def _build_from_template(
+        self, template_idx: int, aux: torch.Tensor, top: List[str] | None = None
+    ) -> str:
+        first_val = aux[0].item()
         return f"Location with value {first_val}"
 
 

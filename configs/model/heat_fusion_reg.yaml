@@ -1,0 +1,41 @@
+# configs/model/heat_fusion_reg.yaml
+#
+# Renamed from: predictive_geoclip_tabular_regression.yaml
+# Reason: "fusion" is concise; "heat_" scopes to this use case.
+#
+# Variant: GeoClip (coords) + tabular fusion
+#   Encoder output = GeoClip (512) + tabular projection (64) = 576-dim
+
+_target_: src.models.predictive_model.PredictiveModel
+
+eo_encoder:
+  _target_: src.models.components.eo_encoders.multimodal_encoder.MultiModalEncoder
+  use_coords: true
+  use_tabular: true
+#  tab_embed_dim: 64
+
+prediction_head:
+  _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
+  nn_layers: 2
+  hidden_dim: 256
+
+# GeoClip frozen; tabular projection + head are trained.
+trainable_modules: [eo_encoder, prediction_head]
+
+metrics: ${metrics}
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.0
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+
+loss_fn:
+  _target_: torch.nn.MSELoss

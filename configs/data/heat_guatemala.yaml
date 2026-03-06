@@ -1,0 +1,23 @@
+_target_: src.data.base_datamodule.BaseDataModule
+
+dataset:
+  _target_: src.data.heat_guatemala_dataset.HeatGuatemalaDataset
+  data_dir: ${paths.data_dir}
+  modalities:
+    coords: {}
+  use_target_data: true
+  use_features: true
+  use_aux_data: none
+  seed: ${seed}
+  cache_dir: ${paths.cache_dir}
+
+batch_size: 64
+num_workers: 8
+pin_memory: true
+
+split_mode: "from_file"
+save_split: false
+saved_split_file_name: "split_indices_heat_guatemala_2026-02-20-1148.pth"
+
+train_val_test_split: [0.7, 0.15, 0.15]
+seed: ${seed}

@@ -10,7 +10,7 @@ dataset:
       size: 256
       format: tif
   use_target_data: true # default true
-  use_aux_data: false # default false
+  use_aux_data: none # default false
   seed: ${seed}
   cache_dir: ${paths.cache_dir}
 

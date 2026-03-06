@@ -73,7 +73,8 @@ Data folders should follow the following directory structure within `DATA_DIR`:
 ├── s2bms/                               <- Dataset folder.
 │   ├── model_ready_s2bms.csv            <- Csv file with "name_loc" id, locations, aux data and target data.
 │   ├── aux_classes.csv                  <- Csv file with explanations for aux data class names.
-│   ├── caption_templates.json           <- Json file with list of caption templates (referencing aux column names).
+│   ├── caption_templates                <- Caption templates
+│       ├── v1.json                      <- Json file with list of caption templates (referencing aux column names).
 │   ├── splits/                          <- Torch data splits
 │   ├── source/                          <- Optional: source data used to create model_ready csv.
 │   ├── eo/                              <- EO data modalities
@@ -194,6 +195,13 @@ We follow the directory structure from the [Hydra-Lightning template](https://gi
 ├── uv.lock                   <- A frozen snapshot of exact dependencies for the uv package manager.
 └── README.md
 ```
+
+## Architecture Overview
+
+The diagram below shows how configuration files, datasets, and model components
+relate to each other in the AETHER framework.
+
+![Framework Architecture](docs/figures/diagram.png)
 
 ## Attribution
 

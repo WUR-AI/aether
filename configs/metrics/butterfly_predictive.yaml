@@ -1,0 +1,6 @@
+_target_: src.models.components.metrics.metrics_wrapper.MetricsWrapper
+
+metrics:
+  - _target_: src.models.components.loss_fns.mse_loss.MSELoss
+  - _target_: src.models.components.metrics.top_k_accuracy.TopKAccuracy
+    k_list: [1, 5, 10]
