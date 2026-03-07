@@ -14,7 +14,7 @@ from src.models.components.geo_encoders.multimodal_encoder import MultiModalEnco
 
 # @pytest.mark.slow
 def test_geo_encoder_generic_properties(create_butterfly_dataset):
-    """This test checks that all EO encoders implement the basic properties and methods."""
+    """This test checks that all GEO encoders implement the basic properties and methods."""
     dict_geo_encoders = {
         "geoclip_coords": GeoClipCoordinateEncoder,
         "cnn": CNNEncoder,
@@ -41,7 +41,7 @@ def test_geo_encoder_generic_properties(create_butterfly_dataset):
         ), f"'forward' is not callable in {geo_encoder_class.__name__}."
 
         if geo_encoder_name == "geoclip_coords":
-            # TODO: try more EO encoders when (mock) test data also includes images.
+            # TODO: try more GEO encoders when (mock) test data also includes images.
             feats = geo_encoder.forward(batch)
             assert isinstance(
                 feats, torch.Tensor
