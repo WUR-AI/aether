@@ -1,7 +1,6 @@
 from typing import Dict, override
 
 import torch
-import torch.nn.functional as F
 
 from src.models.base_model import BaseModel
 from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
@@ -75,21 +74,22 @@ class PredictiveModel(BaseModel):
     @override
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         feats = self.eo_encoder(batch)
-        feats = F.normalize(feats, dim=-1)
         return self.prediction_head(feats)
 
     @override
     def _step(self, batch: Dict[str, torch.Tensor], mode: str = "train") -> torch.Tensor:
-        feats = self.forward(batch)
+        preds = self.forward(batch)
 
         log_kwargs = dict(
-            on_step=False, on_epoch=True, prog_bar=True, sync_dist=True, batch_size=feats.size(0)
+            on_step=False, on_epoch=True, prog_bar=True, sync_dist=True, batch_size=preds.size(0)
         )
-        loss = self.loss_fn(feats, batch.get("target"))
+        loss = self.loss_fn(preds, batch.get("target"))
         self.log(f"{mode}_loss", loss, **log_kwargs)
 
-        metrics = self.metrics(pred=feats, batch=batch, mode=mode)
+        metrics = self.metrics(pred=preds, batch=batch, mode=mode)
         self.log_dict(metrics, **log_kwargs)
+
+        return loss
 
 
 if __name__ == "__main__":

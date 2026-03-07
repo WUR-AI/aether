@@ -1,0 +1,33 @@
+_target_: src.models.predictive_model.PredictiveModel
+
+eo_encoder:
+  _target_: src.models.components.eo_encoders.multimodal_encoder.MultiModalEncoder
+  use_coords: false
+  use_tabular: true
+  tab_embed_dim: 128
+
+prediction_head:
+  _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
+  nn_layers: 2
+  hidden_dim: 64
+
+# Both encoder and head have trainable parameters.
+trainable_modules: [eo_encoder, prediction_head]
+
+metrics: ${metrics}
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.0001
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+
+loss_fn:
+  _target_: src.models.components.loss_fns.huber_loss.HuberLoss
