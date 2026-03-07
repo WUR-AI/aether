@@ -8,8 +8,8 @@
 
 _target_: src.models.predictive_model.PredictiveModel
 
-eo_encoder:
-  _target_: src.models.components.eo_encoders.multimodal_encoder.MultiModalEncoder
+geo_encoder:
+  _target_: src.models.components.geo_encoders.multimodal_encoder.MultiModalEncoder
   use_coords: true
   use_tabular: false
 

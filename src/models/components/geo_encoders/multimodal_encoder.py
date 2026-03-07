@@ -10,11 +10,11 @@ from typing import Dict, override
 import torch
 from torch import nn
 
-from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
-from src.models.components.eo_encoders.geoclip import GeoClipCoordinateEncoder
+from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
+from src.models.components.geo_encoders.geoclip import GeoClipCoordinateEncoder
 
 
-class MultiModalEncoder(BaseEOEncoder):
+class MultiModalEncoder(BaseGeoEncoder):
     """
     - coords only         (use_coords=True,  use_tabular=False)
     - tabular only        (use_coords=False, use_tabular=True)

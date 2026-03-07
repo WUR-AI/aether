@@ -4,36 +4,36 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
+from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
 
 
-class AverageEncoder(BaseEOEncoder):
+class AverageEncoder(BaseGeoEncoder):
     def __init__(
         self,
         output_dim: int | None = None,
-        eo_data_name="aef",
+        geo_data_name="aef",
     ) -> None:
         super().__init__()
 
         dict_n_bands_default = {"s2": 4, "aef": 64, "tessera": 128}
-        self.allowed_eo_data_names: list[str] = list(dict_n_bands_default.keys())
+        self.allowed_geo_data_names: list[str] = list(dict_n_bands_default.keys())
 
         assert (
-            eo_data_name in dict_n_bands_default
-        ), f"eo_data_name must be one of {self.allowed_eo_data_names}, got {eo_data_name}"
-        self.eo_data_name = eo_data_name
+            geo_data_name in dict_n_bands_default
+        ), f"geo_data_name must be one of {self.allowed_geo_data_names}, got {geo_data_name}"
+        self.geo_data_name = geo_data_name
 
-        if output_dim is None or output_dim == dict_n_bands_default[eo_data_name]:
-            self.output_dim = dict_n_bands_default[eo_data_name]
+        if output_dim is None or output_dim == dict_n_bands_default[geo_data_name]:
+            self.output_dim = dict_n_bands_default[geo_data_name]
             self.extra_projector = None
-            self.eo_encoder = self._average
+            self.geo_encoder = self._average
         else:
             assert (
                 type(output_dim) is int and output_dim > 0
             ), f"output_dim must be positive int, got {output_dim}"
             self.output_dim = output_dim
-            self.extra_projector = nn.Linear(dict_n_bands_default[eo_data_name], output_dim)
-            self.eo_encoder = self._average_and_project
+            self.extra_projector = nn.Linear(dict_n_bands_default[geo_data_name], output_dim)
+            self.geo_encoder = self._average_and_project
 
     def _average(self, x: torch.Tensor) -> torch.Tensor:
         """Averages the input tensor over spatial dimensions.
@@ -59,11 +59,11 @@ class AverageEncoder(BaseEOEncoder):
         dtype = self.dtype
         if eo_data.dtype != dtype:
             eo_data = eo_data.to(dtype)
-        feats = self.eo_encoder(eo_data[self.eo_data_name])
+        feats = self.geo_encoder(eo_data[self.geo_data_name])
         # n_nans = torch.sum(torch.isnan(feats)).item()
         # assert (
         #     n_nans == 0
-        # ), f"AverageEncoder output contains {n_nans}/{feats.numel()} NaNs PRIOR to normalization with data min {eo_data[self.eo_data_name].min()} and max {eo_data[self.eo_data_name].max()}."
+        # ), f"AverageEncoder output contains {n_nans}/{feats.numel()} NaNs PRIOR to normalization with data min {eo_data[self.geo_data_name].min()} and max {eo_data[self.geo_data_name].max()}."
 
         return feats.to(dtype)
 

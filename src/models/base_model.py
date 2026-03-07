@@ -27,7 +27,7 @@ class BaseModel(LightningModule, ABC):
         """
         super().__init__()
         self.save_hyperparameters(
-            ignore=["loss_fn", "eo_encoder", "prediction_head", "text_encoder", "metrics"]
+            ignore=["loss_fn", "geo_encoder", "prediction_head", "text_encoder", "metrics"]
         )
 
         self.trainable_modules = trainable_modules
