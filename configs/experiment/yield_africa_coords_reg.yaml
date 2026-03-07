@@ -1,0 +1,25 @@
+# @package _global_
+# configs/experiment/yield_africa_tabular_reg.yaml
+# Variant: Tabular features only, full dataset
+
+defaults:
+  - override /model: yield_geoclip_reg
+  - override /data: yield_africa_all
+  - override /metrics: yield_africa_regression
+
+tags: ["yield_africa", "coords_only", "regression"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 50
+
+data:
+  batch_size: 64
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "yield_africa"
+  aim:
+    experiment: "yield_africa"

@@ -13,14 +13,19 @@ dataset:
   # Country/year filters — set to a list to restrict, null to include all.
   # countries and years select only the listed values;
   # exclude_countries and exclude_years drop the listed values.
-  countries: null
-  years: null
-  exclude_countries: ["BF"]
+  countries: ["KEN", "RWA", "TAN", "ZAM", "MAL"]
+  years: [2016, 2017, 2018, 2019, 2020, 2021]
+  exclude_countries: null
   exclude_years: null
 
 batch_size: 64
 num_workers: 0
 pin_memory: false
+
+# todo - use spatial split (pre-calculate and then load from file)
+#      - hold out country/year block for validation
+#      - or leave one country out for validation
+#      - normalize data by country (after filtering)
 
 split_mode: "random"
 train_val_test_split: [0.7, 0.15, 0.15]

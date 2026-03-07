@@ -2,17 +2,16 @@ _target_: src.models.predictive_model.PredictiveModel
 
 eo_encoder:
   _target_: src.models.components.eo_encoders.multimodal_encoder.MultiModalEncoder
-  use_coords: false
-  use_tabular: true
-  tab_embed_dim: 128
+  use_coords: true
+  use_tabular: false
 
 prediction_head:
   _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
   nn_layers: 2
   hidden_dim: 256
 
-# Both encoder and head have trainable parameters.
-trainable_modules: [eo_encoder, prediction_head]
+# Only the prediction head is trained; GeoClip encoder is frozen.
+trainable_modules: [prediction_head]
 
 metrics: ${metrics}
 
