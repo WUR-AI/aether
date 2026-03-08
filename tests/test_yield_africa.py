@@ -46,7 +46,11 @@ MOCK_AUX_COLS = {
 }
 
 MOCK_N_ROWS = 10
-MOCK_TABULAR_DIM = len(MOCK_FEAT_COLS)   # 8
+# feat_year (1) + feat_country_{code} (8) are injected by YieldAfricaDataset
+# when country and year columns are present, so the effective tabular dim grows.
+from src.data.yield_africa_dataset import _ALL_COUNTRIES
+MOCK_INJECTED_FEAT_NAMES = {"feat_year"} | {f"feat_country_{c}" for c in _ALL_COUNTRIES}
+MOCK_TABULAR_DIM = len(MOCK_FEAT_COLS) + len(MOCK_INJECTED_FEAT_NAMES)  # 8 + 9 = 17
 MOCK_N_AUX = len(MOCK_AUX_COLS)          # 4
 
 
@@ -169,7 +173,8 @@ def test_yield_africa_dataset_target_name(yield_africa_dataset):
 def test_yield_africa_dataset_attributes(yield_africa_dataset):
     assert yield_africa_dataset.num_classes == 1
     assert yield_africa_dataset.tabular_dim == MOCK_TABULAR_DIM
-    assert set(yield_africa_dataset.feat_names) == set(MOCK_FEAT_COLS.keys())
+    expected_feat_names = set(MOCK_FEAT_COLS.keys()) | MOCK_INJECTED_FEAT_NAMES
+    assert set(yield_africa_dataset.feat_names) == expected_feat_names
 
 
 def test_yield_africa_dataset_feat_prefix(yield_africa_dataset):
