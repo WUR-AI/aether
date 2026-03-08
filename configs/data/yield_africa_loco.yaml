@@ -10,9 +10,7 @@ dataset:
   use_aux_data: none
   seed: ${seed}
   cache_dir: ${paths.cache_dir}
-  # Country/year filters — set to a list to restrict, null to include all.
-  # countries and years select only the listed values;
-  # exclude_countries and exclude_years drop the listed values.
+  # Include all countries and years so the split file determines the partition.
   countries: ["BF", "BUR", "ETH", "KEN", "MAL", "RWA", "TAN", "ZAM"]
   years: [2014, 2016, 2017, 2018, 2019, 2020, 2021, 2023, 2024]
   exclude_countries: null
@@ -22,12 +20,14 @@ batch_size: 64
 num_workers: 0
 pin_memory: false
 
-# todo - use spatial split (pre-calculate and then load from file)
-#      - hold out country/year block for validation
-#      - or leave one country out for validation
-#      - normalize data by country (after filtering)
-
-split_mode: "random"
-train_val_test_split: [0.7, 0.15, 0.15]
+# Leave-one-country-out split loaded from a pre-generated file.
+# Generate split files first:
+#   python src/data_preprocessing/yield_africa_loco_splits.py --data_dir <data_dir>
+#
+# Override saved_split_file_name at the command line to change the held-out country:
+#   python src/train.py experiment=yield_africa_tabular_loco \
+#     data.saved_split_file_name=split_loco_RWA.pth
+split_mode: "from_file"
+saved_split_file_name: "split_loco_KEN.pth"
 save_split: false
 seed: ${seed}

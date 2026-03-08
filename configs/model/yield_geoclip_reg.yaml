@@ -9,6 +9,7 @@ prediction_head:
   _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
   nn_layers: 2
   hidden_dim: 256
+  dropout: 0.2
 
 # Only the prediction head is trained; GeoClip encoder is frozen.
 trainable_modules: [prediction_head]
@@ -19,7 +20,7 @@ optimizer:
   _target_: torch.optim.Adam
   _partial_: true
   lr: 0.001
-  weight_decay: 0.0
+  weight_decay: 1e-4
 
 scheduler:
   _target_: torch.optim.lr_scheduler.ReduceLROnPlateau

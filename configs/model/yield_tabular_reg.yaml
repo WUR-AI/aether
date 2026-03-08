@@ -4,12 +4,14 @@ geo_encoder:
   _target_: src.models.components.geo_encoders.multimodal_encoder.MultiModalEncoder
   use_coords: false
   use_tabular: true
-  tab_embed_dim: 128
+  tab_embed_dim: 256
+  tabular_dropout: 0.2
 
 prediction_head:
   _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
   nn_layers: 2
   hidden_dim: 256
+  dropout: 0.2
 
 # Both encoder and head have trainable parameters.
 trainable_modules: [geo_encoder, prediction_head]
@@ -20,7 +22,7 @@ optimizer:
   _target_: torch.optim.Adam
   _partial_: true
   lr: 0.001
-  weight_decay: 0.0
+  weight_decay: 1e-4
 
 scheduler:
   _target_: torch.optim.lr_scheduler.ReduceLROnPlateau

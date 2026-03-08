@@ -1,11 +1,9 @@
 _target_: src.models.predictive_model.PredictiveModel
 
 geo_encoder:
-  _target_: src.models.components.geo_encoders.multimodal_encoder.MultiModalEncoder
-  use_coords: true
-  use_tabular: true
-  tab_embed_dim: 256
-  tabular_dropout: 0.2
+  _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
+  geo_data_name: tessera
+  # output_dim defaults to 128 (the native tessera channel count); no projection.
 
 prediction_head:
   _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
@@ -13,7 +11,6 @@ prediction_head:
   hidden_dim: 256
   dropout: 0.2
 
-# GeoClip frozen; tabular projection + head are trained.
 trainable_modules: [geo_encoder, prediction_head]
 
 metrics: ${metrics}

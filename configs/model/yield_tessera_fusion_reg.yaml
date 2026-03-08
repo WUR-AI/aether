@@ -1,11 +1,19 @@
 _target_: src.models.predictive_model.PredictiveModel
 
+# MultiModalEncoder with a pluggable geo encoder.
+# The geo_encoder_cfg replaces the hardcoded GeoClipCoordinateEncoder with
+# AverageEncoder(tessera), so the spatial branch uses inter-annual phenology
+# instead of static coordinate embeddings.
 geo_encoder:
   _target_: src.models.components.geo_encoders.multimodal_encoder.MultiModalEncoder
   use_coords: true
   use_tabular: true
   tab_embed_dim: 256
   tabular_dropout: 0.2
+  geo_encoder_cfg:
+    _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
+    geo_data_name: tessera
+    # output_dim defaults to 128; no projection needed.
 
 prediction_head:
   _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
@@ -13,7 +21,7 @@ prediction_head:
   hidden_dim: 256
   dropout: 0.2
 
-# GeoClip frozen; tabular projection + head are trained.
+# geo_encoder includes the tessera AverageEncoder + tabular branch; head is always trained.
 trainable_modules: [geo_encoder, prediction_head]
 
 metrics: ${metrics}
