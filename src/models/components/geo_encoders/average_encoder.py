@@ -55,16 +55,14 @@ class AverageEncoder(BaseGeoEncoder):
 
     @override
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
-        eo_data = batch.get("eo", {})
-        dtype = self.dtype
-        if eo_data.dtype != dtype:
-            eo_data = eo_data.to(dtype)
-        feats = self.geo_encoder(eo_data[self.geo_data_name])
-        # n_nans = torch.sum(torch.isnan(feats)).item()
-        # assert (
-        #     n_nans == 0
-        # ), f"AverageEncoder output contains {n_nans}/{feats.numel()} NaNs PRIOR to normalization with data min {eo_data[self.geo_data_name].min()} and max {eo_data[self.geo_data_name].max()}."
-
+        tile = batch.get("eo", {}).get(self.geo_data_name)
+        # Determine target dtype from parameters when available (e.g. when the
+        # optional projection layer exists); otherwise keep the input dtype.
+        params = list(self.parameters())
+        dtype = params[0].dtype if params else tile.dtype
+        if tile.dtype != dtype:
+            tile = tile.to(dtype)
+        feats = self.geo_encoder(tile)
         return feats.to(dtype)
 
 
