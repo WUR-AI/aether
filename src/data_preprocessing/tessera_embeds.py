@@ -1,7 +1,11 @@
 import math
 import os
+import threading
 
 import numpy as np
+
+# Serialises concurrent reads/writes to the per-directory meta.csv log file.
+_meta_csv_lock = threading.Lock()
 import pandas as pd
 import rasterio
 from geotessera import GeoTessera
@@ -122,6 +126,12 @@ def get_tessera_embeds(
         if reproject_memfile:
             memfiles.append(reproject_memfile)
 
+    if not tiles:
+        print(f"No TESSERA tiles found for {name_loc} at ({lon:.4f}, {lat:.4f}) year={year}. Skipping.")
+        for mf in memfiles:
+            mf.close()
+        return
+
     mosaic, mosaic_transform = merge(tiles)
     mosaic = mosaic.transpose(1, 2, 0)
 
@@ -134,10 +144,17 @@ def get_tessera_embeds(
     col, row = crs_to_pixel_coords(lon_utm, lat_utm, mosaic_transform)
     half = tile_size // 2
     row_min = row - half
-    row_max = row + half
+    row_max = row + tile_size - half  # tile_size - half ensures correct size for odd tile_size
     col_min = col - half
-    col_max = col + half
+    col_max = col + tile_size - half
     crop = mosaic[row_min:row_max, col_min:col_max, :]
+
+    if crop.shape[0] != tile_size or crop.shape[1] != tile_size:
+        print(
+            f"Unexpected crop shape {crop.shape} for {name_loc} "
+            f"(expected {tile_size}x{tile_size}). Skipping."
+        )
+        return
 
     # Save array
     os.makedirs(save_dir, exist_ok=True)
@@ -151,11 +168,14 @@ def get_tessera_embeds(
 
     meta_file = f"{save_dir}/meta.csv"
 
-    if os.path.exists(meta_file):
-        meta_df = pd.concat([meta_df, pd.read_csv(meta_file)], ignore_index=True)
-
-    meta_df.to_csv(meta_file, index=False)
-    print(f"Meta data logged to {meta_file}")
+    with _meta_csv_lock:
+        try:
+            if os.path.exists(meta_file):
+                meta_df = pd.concat([meta_df, pd.read_csv(meta_file)], ignore_index=True)
+            meta_df.to_csv(meta_file, index=False)
+            print(f"Meta data logged to {meta_file}")
+        except Exception as e:
+            print(f"Warning: could not update meta.csv ({e}). Tile was saved successfully.")
 
 
 def tessera_from_df(
