@@ -61,9 +61,23 @@ class BaseModel(LightningModule, ABC):
                 # Freeze the rest
                 param.requires_grad = False
 
-        # Set module modes correctly
+        # Set module modes correctly.
+        # A module should be in train() if:
+        #   - it IS a trainable module (name == t), or
+        #   - it is a CHILD of a trainable module (name starts with t + "."), or
+        #   - it is an ANCESTOR of a trainable module (t starts with name + "."),
+        #     so that container modules reflect the correct mode, or
+        #   - it is the root module (""), which must be train when any child is.
+        def _in_train_scope(name: str) -> bool:
+            if not name:  # root module
+                return bool(self.trainable_modules)
+            for t in self.trainable_modules:
+                if name == t or name.startswith(t + ".") or t.startswith(name + "."):
+                    return True
+            return False
+
         for name, module in self.named_modules():
-            if any(t.startswith(name) for t in self.trainable_modules):
+            if _in_train_scope(name):
                 module.train()
             else:
                 module.eval()
