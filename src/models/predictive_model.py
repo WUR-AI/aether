@@ -1,6 +1,7 @@
 from typing import Dict, override
 
 import torch
+import torch.nn.functional as F
 
 from src.models.base_model import BaseModel
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
@@ -22,8 +23,9 @@ class PredictiveModel(BaseModel):
         scheduler: torch.optim.lr_scheduler,
         loss_fn: BaseLossFn,
         metrics: MetricsWrapper,
+        normalize_features: bool = True,
     ) -> None:
-        """Implementation of the predictive model with replaceable EO encoder, and prediction head.
+        """Implementation of the predictive model with replaceable GEO encoder, and prediction head.
 
         :param geo_encoder: geo encoder module (replaceable)
         :param prediction_head: prediction head module (replaceable)
@@ -34,6 +36,8 @@ class PredictiveModel(BaseModel):
         :param metrics: metrics to use for model performance evaluation
         :param num_classes: number of target classes
         :param tabular_dim: number of tabular features
+        :param normalize_features: if True, apply L2 normalisation to encoder output before
+            the prediction head (default: True)
         """
 
         super().__init__(trainable_modules, optimizer, scheduler, loss_fn, metrics)
@@ -43,6 +47,8 @@ class PredictiveModel(BaseModel):
 
         # Prediction head
         self.prediction_head = prediction_head
+
+        self.normalize_features = normalize_features
 
     @override
     def setup(self, stage: str) -> None:
@@ -74,6 +80,8 @@ class PredictiveModel(BaseModel):
     @override
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         feats = self.geo_encoder(batch)
+        if self.normalize_features:
+            feats = F.normalize(feats, dim=-1)
         return self.prediction_head(feats)
 
     @override

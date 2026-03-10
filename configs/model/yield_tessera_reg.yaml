@@ -12,6 +12,8 @@ prediction_head:
   dropout: 0.2
 
 trainable_modules: [geo_encoder, prediction_head]
+# Disable L2 normalization before MLP regression to keep magnitude of features
+normalize_features: false
 
 metrics: ${metrics}
 

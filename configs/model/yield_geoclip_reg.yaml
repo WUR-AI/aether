@@ -13,6 +13,8 @@ prediction_head:
 
 # Only the prediction head is trained; GeoClip encoder is frozen.
 trainable_modules: [prediction_head]
+# Disable L2 normalization before MLP regression to keep magnitude of features
+normalize_features: false
 
 metrics: ${metrics}
 
