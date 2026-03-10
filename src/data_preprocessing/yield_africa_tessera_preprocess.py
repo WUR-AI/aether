@@ -65,7 +65,6 @@ def fetch_tessera_tiles(
     countries: list[str] | None = None,
     years: list[int] | None = None,
     cache_dir: str | None = None,
-    embeddings_dir: str | None = None,
     workers: int = 2,
 ) -> None:
     """Fetch TESSERA tiles for every record in the yield_africa CSV.
@@ -74,13 +73,12 @@ def fetch_tessera_tiles(
     :param tile_size: spatial extent of each tile in pixels
     :param countries: optional list of country codes to restrict fetching
     :param years: optional list of years to restrict fetching
-    :param cache_dir: directory for GeoTessera's internal registry cache;
-        defaults to ``{data_dir}/cache/tessera``
-    :param embeddings_dir: directory where GeoTessera stores the raw downloaded
-        embedding tiles (``global_0.1_degree_representation/`` etc.).  Defaults
-        to the current working directory when not set, which can silently fill
-        the project folder with tens of GB of data.  Point this at an external
-        drive when disk space is limited.
+    :param cache_dir: base directory for all TESSERA cache files.  GeoTessera's
+        internal registry is stored here; the large raw downloaded source tiles
+        (``global_0.1_degree_representation/`` etc.) are kept in the ``raw/``
+        subfolder.  Defaults to the ``TESSERA_EMBEDDINGS_DIR`` env var when set,
+        otherwise ``{data_dir}/cache/tessera``.  Point this at an external drive
+        when disk space is limited.
     :param workers: number of parallel download threads.  Each thread keeps its
         own GeoTessera instance to avoid shared state.  Default: 2 (external
         drive I/O is usually the bottleneck; more workers add contention).
@@ -95,7 +93,9 @@ def fetch_tessera_tiles(
     save_dir.mkdir(parents=True, exist_ok=True)
 
     if cache_dir is None:
-        cache_dir = str(Path(data_dir) / "cache" / "tessera")
+        cache_dir = os.environ.get("TESSERA_EMBEDDINGS_DIR") or str(Path(data_dir) / "cache" / "tessera")
+
+    embeddings_dir = str(Path(cache_dir) / "raw")
 
     df = pd.read_csv(csv_path)
 
@@ -116,7 +116,9 @@ def fetch_tessera_tiles(
 
     print(
         f"Records: {n_total} total, {n_existing} already cached, "
-        f"{n_to_fetch} to fetch  (tile_size={tile_size}, workers={workers})"
+        f"{n_to_fetch} to fetch  (tile_size={tile_size}, workers={workers})\n"
+        f"  cache_dir    : {cache_dir}\n"
+        f"  embeddings_dir: {embeddings_dir}"
     )
 
     # Build GeoTessera constructor kwargs shared across all threads.
@@ -130,8 +132,7 @@ def fetch_tessera_tiles(
         # noticeable CPU time per tile and making progress look stalled.
         "verify_hashes": False,
     }
-    if embeddings_dir is not None:
-        _gt_kwargs["embeddings_dir"] = embeddings_dir
+    _gt_kwargs["embeddings_dir"] = embeddings_dir
 
     _thread_local = threading.local()
 
@@ -243,25 +244,24 @@ def main() -> None:
         "--cache_dir",
         type=str,
         default=None,
-        help="GeoTessera internal registry cache directory. Default: {data_dir}/cache/tessera",
-    )
-    parser.add_argument(
-        "--embeddings_dir",
-        type=str,
-        default=os.environ.get("TESSERA_EMBEDDINGS_DIR"),
         help=(
-            "Directory for GeoTessera raw source tiles "
-            "(global_0.1_degree_representation/ etc.). "
-            "Falls back to the TESSERA_EMBEDDINGS_DIR env var, then the current "
-            "working directory. Set TESSERA_EMBEDDINGS_DIR in .env to avoid "
-            "passing this flag every run."
+            "Base directory for all TESSERA cache files. "
+            "GeoTessera's registry is stored here; large raw source tiles go in "
+            "the raw/ subfolder. "
+            "Falls back to the TESSERA_EMBEDDINGS_DIR env var, then "
+            "{data_dir}/cache/tessera. Set TESSERA_EMBEDDINGS_DIR in .env to "
+            "avoid passing this flag every run."
         ),
     )
     parser.add_argument(
         "--workers",
         type=int,
         default=2,
-        help="Number of parallel download threads. Default: 2",
+        help=(
+            "Number of parallel download threads. Default: 2. "
+            "When writing to an external drive too many workers can cause I/O "
+            "bottlenecks. Reduce the number of workers to improve throughput."
+        ),
     )
     args = parser.parse_args()
 
@@ -276,7 +276,6 @@ def main() -> None:
         countries=args.countries,
         years=args.years,
         cache_dir=args.cache_dir,
-        embeddings_dir=args.embeddings_dir,
         workers=args.workers,
     )
 

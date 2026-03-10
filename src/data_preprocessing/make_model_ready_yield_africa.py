@@ -679,7 +679,7 @@ if __name__ == "__main__":
     ap.add_argument(
         "--out_csv",
         required=True,
-        help="Path for the output model-ready CSV (e.g. data/yield_africa/model_ready_yield-africa.csv)",
+        help="Path for the output model-ready CSV (e.g. data/yield_africa/model_ready_yield_africa.csv)",
     )
     ap.add_argument(
         "--out_parquet",
