@@ -4,8 +4,8 @@ import torch
 import torch.nn.functional as F
 
 from src.models.base_model import BaseModel
-from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
-from src.models.components.eo_encoders.multimodal_encoder import MultiModalEncoder
+from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
+from src.models.components.geo_encoders.multimodal_encoder import MultiModalEncoder
 from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
 from src.models.components.pred_heads.linear_pred_head import (
@@ -16,17 +16,18 @@ from src.models.components.pred_heads.linear_pred_head import (
 class PredictiveModel(BaseModel):
     def __init__(
         self,
-        eo_encoder: BaseEOEncoder,
+        geo_encoder: BaseGeoEncoder,
         prediction_head: BasePredictionHead,
         trainable_modules: list[str],
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
         loss_fn: BaseLossFn,
         metrics: MetricsWrapper,
+        normalize_features: bool = True,
     ) -> None:
-        """Implementation of the predictive model with replaceable EO encoder, and prediction head.
+        """Implementation of the predictive model with replaceable GEO encoder, and prediction head.
 
-        :param eo_encoder: eo encoder module (replaceable)
+        :param geo_encoder: geo encoder module (replaceable)
         :param prediction_head: prediction head module (replaceable)
         :param trainable_modules: list of modules to train (parts/modules or modules, modules)
         :param optimizer: optimizer to use for training
@@ -35,15 +36,19 @@ class PredictiveModel(BaseModel):
         :param metrics: metrics to use for model performance evaluation
         :param num_classes: number of target classes
         :param tabular_dim: number of tabular features
+        :param normalize_features: if True, apply L2 normalisation to encoder output before
+            the prediction head (default: True)
         """
 
         super().__init__(trainable_modules, optimizer, scheduler, loss_fn, metrics)
 
-        # EO encoder configuration
-        self.eo_encoder = eo_encoder
+        # Geo encoder configuration
+        self.geo_encoder = geo_encoder
 
         # Prediction head
         self.prediction_head = prediction_head
+
+        self.normalize_features = normalize_features
 
     @override
     def setup(self, stage: str) -> None:
@@ -59,14 +64,14 @@ class PredictiveModel(BaseModel):
         """Set up encoders and missing adapters/projectors."""
         # TODO: move to multi-modal eo encoder
         if (
-            isinstance(self.eo_encoder, MultiModalEncoder)
-            and self.eo_encoder.use_tabular
-            and not self.eo_encoder._tabular_ready
+            isinstance(self.geo_encoder, MultiModalEncoder)
+            and self.geo_encoder.use_tabular
+            and not self.geo_encoder._tabular_ready
         ):
-            self.eo_encoder.build_tabular_branch(self.tabular_dim)
+            self.geo_encoder.build_tabular_branch(self.tabular_dim)
 
         self.prediction_head.set_dim(
-            input_dim=self.eo_encoder.output_dim, output_dim=self.num_classes
+            input_dim=self.geo_encoder.output_dim, output_dim=self.num_classes
         )
         self.prediction_head.configure_nn()
         if "prediction_head" not in self.trainable_modules:
@@ -74,22 +79,25 @@ class PredictiveModel(BaseModel):
 
     @override
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
-        feats = self.eo_encoder(batch)
-        feats = F.normalize(feats, dim=-1)
+        feats = self.geo_encoder(batch)
+        if self.normalize_features:
+            feats = F.normalize(feats, dim=-1)
         return self.prediction_head(feats)
 
     @override
     def _step(self, batch: Dict[str, torch.Tensor], mode: str = "train") -> torch.Tensor:
-        feats = self.forward(batch)
+        preds = self.forward(batch)
 
         log_kwargs = dict(
-            on_step=False, on_epoch=True, prog_bar=True, sync_dist=True, batch_size=feats.size(0)
+            on_step=False, on_epoch=True, prog_bar=True, sync_dist=True, batch_size=preds.size(0)
         )
-        loss = self.loss_fn(feats, batch.get("target"))
+        loss = self.loss_fn(preds, batch.get("target"))
         self.log(f"{mode}_loss", loss, **log_kwargs)
 
-        metrics = self.metrics(pred=feats, batch=batch, mode=mode)
+        metrics = self.metrics(pred=preds, batch=batch, mode=mode)
         self.log_dict(metrics, **log_kwargs)
+
+        return loss
 
 
 if __name__ == "__main__":

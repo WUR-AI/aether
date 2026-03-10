@@ -19,10 +19,11 @@ from src.models.components.pred_heads.base_pred_head import BasePredictionHead
 class MLPRegressionPredictionHead(BasePredictionHead):
     """MLP prediction head for regression tasks (outputs a continuous value)."""
 
-    def __init__(self, nn_layers: int = 2, hidden_dim: int = 256) -> None:
+    def __init__(self, nn_layers: int = 2, hidden_dim: int = 256, dropout: float = 0.0) -> None:
         super().__init__()
         self.nn_layers = nn_layers
         self.hidden_dim = hidden_dim
+        self.dropout = dropout
 
     @override
     def forward(self, feats: torch.Tensor) -> torch.Tensor:
@@ -39,6 +40,8 @@ class MLPRegressionPredictionHead(BasePredictionHead):
         for _ in range(self.nn_layers - 1):
             layers.append(nn.Linear(in_dim, self.hidden_dim))
             layers.append(nn.ReLU())
+            if self.dropout > 0.0:
+                layers.append(nn.Dropout(self.dropout))
             in_dim = self.hidden_dim
 
         layers.append(nn.Linear(in_dim, self.output_dim))

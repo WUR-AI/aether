@@ -5,10 +5,10 @@ import torchvision.models as models
 from torch import nn
 from torch.nn import functional as F
 
-from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
+from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
 
 
-class CNNEncoder(BaseEOEncoder):
+class CNNEncoder(BaseGeoEncoder):
     """Convolutional neural network EO encoder. Adapted from PECL.
 
     :param backbone: backbone model to use (resnet)
@@ -25,7 +25,7 @@ class CNNEncoder(BaseEOEncoder):
         pretrained_cnn="imagenet",
         resnet_version=18,
         freezing_strategy="all",
-        eo_data_name="s2",
+        geo_data_name="s2",
         input_n_bands: int | None = None,
         output_dim=512,
     ) -> None:
@@ -36,9 +36,9 @@ class CNNEncoder(BaseEOEncoder):
         self.resnet_version = resnet_version
         self.freezing_strategy = freezing_strategy
 
-        self.allowed_eo_data_names = ["s2", "aef", "tessera"]
-        assert eo_data_name in self.allowed_eo_data_names
-        self.eo_data_name = eo_data_name
+        self.allowed_geo_data_names = ["s2", "aef", "tessera"]
+        assert geo_data_name in self.allowed_geo_data_names
+        self.geo_data_name = geo_data_name
 
         self.set_n_input_bands(input_n_bands)
         assert (
@@ -46,23 +46,23 @@ class CNNEncoder(BaseEOEncoder):
         ), f"input_n_bands must be int >=3, got {self.input_n_bands}"
         self.output_dim = output_dim
 
-        self.eo_encoder = self.get_backbone()
+        self.geo_encoder = self.get_backbone()
 
     def set_n_input_bands(self, n_bands: int | None = None) -> None:
-        """Sets number of input bands based on eo_data_name if n_bands is None.
+        """Sets number of input bands based on geo_data_name if n_bands is None.
 
         :param n_bands: number of input bands
         :return: None
         """
-        if n_bands is None:  # infer from eo_data_name
-            if self.eo_data_name == "s2":
+        if n_bands is None:  # infer from geo_data_name
+            if self.geo_data_name == "s2":
                 self.input_n_bands = 4
-            elif self.eo_data_name == "aef":
+            elif self.geo_data_name == "aef":
                 self.input_n_bands = 64
-            elif self.eo_data_name == "tessera":
+            elif self.geo_data_name == "tessera":
                 self.input_n_bands = 128
             print(
-                f"[CNNEncoder] Inferred input_n_bands={self.input_n_bands} for eo_data_name='{self.eo_data_name}'"
+                f"[CNNEncoder] Inferred input_n_bands={self.input_n_bands} for geo_data_name='{self.geo_data_name}'"
             )
         else:
             self.input_n_bands = n_bands
@@ -147,11 +147,11 @@ class CNNEncoder(BaseEOEncoder):
         dtype = self.dtype
         if eo_data.dtype != dtype:
             eo_data = eo_data.to(dtype)
-        feats = self.eo_encoder(eo_data[self.eo_data_name])
+        feats = self.geo_encoder(eo_data[self.geo_data_name])
         # n_nans = torch.sum(torch.isnan(feats)).item()
         # assert (
         #     n_nans == 0
-        # ), f"CNNEncoder output contains {n_nans}/{feats.numel()} NaNs PRIOR to normalization with data min {eo_data[self.eo_data_name].min()} and max {eo_data[self.eo_data_name].max()}."
+        # ), f"CNNEncoder output contains {n_nans}/{feats.numel()} NaNs PRIOR to normalization with data min {eo_data[self.geo_data_name].min()} and max {eo_data[self.geo_data_name].max()}."
 
         return feats.to(dtype)
 

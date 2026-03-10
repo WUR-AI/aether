@@ -1,11 +1,3 @@
-# configs/model/heat_geoclip_reg.yaml
-#
-# Renamed from: predictive_geoclip_regression.yaml
-# Reason: prefixing with "heat_" scopes it to this use case;
-#         "geoclip_reg" is concise and descriptive.
-#
-# Variant: coords only (GeoClip encodes lat/lon → 512-dim embedding)
-
 _target_: src.models.predictive_model.PredictiveModel
 
 geo_encoder:
@@ -17,9 +9,12 @@ prediction_head:
   _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
   nn_layers: 2
   hidden_dim: 256
+  dropout: 0.2
 
 # Only the prediction head is trained; GeoClip encoder is frozen.
 trainable_modules: [prediction_head]
+# Disable L2 normalization before MLP regression to keep magnitude of features
+normalize_features: false
 
 metrics: ${metrics}
 
@@ -27,7 +22,7 @@ optimizer:
   _target_: torch.optim.Adam
   _partial_: true
   lr: 0.001
-  weight_decay: 0.0
+  weight_decay: 1e-4
 
 scheduler:
   _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
@@ -37,4 +32,4 @@ scheduler:
   patience: 10
 
 loss_fn:
-  _target_: torch.nn.MSELoss
+  _target_: src.models.components.loss_fns.huber_loss.HuberLoss

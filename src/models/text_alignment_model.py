@@ -5,8 +5,8 @@ import torch
 import torch.nn.functional as F
 
 from src.models.base_model import BaseModel
-from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
-from src.models.components.eo_encoders.multimodal_encoder import MultiModalEncoder
+from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
+from src.models.components.geo_encoders.multimodal_encoder import MultiModalEncoder
 from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 from src.models.components.metrics.contrastive_validation import (
     RetrievalContrastiveValidation,
@@ -23,7 +23,7 @@ from src.models.components.text_encoders.base_text_encoder import (
 class TextAlignmentModel(BaseModel):
     def __init__(
         self,
-        eo_encoder: BaseEOEncoder,
+        geo_encoder: BaseGeoEncoder,
         text_encoder: BaseTextEncoder,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
@@ -35,7 +35,7 @@ class TextAlignmentModel(BaseModel):
     ) -> None:
         """Implementation of contrastive text-eo modality alignment model.
 
-        :param eo_encoder: eo encoder module (replaceable)
+        :param geo_encoder: geo encoder module (replaceable)
         :param text_encoder: text encoder module (replaceable)
         :param optimizer: optimizer to use for training
         :param scheduler: scheduler to use for training
@@ -52,7 +52,7 @@ class TextAlignmentModel(BaseModel):
         self.log_kwargs = dict(on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
 
         # Encoders configuration
-        self.eo_encoder = eo_encoder
+        self.geo_encoder = geo_encoder
         self.text_encoder = text_encoder
 
         # Prediction head
@@ -76,29 +76,29 @@ class TextAlignmentModel(BaseModel):
         """Set up encoders and missing adapters/projectors."""
         # TODO: move to multi-modal eo encoder
         if (
-            isinstance(self.eo_encoder, MultiModalEncoder)
-            and self.eo_encoder.use_tabular
-            and not self.eo_encoder._tabular_ready
+            isinstance(self.geo_encoder, MultiModalEncoder)
+            and self.geo_encoder.use_tabular
+            and not self.geo_encoder._tabular_ready
         ):
-            self.eo_encoder.build_tabular_branch(self.tabular_dim)
+            self.geo_encoder.build_tabular_branch(self.tabular_dim)
 
         # Extra projector for text encoder if eo and text dim not match
-        if self.eo_encoder.output_dim != self.text_encoder.output_dim:
-            self.text_encoder.add_projector(projected_dim=self.eo_encoder.output_dim)
+        if self.geo_encoder.output_dim != self.text_encoder.output_dim:
+            self.text_encoder.add_projector(projected_dim=self.geo_encoder.output_dim)
             self.trainable_modules.append("text_encoder.extra_projector")
 
         # TODO: if eo==geoclip_img pass on shared mlp
 
         if self.prediction_head is not None:
             self.prediction_head.set_dim(
-                input_dim=self.eo_encoder.output_dim, output_dim=self.num_classes
+                input_dim=self.geo_encoder.output_dim, output_dim=self.num_classes
             )
             self.prediction_head.configure_nn()
 
         # Unify dtypes
-        if self.eo_encoder.dtype != self.text_encoder.dtype:
-            self.eo_encoder = self.eo_encoder.to(self.text_encoder.dtype)
-            print(f"Eo encoder dtype changed to {self.eo_encoder.dtype}")
+        if self.geo_encoder.dtype != self.text_encoder.dtype:
+            self.geo_encoder = self.geo_encoder.to(self.text_encoder.dtype)
+            print(f"Geo encoder dtype changed to {self.geo_encoder.dtype}")
 
     def setup_retrieval_evaluation(self):
         self.concept_configs = self.trainer.datamodule.concept_configs
@@ -125,7 +125,7 @@ class TextAlignmentModel(BaseModel):
         """Model forward logic."""
 
         # Embed modalities
-        eo_feats = self.eo_encoder(batch)
+        eo_feats = self.geo_encoder(batch)
         text_feats = self.text_encoder(batch, mode)
         return eo_feats, text_feats
 
