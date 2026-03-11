@@ -4,22 +4,22 @@ import torch
 from geoclip import LocationEncoder
 from torch.nn import functional as F
 
-from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
+from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
 
 
-class GeoClipCoordinateEncoder(BaseEOEncoder):
+class GeoClipCoordinateEncoder(BaseGeoEncoder):
     def __init__(
         self,
-        eo_data_name="coords",
+        geo_data_name="coords",
     ) -> None:
         super().__init__()
-        self.eo_encoder = LocationEncoder()
-        self.output_dim = self.eo_encoder.LocEnc0.head[0].out_features
-        self.allowed_eo_data_names = ["coords"]
+        self.geo_encoder = LocationEncoder()
+        self.output_dim = self.geo_encoder.LocEnc0.head[0].out_features
+        self.allowed_geo_data_names = ["coords"]
         assert (
-            eo_data_name in self.allowed_eo_data_names
-        ), f"eo_data_name must be one of {self.allowed_eo_data_names}, got {eo_data_name}"
-        self.eo_data_name = eo_data_name
+            geo_data_name in self.allowed_geo_data_names
+        ), f"geo_data_name must be one of {self.allowed_geo_data_names}, got {geo_data_name}"
+        self.geo_data_name = geo_data_name
 
     @override
     def forward(
@@ -32,7 +32,7 @@ class GeoClipCoordinateEncoder(BaseEOEncoder):
         dtype = self.dtype
         if coords.dtype != dtype:
             coords = coords.to(dtype)
-        feats = self.eo_encoder(coords)
+        feats = self.geo_encoder(coords)
 
         return feats.to(dtype)
 

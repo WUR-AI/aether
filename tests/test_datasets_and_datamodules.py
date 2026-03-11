@@ -2,11 +2,12 @@ from src.data.base_dataset import BaseDataset
 from src.data.butterfly_dataset import ButterflyDataset
 from src.data.heat_guatemala_dataset import HeatGuatemalaDataset
 from src.data.satbird_dataset import SatBirdDataset
+from src.data.yield_africa_dataset import YieldAfricaDataset
 
 
 def test_datasets_generic_properties(request, tmp_path, sample_csv):
     """This test checks that all datasets implement the basic properties and methods."""
-    list_datasets = [ButterflyDataset, SatBirdDataset, HeatGuatemalaDataset]
+    list_datasets = [ButterflyDataset, SatBirdDataset, HeatGuatemalaDataset, YieldAfricaDataset]
     use_mock = request.config.getoption("--use-mock")
     if use_mock:
         csv_dir = sample_csv

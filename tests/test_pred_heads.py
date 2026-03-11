@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 import torch
 
-from src.models.components.eo_encoders.geoclip import GeoClipCoordinateEncoder
+from src.models.components.geo_encoders.geoclip import GeoClipCoordinateEncoder
 from src.models.components.pred_heads.base_pred_head import BasePredictionHead
 from src.models.components.pred_heads.linear_pred_head import LinearPredictionHead
 from src.models.components.pred_heads.mlp_pred_head import MLPPredictionHead
