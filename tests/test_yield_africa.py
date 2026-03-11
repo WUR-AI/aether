@@ -46,11 +46,16 @@ MOCK_AUX_COLS = {
 }
 
 MOCK_N_ROWS = 10
-# feat_year (1) + feat_country_{code} (8) are injected by YieldAfricaDataset
-# when country and year columns are present, so the effective tabular dim grows.
+# YieldAfricaDataset injects extra feat_* columns when country and year columns
+# are present: feat_year (1) + feat_country_{code} (8) + Fourier harmonics (6).
 from src.data.yield_africa_dataset import _ALL_COUNTRIES
-MOCK_INJECTED_FEAT_NAMES = {"feat_year"} | {f"feat_country_{c}" for c in _ALL_COUNTRIES}
-MOCK_TABULAR_DIM = len(MOCK_FEAT_COLS) + len(MOCK_INJECTED_FEAT_NAMES)  # 8 + 9 = 17
+MOCK_INJECTED_FEAT_NAMES = (
+    {"feat_year"}
+    | {f"feat_country_{c}" for c in _ALL_COUNTRIES}
+    | {"feat_lat_sin1", "feat_lat_cos1", "feat_lat_sin2", "feat_lat_cos2",
+       "feat_lon_sin1", "feat_lon_cos1"}
+)
+MOCK_TABULAR_DIM = len(MOCK_FEAT_COLS) + len(MOCK_INJECTED_FEAT_NAMES)  # 8 + 15 = 23
 MOCK_N_AUX = len(MOCK_AUX_COLS)          # 4
 
 
