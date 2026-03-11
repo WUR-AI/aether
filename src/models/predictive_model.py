@@ -5,7 +5,8 @@ import torch.nn.functional as F
 
 from src.models.base_model import BaseModel
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
-from src.models.components.geo_encoders.multimodal_encoder import MultiModalEncoder
+from src.models.components.geo_encoders.encoder_wrapper import EncoderWrapper
+from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
 from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
 from src.models.components.pred_heads.linear_pred_head import (
@@ -25,7 +26,8 @@ class PredictiveModel(BaseModel):
         metrics: MetricsWrapper,
         normalize_features: bool = True,
     ) -> None:
-        """Implementation of the predictive model with replaceable GEO encoder, and prediction head.
+        """Implementation of the predictive model with replaceable GEO encoder, and prediction
+        head.
 
         :param geo_encoder: geo encoder module (replaceable)
         :param prediction_head: prediction head module (replaceable)
@@ -36,8 +38,8 @@ class PredictiveModel(BaseModel):
         :param metrics: metrics to use for model performance evaluation
         :param num_classes: number of target classes
         :param tabular_dim: number of tabular features
-        :param normalize_features: if True, apply L2 normalisation to encoder output before
-            the prediction head (default: True)
+        :param normalize_features: if True, apply L2 normalisation to encoder output before the
+            prediction head (default: True)
         """
 
         super().__init__(trainable_modules, optimizer, scheduler, loss_fn, metrics)
@@ -63,12 +65,12 @@ class PredictiveModel(BaseModel):
     def setup_encoders_adapters(self):
         """Set up encoders and missing adapters/projectors."""
         # TODO: move to multi-modal eo encoder
-        if (
-            isinstance(self.geo_encoder, MultiModalEncoder)
-            and self.geo_encoder.use_tabular
-            and not self.geo_encoder._tabular_ready
+        if isinstance(self.geo_encoder, TabularEncoder) or isinstance(
+            self.geo_encoder, EncoderWrapper
         ):
-            self.geo_encoder.build_tabular_branch(self.tabular_dim)
+            self.geo_encoder.configure_nn(self.tabular_dim)
+            if self.tabular_dim:
+                self.trainable_modules.append("tabular_encoder")
 
         self.prediction_head.set_dim(
             input_dim=self.geo_encoder.output_dim, output_dim=self.num_classes
