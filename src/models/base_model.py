@@ -55,8 +55,7 @@ class BaseModel(LightningModule, ABC):
             # Enable exceptions
             if name.startswith(self.trainable_modules):
                 param.requires_grad = True
-                top_name = name.split(".", 2)[:2]
-                trainable.add(".".join(top_name))
+                trainable.add(name)
             else:
                 # Freeze the rest
                 param.requires_grad = False
