@@ -1,3 +1,5 @@
+from typing import List, override
+
 import torch
 from torch import nn
 
@@ -21,6 +23,11 @@ class MLPProjector(BaseGeoEncoder):
 
         # Placeholder
         self.net: nn.Module | None = None
+
+    @override
+    def setup(self) -> List[str]:
+        self.configure_nn()
+        return ["net"]
 
     def set_input_dim(self, input_dim: int) -> None:
         self.input_dim = input_dim
