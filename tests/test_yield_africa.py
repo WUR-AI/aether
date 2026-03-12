@@ -49,9 +49,10 @@ MOCK_N_ROWS = 10
 # feat_year (1) + feat_country_{code} (8) are injected by YieldAfricaDataset
 # when country and year columns are present, so the effective tabular dim grows.
 from src.data.yield_africa_dataset import _ALL_COUNTRIES
+
 MOCK_INJECTED_FEAT_NAMES = {"feat_year"} | {f"feat_country_{c}" for c in _ALL_COUNTRIES}
 MOCK_TABULAR_DIM = len(MOCK_FEAT_COLS) + len(MOCK_INJECTED_FEAT_NAMES)  # 8 + 9 = 17
-MOCK_N_AUX = len(MOCK_AUX_COLS)          # 4
+MOCK_N_AUX = len(MOCK_AUX_COLS)  # 4
 
 
 # ---------------------------------------------------------------------------
@@ -178,7 +179,7 @@ def test_yield_africa_dataset_attributes(yield_africa_dataset):
 
 
 def test_yield_africa_dataset_feat_prefix(yield_africa_dataset):
-    """All tabular features must carry the feat_ prefix."""
+    """All tabular features must carry the feat prefix."""
     for name in yield_africa_dataset.feat_names:
         assert name.startswith("feat_"), f"Unexpected feature name: {name}"
 
@@ -187,7 +188,7 @@ def test_yield_africa_dataset_coords_values(yield_africa_dataset):
     """Coordinates returned must match the CSV values."""
     sample = yield_africa_dataset[0]
     coords = sample["eo"]["coords"]
-    assert coords[0].item() == pytest.approx(5.0)   # lat of row 0
+    assert coords[0].item() == pytest.approx(5.0)  # lat of row 0
     assert coords[1].item() == pytest.approx(30.0)  # lon of row 0
 
 
