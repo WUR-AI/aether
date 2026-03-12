@@ -17,10 +17,9 @@ _target_: src.models.predictive_model.PredictiveModel
 metrics: ${metrics}
 
 geo_encoder:
-  _target_: src.models.components.geo_encoders.multimodal_encoder.MultiModalEncoder
-  use_coords: false
-  use_tabular: true
-  tab_embed_dim: 64
+  _target_: src.models.components.geo_encoders.tabular_encoder.TabularEncoder
+  output_dim: 64
+  geo_data_name: tabular
 
 prediction_head:
   _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead

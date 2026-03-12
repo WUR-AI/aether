@@ -12,10 +12,10 @@ _MODES = ("train", "val", "test")
 class RSquared(BaseMetrics):
     """Epoch-level R² using torchmetrics.R2Score.
 
-    A separate R2Score accumulator is kept per mode so that train, val, and
-    test statistics never mix.  Lightning detects the returned torchmetrics
-    Metric objects and calls .compute()/.reset() at epoch boundaries, giving
-    a correct epoch-wide R² instead of an average of per-batch R² values.
+    A separate R2Score accumulator is kept per mode so that train, val, and test statistics never
+    mix.  Lightning detects the returned torchmetrics Metric objects and calls .compute()/.reset()
+    at epoch boundaries, giving a correct epoch-wide R² instead of an average of per-batch R²
+    values.
     """
 
     def __init__(self) -> None:

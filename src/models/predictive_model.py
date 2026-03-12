@@ -5,7 +5,8 @@ import torch.nn.functional as F
 
 from src.models.base_model import BaseModel
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
-from src.models.components.geo_encoders.multimodal_encoder import MultiModalEncoder
+from src.models.components.geo_encoders.encoder_wrapper import EncoderWrapper
+from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
 from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
 from src.models.components.pred_heads.linear_pred_head import (
@@ -25,7 +26,8 @@ class PredictiveModel(BaseModel):
         metrics: MetricsWrapper,
         normalize_features: bool = True,
     ) -> None:
-        """Implementation of the predictive model with replaceable GEO encoder, and prediction head.
+        """Implementation of the predictive model with replaceable GEO encoder, and prediction
+        head.
 
         :param geo_encoder: geo encoder module (replaceable)
         :param prediction_head: prediction head module (replaceable)
@@ -36,8 +38,8 @@ class PredictiveModel(BaseModel):
         :param metrics: metrics to use for model performance evaluation
         :param num_classes: number of target classes
         :param tabular_dim: number of tabular features
-        :param normalize_features: if True, apply L2 normalisation to encoder output before
-            the prediction head (default: True)
+        :param normalize_features: if True, apply L2 normalisation to encoder output before the
+            prediction head (default: True)
         """
 
         super().__init__(trainable_modules, optimizer, scheduler, loss_fn, metrics)
@@ -48,12 +50,17 @@ class PredictiveModel(BaseModel):
         # Prediction head
         self.prediction_head = prediction_head
 
+        # Normalise features boolean
         self.normalize_features = normalize_features
 
     @override
     def setup(self, stage: str) -> None:
         self.num_classes = self.trainer.datamodule.num_classes
         self.tabular_dim = self.trainer.datamodule.tabular_dim
+
+        if stage != "fit":
+            if isinstance(self.trainable_modules, tuple):
+                self.trainable_modules = list(self.trainable_modules)
 
         self.setup_encoders_adapters()
 
@@ -63,17 +70,22 @@ class PredictiveModel(BaseModel):
     def setup_encoders_adapters(self):
         """Set up encoders and missing adapters/projectors."""
         # TODO: move to multi-modal eo encoder
-        if (
-            isinstance(self.geo_encoder, MultiModalEncoder)
-            and self.geo_encoder.use_tabular
-            and not self.geo_encoder._tabular_ready
-        ):
-            self.geo_encoder.build_tabular_branch(self.tabular_dim)
 
+        # If tabular encoder used, we need to specify tabular dim
+        if isinstance(self.geo_encoder, TabularEncoder) or isinstance(
+            self.geo_encoder, EncoderWrapper
+        ):
+            self.geo_encoder.set_tabular_input_dim(self.tabular_dim)
+
+        # Setup encoders that need data-depended configurations
+        new_modules = [f"geo_encoder.{i}]" for i in self.geo_encoder.setup()]
+        self.trainable_modules.extend(new_modules)
+
+        # Configure prediction head based on geo-encoder output_dim
         self.prediction_head.set_dim(
             input_dim=self.geo_encoder.output_dim, output_dim=self.num_classes
         )
-        self.prediction_head.configure_nn()
+        self.prediction_head.setup()
         if "prediction_head" not in self.trainable_modules:
             self.trainable_modules.append("prediction_head")
 

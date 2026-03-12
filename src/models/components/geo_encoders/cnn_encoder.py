@@ -1,9 +1,8 @@
-from typing import Dict, override
+from typing import Dict, List, override
 
 import torch
 import torchvision.models as models
 from torch import nn
-from torch.nn import functional as F
 
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
 
@@ -131,6 +130,12 @@ class CNNEncoder(BaseGeoEncoder):
             return model
         else:
             raise ValueError(f"Unsupported backbone: {self.backbone}")
+
+    @override
+    def setup(self) -> List[str]:
+        # TODO: could you make sure new layers are returned here to be added to trainable parts?
+        # Maybe move the get_backbone method in here?
+        return []
 
     @override
     def forward(
