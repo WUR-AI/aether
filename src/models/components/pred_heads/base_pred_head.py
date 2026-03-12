@@ -25,10 +25,10 @@ class BasePredictionHead(nn.Module, ABC):
         :param input_dim: input dimension
         :param output_dim: output dimension
         """
-        assert isinstance(self.input_dim, int), TypeError(
+        assert isinstance(input_dim, int), TypeError(
             "Input dimension must be specified as integer"
         )
-        assert isinstance(self.output_dim, int), TypeError(
+        assert isinstance(output_dim, int), TypeError(
             "Output dimension must be specified as integer"
         )
         self.input_dim = input_dim
