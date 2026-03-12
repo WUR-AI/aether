@@ -12,6 +12,7 @@ import logging
 import os
 from typing import Any, Dict, List, override
 
+import numpy as np
 import pandas as pd
 import torch
 
@@ -26,6 +27,16 @@ log = logging.getLogger(__name__)
 # Used to produce a consistent one-hot encoding regardless of which
 # countries are present after filtering.
 _ALL_COUNTRIES = ["BF", "BUR", "ETH", "KEN", "MAL", "RWA", "TAN", "ZAM"]
+
+# Study-area bounds used to normalise coordinates before computing Fourier
+# harmonics.  Normalising to the actual data extent (rather than ±90°/±180°)
+# makes the harmonics maximally discriminative within the dataset.
+#   Latitude  : 30°S – 15°N  → centre −7.5°, half-range 22.5°
+#   Longitude : 10°E – 45°E  → centre  27.5°, half-range 17.5°
+_LAT_CENTER = -7.5
+_LAT_HALF_RANGE = 22.5
+_LON_CENTER = 27.5
+_LON_HALF_RANGE = 17.5
 
 
 class YieldAfricaDataset(BaseDataset):
@@ -45,11 +56,20 @@ class YieldAfricaDataset(BaseDataset):
     the model-ready CSV and are picked up via the `feat_` column prefix.
     They do NOT need to be listed in `modalities`.
 
-    In addition to the CSV feat_* columns, `year` and one-hot `country`
-    encodings are injected as `feat_year` and `feat_country_{CODE}` so that
-    the model can condition on inter-annual and cross-country variation.
-    The one-hot set always covers `_ALL_COUNTRIES` (8 countries) so that
-    `tabular_dim` is stable regardless of the country filter applied.
+    In addition to the CSV feat_* columns, the following features are injected:
+      - ``feat_year``            : normalised year (zero-mean, unit-std)
+      - ``feat_country_{CODE}``  : one-hot country encoding (always 8 columns,
+                                   stable across country filters)
+      - ``feat_lat_sin1/cos1``   : fundamental latitude harmonic, normalised to
+                                   the study-area extent (30°S–15°N)
+      - ``feat_lat_sin2/cos2``   : second latitude harmonic (captures bimodal vs.
+                                   unimodal rainfall boundary near the equator)
+      - ``feat_lon_sin1/cos1``   : fundamental longitude harmonic, normalised to
+                                   the study-area extent (10°E–45°E)
+
+    The Fourier harmonics encode the ITCZ-driven latitudinal climate gradient at
+    interpretable frequencies, complementing GeoCLIP's photo-derived coordinate
+    embedding and enabling richer text captions for the explainability component.
     """
 
     def __init__(
@@ -93,6 +113,28 @@ class YieldAfricaDataset(BaseDataset):
             }
             for code in _ALL_COUNTRIES:
                 new_cols[f"feat_country_{code}"] = (self.df["country"] == code).astype(float)
+
+            # Fourier harmonics of coordinates, normalised to the study-area extent.
+            #
+            # Africa's agricultural patterns follow the ITCZ-driven latitudinal climate
+            # gradient: rainfall regime (uni- vs. bimodal), growing-season length, and
+            # temperature vary sinusoidally with latitude.  Explicit harmonics give the
+            # model these signals directly and at interpretable frequencies, complementing
+            # GeoCLIP's learned (but photo-derived) coordinate embedding.
+            #
+            # lat_norm / lon_norm ∈ [-1, 1] within the study area; π * norm ∈ [-π, π].
+            # Two harmonics for latitude (captures both the broad N-S gradient and the
+            # equatorial-bimodal / southern-unimodal boundary); one for longitude
+            # (east-west Indian Ocean moisture gradient).
+            lat_norm = (self.df["lat"].astype(float) - _LAT_CENTER) / _LAT_HALF_RANGE
+            lon_norm = (self.df["lon"].astype(float) - _LON_CENTER) / _LON_HALF_RANGE
+            new_cols["feat_lat_sin1"] = np.sin(np.pi * lat_norm)
+            new_cols["feat_lat_cos1"] = np.cos(np.pi * lat_norm)
+            new_cols["feat_lat_sin2"] = np.sin(2.0 * np.pi * lat_norm)
+            new_cols["feat_lat_cos2"] = np.cos(2.0 * np.pi * lat_norm)
+            new_cols["feat_lon_sin1"] = np.sin(np.pi * lon_norm)
+            new_cols["feat_lon_cos1"] = np.cos(np.pi * lon_norm)
+
             self.df = pd.concat([self.df, pd.DataFrame(new_cols, index=self.df.index)], axis=1)
 
         # Apply country/year filters to self.df and rebuild records.
