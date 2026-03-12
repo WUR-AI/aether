@@ -32,8 +32,18 @@ class TabularEncoder(BaseGeoEncoder):
         ), f"geo_data_name must be one of {self.allowed_geo_data_names}, got {geo_data_name}"
         self.geo_data_name = geo_data_name
 
-    def configure_nn(self, input_dim: int) -> None:
+    @override
+    def setup(self, input_dim: int = None) -> list[str]:
+        self.configure_nn(input_dim)
+        return ["tabular_encoder"]
+
+    def set_tabular_input_dim(self, input_dim: int) -> None:
         self.input_dim = input_dim
+
+    def configure_nn(self, input_dim: int = None) -> None:
+        input_dim = input_dim or self.input_dim
+        assert input_dim is not None, "input_dim must be defined"
+
         if self.hidden_dim is None:
             self.hidden_dim = max(self.input_dim * 2, 128)
 
