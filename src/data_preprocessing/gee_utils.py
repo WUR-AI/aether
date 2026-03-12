@@ -250,8 +250,8 @@ def get_distance_to_road_within_aoi(aoi, cell_size=30, radius_max=5000):
         reducer=ee.Reducer.mean(), geometry=aoi, scale=cell_size, maxPixels=1e9
     )
     return {
-        "maxdist_road": int(max_distance.get("distance").getInfo()),
-        "meandist_road": int(mean_distance.get("distance").getInfo()),
+        "maxdist_road": int(max_distance.get("distance").getInfo() or radius_max),
+        "meandist_road": int(mean_distance.get("distance").getInfo() or radius_max),
     }
 
 
