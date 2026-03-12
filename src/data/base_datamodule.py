@@ -1,12 +1,12 @@
 import copy
 import os
+import time
 from functools import partial
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 import torch
-from geopy.distance import distance as geodist  # avoid naming confusion
 from lightning import LightningDataModule
 from sklearn.cluster import DBSCAN
 from sklearn.model_selection import GroupShuffleSplit
@@ -121,20 +121,27 @@ class BaseDataModule(LightningDataModule):
                 }
 
         elif self.hparams.split_mode == "spatial_clusters":
-            print("Splitting dataset using spatial clusters. This can take a while...")
-            coords = np.array([self.dataset.df.lat, self.dataset.df.lon]).T
-            if len(coords) > 2000:
-                print(
-                    "Warning: DBSCAN clustering on more than 2000 samples may be slow. Maybe set n_jobs in DBScan?"
-                )
-            # 4000 m distance between points. Use geodist to calculate true distance.
             min_dist = self.hparams.spatial_split_distance_m
+            coords = np.array([self.dataset.df.lat, self.dataset.df.lon]).T
+            n = len(coords)
+            print(
+                f"Splitting {n} samples into spatial clusters "
+                f"(eps={min_dist / 1000:.1f} km, haversine, n_jobs=-1)..."
+            )
+            # Convert (lat, lon) degrees to radians for sklearn's haversine metric.
+            # haversine returns arc length on the unit sphere, so eps must be in radians.
+            _EARTH_RADIUS_M = 6_371_000
+            coords_rad = np.radians(coords)
+            eps_rad = min_dist / _EARTH_RADIUS_M
+            t0 = time.time()
             clustering = DBSCAN(
-                eps=min_dist,
-                metric=lambda u, v: geodist(u, v).meters,
+                eps=eps_rad,
+                metric="haversine",
+                algorithm="ball_tree",
                 min_samples=2,
-            ).fit(coords)
-            print("Clustering done. Creating splits and saving.")
+                n_jobs=-1,
+            ).fit(coords_rad)
+            print(f"DBSCAN done in {time.time() - t0:.1f}s. Creating splits...")
             # Non-clustered points are labeled -1. Change to new cluster label.
             clusters = copy.deepcopy(clustering.labels_)
             new_cl = np.max(clusters) + 1

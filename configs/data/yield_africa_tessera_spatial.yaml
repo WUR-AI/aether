@@ -1,0 +1,39 @@
+_target_: src.data.base_datamodule.BaseDataModule
+
+dataset:
+  _target_: src.data.yield_africa_dataset.YieldAfricaDataset
+  data_dir: ${paths.data_dir}
+  modalities:
+    tessera:
+      # size must match the tile_size used when running the preprocessing script.
+      # Default: 9 pixels (set by yield_africa_tessera_preprocess.py --tile_size).
+      size: 9
+      format: npy
+      # year is intentionally omitted: yield_africa fetches per-record year tiles
+      # via the preprocessing script rather than a single bulk-year download.
+  use_target_data: true
+  use_features: true
+  use_aux_data: none
+  seed: ${seed}
+  cache_dir: ${paths.cache_dir}
+  # Include all countries and years so the split file determines the partition.
+  countries: ["BF", "BUR", "ETH", "KEN", "MAL", "RWA", "TAN", "ZAM"]
+  years: [2014, 2016, 2017, 2018, 2019, 2020, 2021, 2023, 2024]
+  exclude_countries: null
+  exclude_years: null
+
+batch_size: 64
+num_workers: 0
+pin_memory: false
+
+# Spatial-cluster split loaded from a pre-generated file.
+# Generate split files first (produces 10 km, 25 km, and 50 km variants):
+#   python src/data_preprocessing/yield_africa_spatial_splits.py --data_dir <data_dir>
+#
+# Override saved_split_file_name at the command line to change the cluster distance:
+#   python src/train.py experiment=yield_africa_tessera_fusion_spatial \
+#     data.saved_split_file_name=split_spatial_10km.pth
+split_mode: "from_file"
+saved_split_file_name: "split_spatial_25km.pth"
+save_split: false
+seed: ${seed}
