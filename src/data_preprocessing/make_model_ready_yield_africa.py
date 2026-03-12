@@ -212,6 +212,7 @@ WHC_LOOKUP_SAXTON_RAWLS_2006_OM2P5 = {
 # Preprocessing functions
 # ---------------------------------------------------------------------------
 
+
 def build_column_rename_map(
     continuous_features: List[str],
     tabular_categorical_features: List[str],
@@ -419,11 +420,7 @@ def calculate_spatial_splits(
 
     splits: Dict[str, Any] = {}
     for fold in range(n_splits):
-        val_names = [
-            name
-            for bid in fold_block_ids[fold]
-            for name in block_to_names[bid].tolist()
-        ]
+        val_names = [name for bid in fold_block_ids[fold] for name in block_to_names[bid].tolist()]
         train_names = [
             name
             for f in range(n_splits)

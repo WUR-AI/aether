@@ -93,7 +93,9 @@ def fetch_tessera_tiles(
     save_dir.mkdir(parents=True, exist_ok=True)
 
     if cache_dir is None:
-        cache_dir = os.environ.get("TESSERA_EMBEDDINGS_DIR") or str(Path(data_dir) / "cache" / "tessera")
+        cache_dir = os.environ.get("TESSERA_EMBEDDINGS_DIR") or str(
+            Path(data_dir) / "cache" / "tessera"
+        )
 
     embeddings_dir = str(Path(cache_dir) / "raw")
 
@@ -109,8 +111,7 @@ def fetch_tessera_tiles(
 
     n_total = len(df)
     n_existing = sum(
-        1 for _, row in df.iterrows()
-        if (save_dir / f"tessera_{row.name_loc}.npy").exists()
+        1 for _, row in df.iterrows() if (save_dir / f"tessera_{row.name_loc}.npy").exists()
     )
     n_to_fetch = n_total - n_existing
 
@@ -160,9 +161,9 @@ def fetch_tessera_tiles(
     # Bound all socket operations (urllib HTTP requests inside geotessera).
     # Without this, a stalled connection blocks the thread until the OS TCP
     # keepalive fires, which can take many minutes.
-    SOCKET_TIMEOUT = 60   # seconds per socket operation
-    HEARTBEAT = 30        # print a heartbeat when no future completes this fast
-    TILE_TIMEOUT = 600    # give up warning after 10 min of complete silence
+    SOCKET_TIMEOUT = 60  # seconds per socket operation
+    HEARTBEAT = 30  # print a heartbeat when no future completes this fast
+    TILE_TIMEOUT = 600  # give up warning after 10 min of complete silence
     socket.setdefaulttimeout(SOCKET_TIMEOUT)
 
     rows = [row for _, row in df.iterrows()]
@@ -186,7 +187,9 @@ def fetch_tessera_tiles(
                         f"{len(pending)} pending, {silent_seconds}s since last completion"
                     )
                     if silent_seconds >= TILE_TIMEOUT:
-                        print(f"  WARNING: no progress in {TILE_TIMEOUT}s, something may be stuck.")
+                        print(
+                            f"  WARNING: no progress in {TILE_TIMEOUT}s, something may be stuck."
+                        )
                     continue
 
                 silent_seconds = 0

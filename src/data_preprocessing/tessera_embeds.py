@@ -127,7 +127,9 @@ def get_tessera_embeds(
             memfiles.append(reproject_memfile)
 
     if not tiles:
-        print(f"No TESSERA tiles found for {name_loc} at ({lon:.4f}, {lat:.4f}) year={year}. Skipping.")
+        print(
+            f"No TESSERA tiles found for {name_loc} at ({lon:.4f}, {lat:.4f}) year={year}. Skipping."
+        )
         for mf in memfiles:
             mf.close()
         return
