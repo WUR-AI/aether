@@ -58,6 +58,10 @@ class PredictiveModel(BaseModel):
         self.num_classes = self.trainer.datamodule.num_classes
         self.tabular_dim = self.trainer.datamodule.tabular_dim
 
+        if stage != "fit":
+            if isinstance(self.trainable_modules, tuple):
+                self.trainable_modules = list(self.trainable_modules)
+
         self.setup_encoders_adapters()
 
         # Freezing requested parts

@@ -45,7 +45,7 @@ class BaseModel(LightningModule, ABC):
     @final
     def freezer(self) -> None:
         """Freezes modules based on provided trainable modules."""
-        self.trainable_modules = tuple(self.trainable_modules) or tuple()
+        trainable_modules = tuple(self.trainable_modules) or tuple()
 
         # Store higher level module names for printing of trainable parts
         trainable = set()
@@ -53,7 +53,7 @@ class BaseModel(LightningModule, ABC):
         # Freeze modules
         for name, param in self.named_parameters():
             # Enable exceptions
-            if name.startswith(self.trainable_modules):
+            if name.startswith(trainable_modules):
                 param.requires_grad = True
                 trainable.add(name)
             else:
@@ -69,8 +69,8 @@ class BaseModel(LightningModule, ABC):
         #   - it is the root module (""), which must be train when any child is.
         def _in_train_scope(name: str) -> bool:
             if not name:  # root module
-                return bool(self.trainable_modules)
-            for t in self.trainable_modules:
+                return bool(trainable_modules)
+            for t in trainable_modules:
                 if name == t or name.startswith(t + ".") or t.startswith(name + "."):
                     return True
             return False
