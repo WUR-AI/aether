@@ -6,7 +6,6 @@ import torch.nn.functional as F
 
 from src.models.base_model import BaseModel
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
-from src.models.components.geo_encoders.multimodal_encoder import MultiModalEncoder
 from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 from src.models.components.metrics.contrastive_validation import (
     RetrievalContrastiveValidation,
