@@ -50,6 +50,7 @@ class PredictiveModel(BaseModel):
         # Prediction head
         self.prediction_head = prediction_head
 
+        # Normalise features boolean
         self.normalize_features = normalize_features
 
     @override
@@ -65,17 +66,22 @@ class PredictiveModel(BaseModel):
     def setup_encoders_adapters(self):
         """Set up encoders and missing adapters/projectors."""
         # TODO: move to multi-modal eo encoder
+
+        # If tabular encoder used, we need to specify tabular dim
         if isinstance(self.geo_encoder, TabularEncoder) or isinstance(
             self.geo_encoder, EncoderWrapper
         ):
-            self.geo_encoder.configure_nn(self.tabular_dim)
-            if self.tabular_dim:
-                self.trainable_modules.append("tabular_encoder")
+            self.geo_encoder.set_tabular_input_dim(self.tabular_dim)
 
+        # Setup encoders that need data-depended configurations
+        new_modules = [f"geo_encoder.{i}]" for i in self.geo_encoder.setup()]
+        self.trainable_modules.extend(new_modules)
+
+        # Configure prediction head based on geo-encoder output_dim
         self.prediction_head.set_dim(
             input_dim=self.geo_encoder.output_dim, output_dim=self.num_classes
         )
-        self.prediction_head.configure_nn()
+        self.prediction_head.setup()
         if "prediction_head" not in self.trainable_modules:
             self.trainable_modules.append("prediction_head")
 

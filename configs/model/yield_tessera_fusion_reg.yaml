@@ -12,6 +12,11 @@ geo_encoder:
     - encoder:
         _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
         geo_data_name: tessera
+      projector:
+        _target_: src.models.components.geo_encoders.mlp_projector.MLPProjector
+        nn_layers: 2
+        hidden_dim: 512
+        output_dim: 512
     - encoder:
         _target_: src.models.components.geo_encoders.tabular_encoder.TabularEncoder
         output_dim: 256

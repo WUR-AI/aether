@@ -43,7 +43,7 @@ def test_pred_head_generic_properties(create_butterfly_dataset):
         assert callable(
             getattr(pred_head, "configure_nn")
         ), f"'configure_nn' is not callable in {pred_head_class.__name__}."
-        pred_head.configure_nn()
+        pred_head.setup()
         assert hasattr(pred_head, "net"), f"'net' attribute missing in {pred_head_class.__name__}."
         assert hasattr(
             pred_head, "forward"
