@@ -56,7 +56,7 @@ class HeatGuatemalaDataset(BaseDataset):
             dataset_name="heat_guatemala",
             seed=seed,
             cache_dir=cache_dir,
-            implemented_mod={"coords"},
+            implemented_mod={"coords", "tessera"},
             mock=mock,
             use_features=use_features,
         )
@@ -67,6 +67,14 @@ class HeatGuatemalaDataset(BaseDataset):
 
     def setup(self) -> None:
         """No files to download / prepare for this dataset."""
+        # Set up each requested modality
+        for mod in self.modalities.keys():
+            if mod == "coords" and len(self.modalities.keys()) == 1:
+                return
+            elif mod == "tessera":
+                self.setup_tessera()
+            # elif mod == "aef":
+            #     self.setup_aef()
         return
 
     @override

@@ -33,6 +33,7 @@ dependencies = [
     "peft>=0.18.1",
     "llm2vec",
     "setuptools<81",
+    "geotessera>=0.7.3",
 ]
 
 [project.optional-dependencies]
