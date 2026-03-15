@@ -14,9 +14,8 @@ geo_encoder:
         geo_data_name: tessera
       projector:
         _target_: src.models.components.geo_encoders.mlp_projector.MLPProjector
-        nn_layers: 2
-        hidden_dim: 512
-        output_dim: 512
+        nn_layers: 1
+        output_dim: 256
     - encoder:
         _target_: src.models.components.geo_encoders.tabular_encoder.TabularEncoder
         output_dim: 256
