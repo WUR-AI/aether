@@ -135,6 +135,7 @@ class CNNEncoder(BaseGeoEncoder):
     def setup(self) -> List[str]:
         # TODO: could you make sure new layers are returned here to be added to trainable parts?
         # Maybe move the get_backbone method in here?
+        print(f"Model setup with cnn geo-encoder for {self.geo_data_name}")
         return []
 
     @override

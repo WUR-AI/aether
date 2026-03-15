@@ -24,7 +24,12 @@ class ClipTextEncoder(BaseTextEncoder):
 
         self.projector = GeoCLIP().image_encoder.mlp
 
+        self.model.vision_model = None
+        self.model.visual_projection = None
+
         self.output_dim = 512
+
+        print("Model set up with CLIP text encoder")
 
     @override
     def forward(self, batch: Dict[str, torch.Tensor], mode: str) -> torch.Tensor:

@@ -69,7 +69,9 @@ class TextAlignmentModel(BaseModel):
         self.tabular_dim = self.trainer.datamodule.tabular_dim
 
         # Set up encoders and missing adapters/projectors
+        print("-------Model------------")
         self.setup_encoders_adapters()
+        print("------------------------")
 
         # Freeze requested parts
         self.freezer()
