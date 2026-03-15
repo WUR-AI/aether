@@ -34,6 +34,8 @@ class AverageEncoder(BaseGeoEncoder):
         """
         self.output_dim = self.dict_n_bands_default[self.geo_data_name]
         self.geo_encoder = nn.Identity()
+        print(f"Model set up with average geo-encoder for {self.geo_data_name}")
+
         return []
 
     @override

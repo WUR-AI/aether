@@ -24,6 +24,7 @@ class GeoClipCoordinateEncoder(BaseGeoEncoder):
     def setup(self) -> List[str]:
         self.geo_encoder = LocationEncoder()
         self.output_dim = self.geo_encoder.LocEnc0.head[0].out_features
+        print("Model setup with GeoClip coordinate encoder")
         return []
 
     @override

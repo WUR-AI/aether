@@ -27,6 +27,7 @@ class MLPProjector(BaseGeoEncoder):
     @override
     def setup(self) -> List[str]:
         self.configure_nn()
+        print("Model setup with MLP projector")
         return ["net"]
 
     def set_input_dim(self, input_dim: int) -> None:

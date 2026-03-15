@@ -62,7 +62,9 @@ class PredictiveModel(BaseModel):
             if isinstance(self.trainable_modules, tuple):
                 self.trainable_modules = list(self.trainable_modules)
 
+        print("-------Model------------")
         self.setup_encoders_adapters()
+        print("------------------------")
 
         # Freezing requested parts
         self.freezer()

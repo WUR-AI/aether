@@ -35,6 +35,7 @@ class TabularEncoder(BaseGeoEncoder):
     @override
     def setup(self, input_dim: int = None) -> list[str]:
         self.configure_nn(input_dim)
+        print("Model setup with Tabular geo-encoder")
         return ["tabular_encoder"]
 
     def set_tabular_input_dim(self, input_dim: int) -> None:
