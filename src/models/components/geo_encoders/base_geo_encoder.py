@@ -20,19 +20,39 @@ class BaseGeoEncoder(nn.Module, ABC):
         pass
 
     @property
-    def device(self) -> torch.device:
+    def device(self) -> torch.device | None:
         devices = {p.device for p in self.parameters()}
-        if len(devices) != 1:
+        if len(devices) > 1:
             raise RuntimeError("GEO encoder is on multiple devices")
+        elif len(devices) == 0:
+            return None
         return devices.pop()
 
     @property
-    def dtype(self) -> torch.dtype:
+    def dtype(self) -> torch.dtype | None:
         dtypes = {p.dtype for p in self.parameters()}
-        if len(dtypes) != 1:
+        if len(dtypes) > 1:
             raise RuntimeError("GEO encoder has multiple dtypes")
+        elif len(dtypes) == 0:
+            return None
         return dtypes.pop()
 
+    @abstractmethod
+    def setup(self) -> list[str]:
+        """Configures networks, data-dependent parts.
 
-if __name__ == "__main__":
-    _ = BaseGeoEncoder(None)
+        Gets called in model.setup() method. Returns names of any new module configured to be added
+        to the trainable modules list.
+        """
+        pass
+
+    def add_projector(self, projected_dim: int) -> None:
+        """Adds an extra linear projection layer to the geo encoder.
+
+        NB: is not used by default, needs to be called explicitly in forward().
+        """
+        self.extra_projector = nn.Linear(self.output_dim, projected_dim, dtype=self.dtype)
+        print(
+            f"Extra linear projection layer added with mapping dimension {self.output_dim} to {projected_dim}"
+        )
+        self.output_dim = projected_dim

@@ -7,15 +7,32 @@ from src.models.components.pred_heads.base_pred_head import BasePredictionHead
 
 
 class LinearPredictionHead(BasePredictionHead):
-    def __init__(self):
+    def __init__(
+        self,
+        input_dim: int | None = None,
+        output_dim: int | None = None,
+    ) -> None:
+        """Linear prediction head for classification.
+
+        :param input_dim: the size of input dimension
+        :param output_dim: the size of output dimension
+        """
         super().__init__()
+        self.set_dim(input_dim, output_dim)
 
     @override
     def forward(self, feats: torch.Tensor) -> torch.Tensor:
+        """Forward pass through the prediction head."""
+
         return torch.sigmoid(self.net(feats))
 
     @override
-    def configure_nn(self) -> None:
+    def setup(self) -> None:
+        """Configures networks, data-dependent parts.
+
+        Gets called in model.setup() method. Returns names of any new module configured to be added
+        to the trainable modules list.
+        """
         assert type(self.input_dim) is int, self.input_dim
         assert type(self.output_dim) is int, self.output_dim
         self.net = nn.Linear(self.input_dim, self.output_dim)

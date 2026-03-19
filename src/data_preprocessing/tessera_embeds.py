@@ -127,7 +127,9 @@ def get_tessera_embeds(
             memfiles.append(reproject_memfile)
 
     if not tiles:
-        print(f"No TESSERA tiles found for {name_loc} at ({lon:.4f}, {lat:.4f}) year={year}. Skipping.")
+        print(
+            f"No TESSERA tiles found for {name_loc} at ({lon:.4f}, {lat:.4f}) year={year}. Skipping."
+        )
         for mf in memfiles:
             mf.close()
         return
@@ -197,7 +199,7 @@ def tessera_from_df(
 
     # Tessera connection
     cache_dir = os.path.join(cache_dir, "tessera")
-    gt = GeoTessera(cache_dir=cache_dir)
+    gt = GeoTessera(cache_dir=cache_dir, embeddings_dir=cache_dir, dataset_version="v1")
 
     # Iter each coord
     n = len(model_ready_df)
@@ -265,3 +267,13 @@ def inspect_np_arr_as_tiff(
             dst.write(arr_to_write[i], i + 1)
 
     print(f"Tiff version of np array saved to {file_path}")
+
+
+if __name__ == "__main__":
+    os.chdir("../..")
+
+    df = pd.read_csv("data/heat_guatemala/model_ready_heat_guatemala.csv")
+
+    tessera_from_df(
+        df, "data/heat_guatemala/eo/tessera_2024", year=2024, tile_size=10, cache_dir="data/cache"
+    )

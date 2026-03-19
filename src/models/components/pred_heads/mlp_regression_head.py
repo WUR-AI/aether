@@ -19,18 +19,40 @@ from src.models.components.pred_heads.base_pred_head import BasePredictionHead
 class MLPRegressionPredictionHead(BasePredictionHead):
     """MLP prediction head for regression tasks (outputs a continuous value)."""
 
-    def __init__(self, nn_layers: int = 2, hidden_dim: int = 256, dropout: float = 0.0) -> None:
+    def __init__(
+        self,
+        nn_layers: int = 2,
+        hidden_dim: int = 256,
+        dropout: float = 0.0,
+        input_dim: int | None = None,
+        output_dim: int | None = None,
+    ) -> None:
+        """MLP prediction head for regression tasks.
+
+        :param nn_layers: number of layers in MLP
+        :param hidden_dim: the size of hidden dimensions
+        :param dropout: the dropout rate
+        :param input_dim: the size of input dimension
+        :param output_dim: the size of output dimension
+        """
         super().__init__()
         self.nn_layers = nn_layers
         self.hidden_dim = hidden_dim
         self.dropout = dropout
+        self.set_dim(input_dim, output_dim)
 
     @override
     def forward(self, feats: torch.Tensor) -> torch.Tensor:
+        """Forward pass through the prediction head."""
         return self.net(feats)
 
     @override
-    def configure_nn(self) -> None:
+    def setup(self) -> None:
+        """Configures networks, data-dependent parts.
+
+        Gets called in model.setup() method. Returns names of any new module configured to be added
+        to the trainable modules list.
+        """
         assert isinstance(self.input_dim, int), self.input_dim
         assert isinstance(self.output_dim, int), self.output_dim
 

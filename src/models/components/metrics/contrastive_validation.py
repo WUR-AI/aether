@@ -39,7 +39,7 @@ class RetrievalContrastiveValidation(BaseMetrics):
             k_threshold = configs.get("theta_k")
             aux_val = aux_vals[idx]
 
-            if k_threshold:
+            if k_threshold is not None:
                 dynamic_k = (
                     sum(aux_val >= k_threshold).item()
                     if is_max

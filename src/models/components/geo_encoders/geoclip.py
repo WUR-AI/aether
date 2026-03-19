@@ -1,4 +1,4 @@
-from typing import Dict, override
+from typing import Dict, List, override
 
 import torch
 from geoclip import LocationEncoder
@@ -13,13 +13,19 @@ class GeoClipCoordinateEncoder(BaseGeoEncoder):
         geo_data_name="coords",
     ) -> None:
         super().__init__()
-        self.geo_encoder = LocationEncoder()
-        self.output_dim = self.geo_encoder.LocEnc0.head[0].out_features
+
         self.allowed_geo_data_names = ["coords"]
         assert (
             geo_data_name in self.allowed_geo_data_names
         ), f"geo_data_name must be one of {self.allowed_geo_data_names}, got {geo_data_name}"
         self.geo_data_name = geo_data_name
+
+    @override
+    def setup(self) -> List[str]:
+        self.geo_encoder = LocationEncoder()
+        self.output_dim = self.geo_encoder.LocEnc0.head[0].out_features
+        print("Model setup with GeoClip coordinate encoder")
+        return []
 
     @override
     def forward(

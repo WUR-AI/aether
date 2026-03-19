@@ -152,7 +152,9 @@ class YieldAfricaDataset(BaseDataset):
 
         n_after = len(self.df)
         if n_after != n_before:
-            log.info(f"Country/year filter: {n_before} → {n_after} records ({n_before - n_after} excluded)")
+            log.info(
+                f"Country/year filter: {n_before} → {n_after} records ({n_before - n_after} excluded)"
+            )
 
         # get_records() mutates self.use_aux_data in place (replacing pattern
         # dicts with resolved column-name lists), so reset it from the original
