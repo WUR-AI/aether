@@ -24,8 +24,7 @@ class MLPPredictionHead(BasePredictionHead):
         super().__init__()
         self.nn_layers = nn_layers
         self.hidden_dim = hidden_dim
-        if input_dim and output_dim:
-            self.set_dim(input_dim, output_dim)
+        self.set_dim(input_dim, output_dim)
 
     @override
     def forward(self, feats: torch.Tensor) -> torch.Tensor:
