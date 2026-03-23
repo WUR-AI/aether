@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 import torch
 
-from src.models.components.eo_encoders.geoclip import GeoClipCoordinateEncoder
+from src.models.components.geo_encoders.geoclip import GeoClipCoordinateEncoder
 from src.models.components.pred_heads.base_pred_head import BasePredictionHead
 from src.models.components.pred_heads.linear_pred_head import LinearPredictionHead
 from src.models.components.pred_heads.mlp_pred_head import MLPPredictionHead
@@ -19,11 +19,13 @@ def test_pred_head_generic_properties(create_butterfly_dataset):
     ds, dm = create_butterfly_dataset
     batch = next(iter(dm.train_dataloader()))
     eo_encoder = GeoClipCoordinateEncoder()
+    eo_encoder.setup()
     feats = eo_encoder.forward(batch)
 
     list_pred_heads = [LinearPredictionHead, MLPPredictionHead, MLPRegressionPredictionHead]
     for pred_head_class in list_pred_heads:
-        pred_head = pred_head_class()
+        pred_head = pred_head_class(input_dim=64, output_dim=64)
+        pred_head.setup()
         assert hasattr(
             pred_head, "set_dim"
         ), f"'set_dim' method missing in {pred_head_class.__name__}."
@@ -38,12 +40,12 @@ def test_pred_head_generic_properties(create_butterfly_dataset):
             pred_head, "output_dim"
         ), f"'output_dim' attribute missing in {pred_head_class.__name__}."
         assert hasattr(
-            pred_head, "configure_nn"
-        ), f"'configure_nn' method missing in {pred_head_class.__name__}."
+            pred_head, "setup"
+        ), f"'setup' method missing in {pred_head_class.__name__}."
         assert callable(
-            getattr(pred_head, "configure_nn")
-        ), f"'configure_nn' is not callable in {pred_head_class.__name__}."
-        pred_head.configure_nn()
+            getattr(pred_head, "setup")
+        ), f"'setup' is not callable in {pred_head_class.__name__}."
+        pred_head.setup()
         assert hasattr(pred_head, "net"), f"'net' attribute missing in {pred_head_class.__name__}."
         assert hasattr(
             pred_head, "forward"

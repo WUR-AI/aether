@@ -1,0 +1,44 @@
+_target_: src.models.predictive_model.PredictiveModel
+
+geo_encoder:
+  _target_: src.models.components.geo_encoders.encoder_wrapper.EncoderWrapper
+
+  encoder_branches:
+    - encoder:
+        _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
+    - encoder:
+        _target_: src.models.components.geo_encoders.tabular_encoder.TabularEncoder
+        output_dim: 256
+        dropout_prob: 0.2
+        geo_data_name: tabular
+
+  fusion_strategy: "concat"
+
+prediction_head:
+  _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
+  nn_layers: 2
+  hidden_dim: 256
+  dropout: 0.2
+
+# GeoClip frozen; tabular projection + head are trained.
+trainable_modules: [geo_encoder, prediction_head]
+# Disable L2 normalization before MLP regression to keep magnitude of features
+normalize_features: false
+
+metrics: ${metrics}
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  weight_decay: 1e-4
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+
+loss_fn:
+  _target_: src.models.components.loss_fns.huber_loss.HuberLoss

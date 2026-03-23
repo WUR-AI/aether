@@ -10,7 +10,7 @@ from src.models.components.metrics.base_metrics import BaseMetrics
 class MetricsWrapper(nn.Module):
     def __init__(self, metrics: List[BaseMetrics | BaseLossFn]) -> None:
         super().__init__()
-        self.metrics = metrics
+        self.metrics = nn.ModuleList(metrics)
 
     def forward(self, mode="train", **kwargs) -> Dict[str, torch.float]:
         """Calculates all metrics and adds all the results into one dictionary for logging."""

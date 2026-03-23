@@ -39,10 +39,7 @@ def collate_fn(
     # convert aux into captions
     if mode == "train":
         batch_collected["text"] = caption_builder.random(batch_collected["aux"])
-    elif mode == "val":
-        batch_collected["text"] = caption_builder.all(batch_collected["aux"])
     else:
         batch_collected["text"] = caption_builder.all(batch_collected["aux"])
-        # batch_collected['concepts'] = caption_builder.build_concepts(batch_collected["aux"])
 
     return batch_collected

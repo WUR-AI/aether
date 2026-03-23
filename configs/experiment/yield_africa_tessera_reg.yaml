@@ -1,0 +1,27 @@
+# @package _global_
+# configs/experiment/yield_africa_tessera_reg.yaml
+# Variant: TESSERA spatial encoder only (no tabular features).
+# Requires tiles pre-fetched by:
+#   python src/data_preprocessing/yield_africa_tessera_preprocess.py --data_dir <data_dir>
+
+defaults:
+  - override /model: yield_tessera_reg
+  - override /data: yield_africa_tessera
+  - override /metrics: yield_africa_regression
+
+tags: ["yield_africa", "tessera_only", "regression"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 150
+
+data:
+  batch_size: 64
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "yield_africa"
+  aim:
+    experiment: "yield_africa"

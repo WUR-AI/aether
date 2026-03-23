@@ -16,8 +16,6 @@ class BaseModel(LightningModule, ABC):
         scheduler: torch.optim.lr_scheduler,
         loss_fn: BaseLossFn,
         metrics: MetricsWrapper,
-        num_classes: int | None = None,
-        tabular_dim: int | None = None,
     ) -> None:
         """Interface for any model.
 
@@ -26,23 +24,28 @@ class BaseModel(LightningModule, ABC):
         :param scheduler: scheduler for the model weight update
         :param loss_fn: loss function
         :param metrics: metrics to track for model performance estimation
-        :param num_classes: number of classes to predict
         """
         super().__init__()
         self.save_hyperparameters(
-            ignore=["loss_fn", "eo_encoder", "prediction_head", "text_encoder", "metrics"]
+            ignore=["loss_fn", "geo_encoder", "prediction_head", "text_encoder", "metrics"]
         )
 
         self.trainable_modules = trainable_modules
-        self.num_classes = num_classes
-        self.tabular_dim = tabular_dim
+        self.num_classes: int | None = None
+        self.tabular_dim: int | None = None
         self.loss_fn = loss_fn
         self.metrics = metrics
+
+    @abstractmethod
+    def setup(self, stage: str) -> None:
+        """Updates model based data-bound configurations (through datamodule), This method is
+        called after trainer is initialized and datamodule is available."""
+        pass
 
     @final
     def freezer(self) -> None:
         """Freezes modules based on provided trainable modules."""
-        self.trainable_modules = tuple(self.trainable_modules) or tuple()
+        trainable_modules = tuple(self.trainable_modules) or tuple()
 
         # Store higher level module names for printing of trainable parts
         trainable = set()
@@ -50,17 +53,30 @@ class BaseModel(LightningModule, ABC):
         # Freeze modules
         for name, param in self.named_parameters():
             # Enable exceptions
-            if name.startswith(self.trainable_modules):
+            if name.startswith(trainable_modules):
                 param.requires_grad = True
-                top_name = name.split(".", 2)[:2]
-                trainable.add(".".join(top_name))
+                trainable.add(name)
             else:
                 # Freeze the rest
                 param.requires_grad = False
 
-        # Set module modes correctly
+        # Set module modes correctly.
+        # A module should be in train() if:
+        #   - it IS a trainable module (name == t), or
+        #   - it is a CHILD of a trainable module (name starts with t + "."), or
+        #   - it is an ANCESTOR of a trainable module (t starts with name + "."),
+        #     so that container modules reflect the correct mode, or
+        #   - it is the root module (""), which must be train when any child is.
+        def _in_train_scope(name: str) -> bool:
+            if not name:  # root module
+                return bool(trainable_modules)
+            for t in trainable_modules:
+                if name == t or name.startswith(t + ".") or t.startswith(name + "."):
+                    return True
+            return False
+
         for name, module in self.named_modules():
-            if any(t.startswith(name) for t in self.trainable_modules):
+            if _in_train_scope(name):
                 module.train()
             else:
                 module.eval()

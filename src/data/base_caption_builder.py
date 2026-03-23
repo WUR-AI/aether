@@ -11,7 +11,9 @@ from src.data.base_dataset import BaseDataset
 
 
 class BaseCaptionBuilder(ABC):
-    def __init__(self, templates_fname: str, data_dir: str, seed: int) -> None:
+    def __init__(
+        self, templates_fname: str, concepts_fname: str, data_dir: str, seed: int
+    ) -> None:
         """Interface of caption builder class for converting numerical auxiliary data values into
         textual descriptions from provided caption templates.
 
@@ -21,9 +23,12 @@ class BaseCaptionBuilder(ABC):
         """
 
         self.data_dir = data_dir
-        templates_path = os.path.join(self.data_dir, "caption_templates", templates_fname)
+        templates_path = os.path.join(self.data_dir, "location_caption_templates", templates_fname)
         self.templates = json.load(open(templates_path))
         self.tokens_in_template = [self._extract_tokens(t) for t in self.templates]
+
+        concepts_path = os.path.join(self.data_dir, "concept_captions", concepts_fname)
+        self.concepts = json.load(open(concepts_path))
 
         self.column_to_metadata_map: Dict[str] | None = None
         self.seed = seed
@@ -42,7 +47,9 @@ class BaseCaptionBuilder(ABC):
     @staticmethod
     def _extract_tokens(template: str) -> List[str]:
         """Extract tokens in template and return a list of tokens."""
-        return re.findall(r"<([^<>]+)>", template)
+        tokens = re.findall(r"<([^<>]+)>", template)
+        # TODO: check if those columns exist in the dataset maps
+        return tokens
 
     @staticmethod
     def _fill(template: str, fillers: Dict[str, str]) -> str:
@@ -96,15 +103,18 @@ class BaseCaptionBuilder(ABC):
 
         return formatted_rows
 
-    def build_concepts(self, aux_values) -> List[str]:
-        pass
+    def sync_concepts(self) -> List[str]:
+        for concept in self.concepts:
+            concept["id"] = self.column_to_metadata_map["aux"][concept["col"]]["id"]
 
 
 class DummyCaptionBuilder(BaseCaptionBuilder):
     """Dummy caption builder for testing purposes."""
 
-    def __init__(self, templates_fname: str, data_dir: str, seed: int) -> None:
-        super().__init__(templates_fname, data_dir, seed)
+    def __init__(
+        self, templates_fname: str, concepts_fname: str, data_dir: str, seed: int
+    ) -> None:
+        super().__init__(templates_fname, concepts_fname, data_dir, seed)
 
     def sync_with_dataset(self, dataset) -> None:
         pass

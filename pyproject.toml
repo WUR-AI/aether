@@ -33,15 +33,13 @@ dependencies = [
     "peft>=0.18.1",
     "llm2vec",
     "setuptools<81",
+    "geotessera>=0.7.3",
 ]
 
 [project.optional-dependencies]
 create-data = [
     "geemap>=0.36.6",
     "pipreqs>=0.5.0",
-]
-geotessera = [
-    "geotessera>=0.7.3",
 ]
 
 [tool.pytest.ini_options]

@@ -228,3 +228,4 @@ notebooks/01-TvdP-tmp.ipynb
 */source/*
 *.tif # for now
 ..env.swp
+/data/yield_africa/

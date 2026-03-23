@@ -1,0 +1,15 @@
+_target_: src.models.components.geo_encoders.encoder_wrapper.EncoderWrapper
+
+encoder_branches:
+  - encoder:
+      _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
+      geo_data_name: aef
+    projector:
+      _target_: src.models.components.geo_encoders.mlp_projector.MLPProjector
+      nn_layers: 2
+      hidden_dim: 512
+      output_dim: 512
+#  - encoder: # another branch
+#      __target__:
+
+fusion_strategy: "concat"
