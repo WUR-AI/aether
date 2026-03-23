@@ -39,7 +39,9 @@ class MLPRegressionPredictionHead(BasePredictionHead):
         self.nn_layers = nn_layers
         self.hidden_dim = hidden_dim
         self.dropout = dropout
-        self.set_dim(input_dim, output_dim)
+
+        if input_dim and output_dim:
+            self.set_dim(input_dim, output_dim)
 
     @override
     def forward(self, feats: torch.Tensor) -> torch.Tensor:
