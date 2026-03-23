@@ -1,0 +1,154 @@
+from typing import Any, Dict, List, override
+
+import torch
+import torch.nn as nn
+
+from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
+from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
+
+
+class EncoderWrapper(BaseGeoEncoder):
+    """Wrapper class for multi-modal encoders."""
+
+    def __init__(
+        self,
+        encoder_branches: List[Dict[str, Any]],
+        fusion_strategy: str = "concat",
+    ):
+        super().__init__()
+
+        self.output_dim = None
+
+        self._reformat_set_branches(encoder_branches)
+
+        assert fusion_strategy in ["mean", "concat", "none"], ValueError(
+            f'Unsupported fusion strategy "{fusion_strategy}"'
+        )
+        self.fusion_strategy = fusion_strategy
+
+    def _reformat_set_branches(self, encoder_branches: List[Dict[str, Any]]):
+        """Reformatting to allow registering modules properly."""
+        self.encoder_branches = nn.ModuleList()
+
+        for branch in encoder_branches:
+            module_dict = nn.ModuleDict({"encoder": branch["encoder"]})
+
+            if branch.get("projector") is not None:
+                module_dict["projector"] = branch["projector"]
+
+            self.encoder_branches.append(module_dict)
+
+    @override
+    def setup(self) -> List[str]:
+        new_modules = []
+
+        # Configure/initialise missing/conditional parts
+        for i, branch in enumerate(self.encoder_branches):
+            # Setup encoder
+            encoder = branch["encoder"]
+
+            # Configure tabular encoder
+            if isinstance(encoder, TabularEncoder):
+                if self.tabular_dim is None:
+                    raise ValueError("TabularEncoder requires tabular_dim")
+                encoder.set_tabular_input_dim(self.tabular_dim)
+
+            new_parts = encoder.setup()
+            new_modules.extend(
+                [f"encoder_branches.{str(i)}.encoder.{p}" for p in new_parts]
+                if len(new_parts) != 0
+                else []
+            )
+
+            # Configure adapter/projector if requested
+            if "projector" in branch:
+                projector = branch["projector"]
+
+                intermediate_dim = encoder.output_dim
+                projector.set_input_dim(input_dim=intermediate_dim)
+                new_parts = projector.setup()
+                new_modules.extend(
+                    [f"encoder_branches.{str(i)}.projector.{p}" for p in new_parts]
+                    if len(new_parts) != 0
+                    else []
+                )
+
+        self.set_output_dim()
+        return new_modules
+
+    def set_tabular_input_dim(self, tabular_dim=None):
+        """Set tabular dimension if there is tabular encoder."""
+        self.tabular_dim = None
+
+        for branch in self.encoder_branches:
+            branch_out_dim = branch["encoder"]
+            if isinstance(branch_out_dim, TabularEncoder):
+                self.tabular_dim = tabular_dim
+                return
+
+    def set_output_dim(self):
+        """Calculates the output dimension."""
+
+        # Collect all output dimensions
+        output_dims = []
+        for branch in self.encoder_branches:
+            branch_out_dim = branch["encoder"].output_dim
+
+            if "projector" in branch:
+                projector = branch["projector"]
+                branch_out_dim = projector.output_dim
+
+            output_dims.append(branch_out_dim)
+
+        # Combine output dimensions
+        if self.fusion_strategy == "concat":
+            self.output_dim = sum(output_dims)
+        elif self.fusion_strategy == "mean":
+            if set(output_dims) != 1:
+                raise ValueError(
+                    f"Encoder branches produces different output dimensions {output_dims} and cannot be averaged."
+                )
+            self.output_dim = output_dims[0]
+
+    @override
+    def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
+        branch_feats = []
+        for branch in self.encoder_branches:
+            feats = branch["encoder"].forward(batch)  # each encoder knows what modality it needs
+
+            if "projector" in branch:
+                feats = branch["projector"].forward(feats)
+
+            branch_feats.append(feats)
+
+        if self.fusion_strategy == "concat":
+            return torch.cat(branch_feats, dim=1)
+        return torch.mean(branch_feats, dim=1)
+
+    @property
+    def device(self):
+        devices = set()
+        for branch in self.encoder_branches:
+            encoder = branch["encoder"]
+            devices.update({p.device for p in encoder.parameters()})
+            if "projector" in branch:
+                projector = branch["projector"]
+                devices.update({p.device for p in projector.parameters()})
+
+        if len(devices) != 1:
+            raise RuntimeError("GEO encoder is on multiple devices")
+        return devices.pop()
+
+    @property
+    def dtype(self) -> torch.dtype:
+        dtypes = set()
+        for branch in self.encoder_branches:
+            encoder = branch["encoder"]
+            dtypes.update({p.dtype for p in encoder.parameters()})
+            if "projector" in branch:
+                projector = branch["projector"]
+                dtypes.update({p.dtype for p in projector.parameters()})
+
+        if len(dtypes) != 1:
+            raise RuntimeError("GEO encoder is on multiple devices")
+        return dtypes.pop()
