@@ -117,6 +117,10 @@ class TextAlignmentModel(BaseModel):
     def setup_retrieval_evaluation(self):
         self.concept_configs = self.trainer.datamodule.concept_configs
         self.concepts = [c["concept_caption"] for c in self.concept_configs]
+        self.concept_names = [
+            f"{c['col'].replace('aux_', '')}_{'max' if c['is_max'] else 'min'}"
+            for c in self.concept_configs
+        ]
 
         self.contrastive_val = RetrievalContrastiveValidation(self.ks, self.concept_configs)
         self.outputs_epoch_memory = []
@@ -214,6 +218,8 @@ class TextAlignmentModel(BaseModel):
         for i, result in concept_scores.items():
             print(f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:')
             for k, v in result.items():
+                if k == "dynamic_k":
+                    self.log(f"dyn_k_{self.self.concept_names[i]}", v, **self.log_kwargs)
                 print(f"Top-{k}: {v:.1f}%")
                 avr_scores[f"{mode}_avr_top-{k}"].append(v)
 
