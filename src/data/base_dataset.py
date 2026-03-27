@@ -237,7 +237,7 @@ class BaseDataset(Dataset, ABC):
                 if fname not in avail_files:
                     print(f"Retrieving missing Tessera data: {fname}")
                     gt = gt or GeoTessera(cache_dir=self.cache_dir)
-                    get_tessera_embeds(rec.lon, rec.lat, rec.name_loc, year, dst_dir, size)
+                    get_tessera_embeds(rec["lon"], rec["lat"], rec["name_loc"], year, dst_dir, size,gt)
 
     @final
     def setup_aef(self) -> None:

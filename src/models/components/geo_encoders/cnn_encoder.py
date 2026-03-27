@@ -148,12 +148,12 @@ class CNNEncoder(BaseGeoEncoder):
         :param batch: input batch
         :return: extracted features
         """
-        eo_data = batch.get("eo", {})
+        eo_data = batch[self.geo_data_name]
 
         dtype = self.dtype
         if eo_data.dtype != dtype:
             eo_data = eo_data.to(dtype)
-        feats = self.geo_encoder(eo_data[self.geo_data_name])
+        feats = self.geo_encoder(eo_data)#self.geo_encoder(eo_data[self.geo_data_name])
         # n_nans = torch.sum(torch.isnan(feats)).item()
         # assert (
         #     n_nans == 0
