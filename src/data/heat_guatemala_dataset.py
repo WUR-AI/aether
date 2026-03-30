@@ -93,7 +93,10 @@ class HeatGuatemalaDataset(BaseDataset):
                 if path is not None and os.path.exists(path):
                     arr = np.load(path).transpose(2, 0, 1)
                 else:
-                    arr = np.zeros((128, 10, 10), dtype=np.float32)
+                    size = self.modalities["tessera"].get("size", 10)
+                    arr = np.zeros((128, size, size), dtype=np.float32)
+                    n_bands = self.modalities["tessera"].get("n_bands", 128)
+                    arr = np.zeros((n_bands, size, size), dtype=np.float32)
                 tess = torch.tensor(arr, dtype=torch.float32)
                 sample["eo"]["tessera"] = tess
                 sample["tessera"] = tess
