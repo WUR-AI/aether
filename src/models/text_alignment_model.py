@@ -219,7 +219,7 @@ class TextAlignmentModel(BaseModel):
             print(f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:')
             for k, v in result.items():
                 if k == "dynamic_k":
-                    self.log(f"dyn_k_{self.self.concept_names[i]}", v, **self.log_kwargs)
+                    self.log(f"dyn_k_{self.concept_names[i]}", v, **self.log_kwargs)
                 print(f"Top-{k}: {v:.1f}%")
                 avr_scores[f"{mode}_avr_top-{k}"].append(v)
 
