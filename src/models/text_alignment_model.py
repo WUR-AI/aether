@@ -138,6 +138,9 @@ class TextAlignmentModel(BaseModel):
                 aux_vals_current_ds = [tmp_ds[ii]["aux"][aux_col_id] for ii in range(len(tmp_ds))]
                 # theta_k = c['theta_k']
                 theta_k = self.find_elbow_point(aux_vals_current_ds)
+                self.concept_configs[i_c][
+                    "theta_k"
+                ] = theta_k  # assign new theta_k to concept_configs for later use in validation
                 if c["is_max"]:
                     n_baseline = sum(aux_val >= theta_k for aux_val in aux_vals_current_ds)
                 else:
