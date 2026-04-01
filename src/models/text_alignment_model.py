@@ -1,6 +1,7 @@
 from io import text_encoding
 from typing import Dict, Tuple, override
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -134,16 +135,13 @@ class TextAlignmentModel(BaseModel):
             for i_c, c in enumerate(self.concept_configs):
                 c_name = self.concept_names[i_c]
                 aux_col_id = c["id"]
+                aux_vals_current_ds = [tmp_ds[ii]["aux"][aux_col_id] for ii in range(len(tmp_ds))]
+                # theta_k = c['theta_k']
+                theta_k = self.find_elbow_point(aux_vals_current_ds)
                 if c["is_max"]:
-                    n_baseline = sum(
-                        tmp_ds[ii]["aux"][aux_col_id] >= c.get("theta_k", float("inf"))
-                        for ii in range(len(tmp_ds))
-                    )
+                    n_baseline = sum(aux_val >= theta_k for aux_val in aux_vals_current_ds)
                 else:
-                    n_baseline = sum(
-                        tmp_ds[ii]["aux"][aux_col_id] <= c.get("theta_k", float("inf"))
-                        for ii in range(len(tmp_ds))
-                    )
+                    n_baseline = sum(aux_val <= theta_k for aux_val in aux_vals_current_ds)
                 self.dynamic_k_baselines[dataset_name][c_name] = n_baseline / n_ds * 100
 
         self.contrastive_val = RetrievalContrastiveValidation(self.ks, self.concept_configs)
@@ -288,3 +286,22 @@ class TextAlignmentModel(BaseModel):
         similarity_matrix = concept_embeds @ geo_embeds.T
 
         return similarity_matrix
+
+    def find_elbow_point(vals):
+        vals = np.sort(vals)
+        x = np.arange(len(vals)) / len(vals)
+        y = vals
+        slope = (y[-1] - y[0]) / (x[-1] - x[0])  # diagonal from first to last point
+        intercept = y[0] - slope * x[0]
+        orthogonal_slope = -1 / slope
+
+        intercepts_orthogonal = y - orthogonal_slope * x
+        intersection_diagonal_orthogonal = (intercepts_orthogonal - intercept) / (
+            slope - orthogonal_slope
+        )
+        distances = np.sqrt(
+            (x - intersection_diagonal_orthogonal) ** 2 + (y - (slope * x + intercept)) ** 2
+        )  # distance to diagonal
+        elbow_index = np.argmax(distances)
+        elbow_point = y[elbow_index]
+        return elbow_point
