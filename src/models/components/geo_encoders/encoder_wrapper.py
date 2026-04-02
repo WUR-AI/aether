@@ -122,8 +122,14 @@ class EncoderWrapper(BaseGeoEncoder):
             branch_feats.append(feats)
 
         if self.fusion_strategy == "concat":
-            return torch.cat(branch_feats, dim=1)
-        return torch.mean(branch_feats, dim=1)
+            feats = torch.cat(branch_feats, dim=1)
+            if self.extra_projector:
+                feats = self.extra_projector(feats)
+        else:
+            feats = torch.cat(branch_feats, dim=1)
+            if self.extra_projector:
+                feats = self.extra_projector(feats)
+        return feats
 
     @property
     def device(self):
