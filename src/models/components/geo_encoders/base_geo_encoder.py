@@ -14,6 +14,7 @@ class BaseGeoEncoder(nn.Module, ABC):
         # placeholders
         self.allowed_geo_data_names: list[str] | None = None
         self.geo_data_name: str | None = None
+        self.extra_projector: nn.Module | None = None
 
     @abstractmethod
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
