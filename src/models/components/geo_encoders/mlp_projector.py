@@ -49,4 +49,7 @@ class MLPProjector(BaseGeoEncoder):
         self.net = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.net(x)
+        feats = self.net(x)
+        if self.extra_projector:
+            feats = self.extra_projector(feats)
+        return feats

@@ -68,4 +68,7 @@ class TabularEncoder(BaseGeoEncoder):
             tab_data = tab_data.to(dtype)
         feats = self.geo_encoder(tab_data)
 
+        if self.extra_projector:
+            feats = self.extra_projector(feats)
+
         return feats.to(dtype)
