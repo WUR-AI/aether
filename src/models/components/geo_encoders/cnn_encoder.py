@@ -159,6 +159,9 @@ class CNNEncoder(BaseGeoEncoder):
         #     n_nans == 0
         # ), f"CNNEncoder output contains {n_nans}/{feats.numel()} NaNs PRIOR to normalization with data min {eo_data[self.geo_data_name].min()} and max {eo_data[self.geo_data_name].max()}."
 
+        if self.extra_projector:
+            feats = self.extra_projector(feats)
+
         return feats.to(dtype)
 
 

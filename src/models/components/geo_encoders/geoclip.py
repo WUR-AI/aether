@@ -39,6 +39,8 @@ class GeoClipCoordinateEncoder(BaseGeoEncoder):
         if coords.dtype != dtype:
             coords = coords.to(dtype)
         feats = self.geo_encoder(coords)
+        if self.extra_projector:
+            feats = self.extra_projector(feats)
 
         return feats.to(dtype)
 

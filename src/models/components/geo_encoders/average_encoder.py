@@ -43,4 +43,6 @@ class AverageEncoder(BaseGeoEncoder):
         """Data forward pass through the encoder."""
         tile = batch.get("eo", {}).get(self.geo_data_name)
         feats = self.geo_encoder(tile.mean(dim=(-2, -1)))
+        if self.extra_projector:
+            feats = self.extra_projector(feats)
         return feats
