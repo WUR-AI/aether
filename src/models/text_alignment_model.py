@@ -127,16 +127,27 @@ class TextAlignmentModel(BaseModel):
         dataset_names = ["train", "val", "test"]
         self.dynamic_k_baselines = {}
         for dataset_name in dataset_names:
-            if not hasattr(self.trainer.datamodule, f"{dataset_name}_dataloader"):
+            if not hasattr(self.trainer.datamodule, f"data_{dataset_name}"):
                 continue
-            tmp_ds = getattr(self.trainer.datamodule, f"{dataset_name}_dataloader")().dataset
+
+            tmp_ds = getattr(self.trainer.datamodule, f"data_{dataset_name}")
             n_ds = len(tmp_ds)
             self.dynamic_k_baselines[dataset_name] = {}
+
+            # Placeholder for all concepts
+            aux_vals_per_concept = {i: [] for i in range(len(self.concept_configs))}
+
+            for item in tmp_ds:
+                aux_data = item["aux"]["aux"]
+                for i_c, c in enumerate(self.concept_configs):
+                    aux_col_id = c["id"]
+                    aux_vals_per_concept[i_c].append(aux_data[aux_col_id])
+
+            # Compute per concept
             for i_c, c in enumerate(self.concept_configs):
                 c_name = self.concept_names[i_c]
-                aux_col_id = c["id"]
-                aux_vals_current_ds = [tmp_ds[ii]["aux"][aux_col_id] for ii in range(len(tmp_ds))]
-                # theta_k = c['theta_k']
+                aux_vals_current_ds = aux_vals_per_concept[i_c]
+
                 theta_k = self.find_elbow_point(aux_vals_current_ds)
                 self.concept_configs[i_c][
                     "theta_k"
@@ -290,6 +301,7 @@ class TextAlignmentModel(BaseModel):
 
         return similarity_matrix
 
+    @staticmethod
     def find_elbow_point(vals):
         vals = np.sort(vals)
         x = np.arange(len(vals)) / len(vals)
