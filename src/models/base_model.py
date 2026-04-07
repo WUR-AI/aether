@@ -107,11 +107,10 @@ class BaseModel(LightningModule, ABC):
             else:
                 module.eval()
 
-        print("----------------------------")
-        print("Set to train")
+        print("------Set to train------")
         for m in sorted(trainable):
             print(f"  {m}")
-        print("----------------------------")
+        print("------------------------")
 
     @abstractmethod
     def forward(
