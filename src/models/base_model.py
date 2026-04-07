@@ -16,6 +16,8 @@ class BaseModel(LightningModule, ABC):
         scheduler: torch.optim.lr_scheduler,
         loss_fn: BaseLossFn,
         metrics: MetricsWrapper,
+        num_classes: int | None = None,
+        tabular_dim: int | None = None,
     ) -> None:
         """Interface for any model.
 
@@ -24,17 +26,29 @@ class BaseModel(LightningModule, ABC):
         :param scheduler: scheduler for the model weight update
         :param loss_fn: loss function
         :param metrics: metrics to track for model performance estimation
+        :param num_classes: number of target classes
+        :param tabular_dim: number of tabular features
         """
         super().__init__()
         self.save_hyperparameters(
-            ignore=["loss_fn", "geo_encoder", "prediction_head", "text_encoder", "metrics"]
+            ignore=[
+                "loss_fn",
+                "geo_encoder",
+                "prediction_head",
+                "text_encoder",
+                "metrics",
+                "optimizer",
+                "scheduler",
+            ]
         )
 
         self.trainable_modules = trainable_modules
-        self.num_classes: int | None = None
-        self.tabular_dim: int | None = None
+        self.num_classes = num_classes
+        self.tabular_dim = tabular_dim
         self.loss_fn = loss_fn
         self.metrics = metrics
+        self.optimizer = optimizer
+        self.scheduler = scheduler
 
     @abstractmethod
     def setup(self, stage: str) -> None:
@@ -139,10 +153,10 @@ class BaseModel(LightningModule, ABC):
     def configure_optimizers(self) -> Dict[str, Any]:
         """Configure optimizer and learning rate scheduler."""
 
-        optimizer = self.hparams.optimizer(params=self.trainer.model.parameters())
+        optimizer = self.optimizer(params=self.trainer.model.parameters())
 
-        if self.hparams.scheduler is not None:
-            scheduler = self.hparams.scheduler(optimizer=optimizer)
+        if self.scheduler is not None:
+            scheduler = self.scheduler(optimizer=optimizer)
             return {
                 "optimizer": optimizer,
                 "lr_scheduler": {
@@ -162,12 +176,23 @@ class BaseModel(LightningModule, ABC):
             if any(k.startswith(part) for part in self.trainable_modules)
         }
 
+        checkpoint["hyper_parameters"].update(
+            {
+                "num_classes": self.num_classes,
+                "tabular_dim": self.tabular_dim,
+                "trainable_modules": self.trainable_modules,
+            }
+        )
+
     def on_load_checkpoint(self, checkpoint):
         """Load only trainable parts of the model."""
         missing_keys, unexpected_keys = self.load_state_dict(
             checkpoint["state_dict"], strict=False
         )
         print("Model loaded from a checkpoint.")
+
+        # self.tabular_dim = checkpoint['hyper_parameters']["tabular_dim"]
+        # self.num_classes = checkpoint["hyper_parameters"]["num_classes"]
 
         if missing_keys:
             missing_keys = {".".join(i.split(".")[:3]) for i in missing_keys}

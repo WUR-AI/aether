@@ -25,6 +25,8 @@ class PredictiveModel(BaseModel):
         loss_fn: BaseLossFn,
         metrics: MetricsWrapper,
         normalize_features: bool = True,
+        num_classes: int | None = None,
+        tabular_dim: int | None = None,
     ) -> None:
         """Implementation of the predictive model with replaceable GEO encoder, and prediction
         head.
@@ -36,13 +38,15 @@ class PredictiveModel(BaseModel):
         :param scheduler: scheduler to use for training
         :param loss_fn: loss function to use
         :param metrics: metrics to use for model performance evaluation
-        :param num_classes: number of target classes
-        :param tabular_dim: number of tabular features
         :param normalize_features: if True, apply L2 normalisation to encoder output before the
             prediction head (default: True)
+        :param num_classes: number of target classes
+        :param tabular_dim: number of tabular features
         """
 
-        super().__init__(trainable_modules, optimizer, scheduler, loss_fn, metrics)
+        super().__init__(
+            trainable_modules, optimizer, scheduler, loss_fn, metrics, num_classes, tabular_dim
+        )
 
         # Geo encoder configuration
         self.geo_encoder = geo_encoder
@@ -55,8 +59,15 @@ class PredictiveModel(BaseModel):
 
     @override
     def setup(self, stage: str) -> None:
-        self.num_classes = self.trainer.datamodule.num_classes
-        self.tabular_dim = self.trainer.datamodule.tabular_dim
+        """Updates model based data-bound configurations (through datamodule), This method is
+        called after trainer is initialized and datamodule is available.
+
+        Otherwise, some configuration variables must be made available
+        """
+
+        if self._trainer is not None:
+            self.num_classes = self.trainer.datamodule.num_classes
+            self.tabular_dim = self.trainer.datamodule.tabular_dim
 
         if stage != "fit":
             if isinstance(self.trainable_modules, tuple):
@@ -67,7 +78,10 @@ class PredictiveModel(BaseModel):
         print("------------------------")
 
         # Freezing requested parts
-        self.freezer()
+        if stage in ["inference"]:
+            self.full_freezer()
+        else:
+            self.freezer()
 
     def setup_encoders_adapters(self):
         """Set up encoders and missing adapters/projectors."""
