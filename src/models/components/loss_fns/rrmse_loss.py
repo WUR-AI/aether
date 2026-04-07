@@ -8,15 +8,13 @@ from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 class RRMSELoss(BaseLossFn):
     """Relative Root Mean Squared Error (RRMSE).
 
-    RRMSE = RMSE / mean(|labels|)
+    RRMSE = RMSE / mean(labels)
 
-    Normalises RMSE by the mean absolute value of the target, giving a
-    unit-free percentage error. This makes results comparable across crops
-    and regions with different absolute yield scales (e.g. t/ha ranges
-    differ significantly between maize in Zambia and rice in Rwanda).
+    Normalises RMSE by the mean absolute value of the target, giving a unit-free percentage error.
+    This makes results comparable across crops and regions with different absolute yield scales
+    (e.g. t/ha ranges differ significantly between maize in Zambia and rice in Rwanda).
 
-    Returns a fraction (e.g. 0.15 = 15 % error). Multiply by 100 for
-    percentage when reporting.
+    Returns a fraction (e.g. 0.15 = 15 % error). Multiply by 100 for percentage when reporting.
     """
 
     def __init__(self) -> None:
