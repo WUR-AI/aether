@@ -37,6 +37,7 @@ class LinearPredictionHead(BasePredictionHead):
         assert type(self.input_dim) is int, self.input_dim
         assert type(self.output_dim) is int, self.output_dim
         self.net = nn.Linear(self.input_dim, self.output_dim)
+        print("Model set up with linear prediction head")
         return
 
 

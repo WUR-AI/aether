@@ -50,6 +50,7 @@ class MLPPredictionHead(BasePredictionHead):
             input_dim = self.hidden_dim
         layers.append(nn.Linear(input_dim, self.output_dim))
         self.net = nn.Sequential(*layers)
+        print("Model set up with MLP prediction head")
         return
 
 

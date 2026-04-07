@@ -70,3 +70,5 @@ class MLPRegressionPredictionHead(BasePredictionHead):
 
         layers.append(nn.Linear(in_dim, self.output_dim))
         self.net = nn.Sequential(*layers)
+        print("Model set up with MLP regression prediction head")
+        return
