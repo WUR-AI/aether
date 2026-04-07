@@ -43,6 +43,18 @@ class BaseModel(LightningModule, ABC):
         pass
 
     @final
+    def full_freezer(self):
+        """Freeze the whole network."""
+        # Freeze the whole network
+        for name, param in self.named_parameters():
+            param.requires_grad = False
+
+        for name, module in self.named_modules():
+            module.eval()
+
+        return
+
+    @final
     def freezer(self) -> None:
         """Freezes modules based on provided trainable modules."""
         trainable_modules = tuple(self.trainable_modules) or tuple()
