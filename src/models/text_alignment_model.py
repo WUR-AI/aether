@@ -255,7 +255,7 @@ class TextAlignmentModel(BaseModel):
             print(f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:')
             for k, v in result.items():
                 if k == "dynamic_k":
-                    self.log(f"dyn_k_{self.self.concept_names[i]}", v, **self.log_kwargs)
+                    self.log(f"dyn_k_{self.concept_names[i]}", v, **self.log_kwargs)
                     indexed_v = (v - self.dynamic_k_baselines[mode][self.concept_names[i]]) / (
                         100 - self.dynamic_k_baselines[mode][self.concept_names[i]]
                     )
