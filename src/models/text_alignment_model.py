@@ -86,7 +86,7 @@ class TextAlignmentModel(BaseModel):
         print("------------------------")
 
         # Freeze not requested parts
-        if stage in ["inference"]:
+        if stage in ["inference", "test"]:
             self.full_freezer()
         else:
             self.freezer()

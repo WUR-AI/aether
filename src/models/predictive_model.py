@@ -78,7 +78,7 @@ class PredictiveModel(BaseModel):
         print("------------------------")
 
         # Freezing requested parts
-        if stage in ["inference"]:
+        if stage in ["inference", "test"]:
             self.full_freezer()
         else:
             self.freezer()
@@ -94,7 +94,7 @@ class PredictiveModel(BaseModel):
             self.geo_encoder.set_tabular_input_dim(self.tabular_dim)
 
         # Setup encoders that need data-depended configurations
-        new_modules = [f"geo_encoder.{i}]" for i in self.geo_encoder.setup()]
+        new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup() or []]
         self.trainable_modules.extend(new_modules)
 
         # Configure prediction head based on geo-encoder output_dim
