@@ -21,4 +21,4 @@ work_dir: ${hydra:runtime.cwd}
 
 # huggingface cache directory
 # can be overridden via HF_HOME environment variable
-huggingface_cache: ${oc.env:HF_HOME,oc.env:SHARED_CACHE/huggingface}
+huggingface_cache: ${oc.env:HF_HOME,${oc.env:SHARED_CACHE}/huggingface}
