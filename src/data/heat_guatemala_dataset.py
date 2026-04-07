@@ -15,9 +15,9 @@ Changes vs original:
 from typing import Any, Dict, override
 
 import torch
-
+import os
 from src.data.base_dataset import BaseDataset
-
+import numpy as np
 
 class HeatGuatemalaDataset(BaseDataset):
     """Dataset for the urban heat island use case (Guatemala City, LST regression).
@@ -88,6 +88,19 @@ class HeatGuatemalaDataset(BaseDataset):
                 sample["eo"]["coords"] = torch.tensor(
                     [row["lat"], row["lon"]], dtype=torch.float32
                 )
+            elif modality == "tessera":
+                path = row["tessera_path"]
+                if path is not None and os.path.exists(path):
+                    arr = np.load(path).transpose(2, 0, 1)
+                else:
+                    size = self.modalities["tessera"].get("size", 10)
+                    n_bands = self.modalities["tessera"].get("n_bands", 128)
+                    arr = np.zeros((n_bands, size, size), dtype=np.float32)
+                tess = torch.tensor(arr, dtype=torch.float32)
+                sample["eo"]["tessera"] = tess
+                sample["tessera"] = tess
+
+
 
         # --- Tabular features (always included if present in CSV) ---
         if self.use_features and self.feat_names:
