@@ -13,6 +13,7 @@ from src.models.components.text_encoders.base_text_encoder import (
 )
 from src.utils import RankedLogger
 from src.utils.errors import FileNotSpecified
+from src.utils.logging_utils import log_model_loading
 
 log = RankedLogger(__name__, rank_zero_only=True)
 
@@ -144,28 +145,6 @@ def _is_prefix_trained(trainable_modules: list[str], prefix: str) -> bool:
     return any(m.split(".")[0] == prefix for m in trainable_modules)
 
 
-def _group_keys(keys: list[str]) -> dict[str, list[str]]:
-    """Groups module names (keys)"""
-    grouped: dict[str, list[str]] = {}
-    for k in keys:
-        top = k.split(".", 1)[0] if "." in k else k
-        grouped.setdefault(top, []).append(k)
-    return grouped
-
-
-def _log_load_result(tag: str, result) -> None:
-    """Log missing/unexpected keys from `load_state_dict`."""
-    missing_keys, unexpected_keys = result
-    if missing_keys:
-        grouped = _group_keys(list(missing_keys))
-        summary = {k: len(v) for k, v in grouped.items()}
-        log.warning(f"[{tag}] Missing keys: {summary}")
-    if unexpected_keys:
-        grouped = _group_keys(list(unexpected_keys))
-        summary = {k: len(v) for k, v in grouped.items()}
-        log.warning(f"[{tag}] Unexpected keys: {summary}")
-
-
 def load_inference_model(inference_ckpt_path: str) -> InferenceModel:
     """Loads inference model from a merged checkpoint.
 
@@ -176,7 +155,7 @@ def load_inference_model(inference_ckpt_path: str) -> InferenceModel:
     model = hydra.utils.instantiate(inference_ckpt["hyper_parameters"])
     model.setup("inference")
     res = model.load_state_dict(inference_ckpt["state_dict"], strict=False)
-    _log_load_result("inference_ckpt", res)
+    log_model_loading("inference_ckpt", res)
     return model
 
 
@@ -236,14 +215,14 @@ def merge_inference_model(cfg, save_ckpt=False) -> InferenceModel | None:
 
     # Load alignment weights first (text encoder + geo encoder).
     res = model.load_state_dict(align_ckpt["state_dict"], strict=False)
-    _log_load_result("alignment_ckpt", res)
+    log_model_loading("alignment_ckpt", res)
 
     # Load prediction head weights from predictive ckpt.
     head_state = {
         k: v for k, v in pred_ckpt["state_dict"].items() if k.startswith("prediction_head.")
     }
     res = model.load_state_dict(head_state, strict=False)
-    _log_load_result("predictive_prediction_head_only", res)
+    log_model_loading("predictive_prediction_head_only", res)
 
     # Save model
     if save_ckpt:
