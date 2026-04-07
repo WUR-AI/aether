@@ -1,4 +1,3 @@
-from io import text_encoding
 from typing import Dict, Tuple, override
 
 import torch
@@ -32,6 +31,8 @@ class TextAlignmentModel(BaseModel):
         prediction_head: BasePredictionHead | None = None,
         ks: list[int] | None = [5, 10, 15],
         match_to_geo: bool = True,
+        num_classes: int | None = None,
+        tabular_dim: int | None = None,
     ) -> None:
         """Implementation of contrastive text-eo modality alignment model.
 
@@ -42,14 +43,16 @@ class TextAlignmentModel(BaseModel):
         :param loss_fn: loss function to use (contrastive)
         :param trainable_modules: list of modules to train (parts/modules or modules, modules)
         :param metrics: metrics to use for model performance evaluation
-        :param num_classes: number of target classes
-        :param tabular_dim: number of tabular features
         :param prediction_head: prediction head
         :param ks: list of ks
         :param match_to_geo: whether to match dimensions of text encoder to geo_encoder or visa-
             versa
+        :param num_classes: number of target classes
+        :param tabular_dim: number of tabular features
         """
-        super().__init__(trainable_modules, optimizer, scheduler, loss_fn, metrics)
+        super().__init__(
+            trainable_modules, optimizer, scheduler, loss_fn, metrics, num_classes, tabular_dim
+        )
 
         # Metrics
         self.ks = ks
@@ -64,31 +67,33 @@ class TextAlignmentModel(BaseModel):
         self.prediction_head = prediction_head
 
     @override
-    def setup(self, stage: str) -> None:
-        self.num_classes = self.trainer.datamodule.num_classes
-        self.tabular_dim = self.trainer.datamodule.tabular_dim
+    def setup(self, stage: str = "fit") -> None:
+        """Updates model based data-bound configurations (through datamodule), This method is
+        called after trainer is initialized and datamodule is available.
+
+        Otherwise, some configuration variables must be made available
+        """
+
+        if self._trainer is not None:
+            self.num_classes = self.trainer.datamodule.num_classes
+            self.tabular_dim = self.trainer.datamodule.tabular_dim
 
         # Set up encoders and missing adapters/projectors
         print("-------Model------------")
         self.setup_encoders_adapters()
         print("------------------------")
 
-        # Freeze requested parts
-        self.freezer()
+        # Freeze not requested parts
+        if stage in ["inference"]:
+            self.full_freezer()
+        else:
+            self.freezer()
 
-        # Configure contrastive retrieval evaluation
-        self.setup_retrieval_evaluation()
+            # Configure contrastive retrieval evaluation
+            self.setup_retrieval_evaluation()
 
     def setup_encoders_adapters(self):
         """Set up encoders and missing adapters/projectors."""
-        # We don't use tabular encoders for wrapping
-        # if (
-        #     isinstance(self.geo_encoder, MultiModalEncoder)
-        #     and self.geo_encoder.use_tabular
-        #     and not self.geo_encoder._tabular_ready
-        # ):
-        #     self.geo_encoder.build_tabular_branch(self.tabular_dim)
-
         # Setup encoders that need data-depended configurations
         new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup()]
         self.trainable_modules.extend(new_modules)
@@ -108,11 +113,6 @@ class TextAlignmentModel(BaseModel):
                 input_dim=self.geo_encoder.output_dim, output_dim=self.num_classes
             )
             self.prediction_head.setup()
-
-        # # Unify dtypes -> moving to data part, rather than changing parameter type
-        # if self.geo_encoder.dtype != self.text_encoder.dtype:
-        #     self.geo_encoder = self.geo_encoder.to(self.text_encoder.dtype)
-        #     print(f"Geo encoder dtype changed to {self.geo_encoder.dtype}")
 
     def setup_retrieval_evaluation(self):
         self.concept_configs = self.trainer.datamodule.concept_configs
