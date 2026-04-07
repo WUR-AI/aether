@@ -1,3 +1,4 @@
+import concurrent.futures
 import math
 import os
 import threading
@@ -21,6 +22,18 @@ from src.data_preprocessing.crs_utils import (
     get_point_utm_crs,
     point_reprojection,
 )
+
+
+class PartialTileError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
+class NoTileError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
 
 
 def reproject_dataset(src_raster: MemoryFile, dst_crs: str) -> MemoryFile:
@@ -70,6 +83,7 @@ def get_tessera_embeds(
     save_dir: str,
     tile_size: int,
     tessera_con: GeoTessera | None,
+    padding: int = 100,
 ) -> None:
     """Obtain tessera embedding tile with specified size for a given coordinates.
 
@@ -80,9 +94,11 @@ def get_tessera_embeds(
     :param save_dir: data directory to save embeddings
     :param tile_size: tile size in pixels
     :param tessera_con: GeoTessera instance
+    :param padding: how many meters to pad initial bbox, fixes some inconsistencies when mosaicing
     :return: None
     """
 
+    # Skip if tile exists
     embed_tile_name = os.path.join(save_dir, f"tessera_{name_loc}.npy")
     if os.path.exists(embed_tile_name):
         return
@@ -92,7 +108,7 @@ def get_tessera_embeds(
     lon_utm, lat_utm = point_reprojection(lon, lat, "EPSG:4326", utm_crs)
 
     # Bounding box
-    radius = math.ceil(tile_size / 2) + 10
+    radius = math.ceil(tile_size / 2) + padding
     bbox = create_bbox_with_radius(lon, lat, radius=radius, utm_crs=utm_crs, return_wgs=True)
 
     # Request to tessera
@@ -126,13 +142,10 @@ def get_tessera_embeds(
         if reproject_memfile:
             memfiles.append(reproject_memfile)
 
-    if not tiles:
-        print(
-            f"No TESSERA tiles found for {name_loc} at ({lon:.4f}, {lat:.4f}) year={year}. Skipping."
-        )
+    if len(tiles) == 0:
         for mf in memfiles:
             mf.close()
-        return
+        raise NoTileError(f"No tiles found for {name_loc}")  # if no tiles, add to skipped.txt
 
     mosaic, mosaic_transform = merge(tiles)
     mosaic = mosaic.transpose(1, 2, 0)
@@ -143,20 +156,29 @@ def get_tessera_embeds(
         mf.close()
 
     # Crop patch tile
-    col, row = crs_to_pixel_coords(lon_utm, lat_utm, mosaic_transform)
+    c, r = crs_to_pixel_coords(lon_utm, lat_utm, mosaic_transform)
     half = tile_size // 2
-    row_min = row - half
-    row_max = row + tile_size - half  # tile_size - half ensures correct size for odd tile_size
-    col_min = col - half
-    col_max = col + tile_size - half
-    crop = mosaic[row_min:row_max, col_min:col_max, :]
+    row_min = r - half
+    row_max = r + half
+    col_min = c - half
+    col_max = c + half
 
-    if crop.shape[0] != tile_size or crop.shape[1] != tile_size:
-        print(
-            f"Unexpected crop shape {crop.shape} for {name_loc} "
-            f"(expected {tile_size}x{tile_size}). Skipping."
+    if row_min < 0 or row_max < 0 or col_min < 0 or col_max < 0:
+        # retry with bigger padding
+        if padding > 500:
+            raise NoTileError(f"Padding {padding} > 500")
+        get_tessera_embeds(
+            lon, lat, name_loc, year, save_dir, tile_size, tessera_con, padding=padding + 100
         )
-        return
+
+    crop = mosaic[row_min:row_max, col_min:col_max, :]
+    if not crop.shape == (tile_size, tile_size, 128):
+        if crop.min() == 0.0 and crop.max() == 0.0:
+            raise NoTileError(f"No tiles found for {name_loc}")
+        raise PartialTileError(f"Crop {name_loc}, size is {crop.shape}")
+
+    if crop.min() == 0.0 and crop.max() == 0.0:
+        raise NoTileError(f"Crop {name_loc} has embeddings of 0.0s with tiles: {tiles_to_fetch}")
 
     # Save array
     os.makedirs(save_dir, exist_ok=True)
@@ -186,6 +208,7 @@ def tessera_from_df(
     year: int,
     tile_size: int = 256,
     cache_dir: str = "temp/",
+    logs_dir: str = "logs",
 ) -> None:
     """Obtains Tessera embeddings from a CSV file for each (lon, lat).
 
@@ -205,8 +228,17 @@ def tessera_from_df(
     n = len(model_ready_df)
     for i, row in model_ready_df.iterrows():
         print(f"{i}/{n}")
-        # Get tessera embeds
-        get_tessera_embeds(row.lon, row.lat, row.name_loc, year, f"{data_dir}/", tile_size, gt)
+        if i < 238 or i in [1319]:
+            continue
+        try:
+            get_tessera_embeds(row.lon, row.lat, row.name_loc, year, f"{data_dir}/", tile_size, gt)
+        except Exception as e:
+            if isinstance(e, NoTileError):
+                path = os.path.join(logs_dir, "tessera_skipped.txt")
+                with open(path, "a") as f:
+                    f.write(f"{row.name_loc}\n")
+            else:
+                print(f"{row.name_loc} did not get embedded because: {e}")
 
 
 def inspect_np_arr_as_tiff(
@@ -270,10 +302,20 @@ def inspect_np_arr_as_tiff(
 
 
 if __name__ == "__main__":
-    os.chdir("../..")
+    print(os.getcwd())
 
-    df = pd.read_csv("data/heat_guatemala/model_ready_heat_guatemala.csv")
+    # df = pd.read_csv("data/heat_guatemala/model_ready_heat_guatemala.csv")
+    df = pd.read_csv("/lustre/backup/SHARED/AIN/aether/data/s2bms/model_ready_s2bms.csv")
+    # df.sort_values(by="name_loc", inplace=True, ascending=False)
+    with open(os.path.join("logs", "tessera_skipped.txt")) as f:
+        skipped = set(f.read().splitlines())
+
+    df = df[~df.name_loc.isin(skipped)]
 
     tessera_from_df(
-        df, "data/heat_guatemala/eo/tessera_2024", year=2024, tile_size=10, cache_dir="data/cache"
+        df,
+        "/lustre/backup/SHARED/AIN/aether/data/s2bms/eo/tessera",
+        year=2024,
+        tile_size=256,
+        cache_dir="/lustre/backup/SHARED/AIN/aether/data/cache",
     )
