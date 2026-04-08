@@ -4,7 +4,9 @@ import torch
 import torch.nn as nn
 
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
+from src.models.components.geo_encoders.identity_encoder import IdentityEncoder
 from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
+from src.utils.errors import IllegalArgumentCombination
 
 
 class EncoderWrapper(BaseGeoEncoder):
@@ -39,7 +41,26 @@ class EncoderWrapper(BaseGeoEncoder):
             self.encoder_branches.append(module_dict)
 
     @override
-    def setup(self) -> List[str]:
+    def update_configs(self, cfg):
+        """Update model configurations."""
+        # If adopted encoder -> it should already saved the configs
+        if (
+            cfg["_target_"] == "src.models.components.geo_encoders.adopt_encoder.adopt_encoder"
+            and len(self.cfg_dict) != 0
+        ):
+            return
+
+        for i, branch in enumerate(cfg["encoder_branches"]):
+            if (
+                branch["encoder"]["_target_"]
+                == "src.models.components.geo_encoders.adopt_encoder.adopt_encoder"
+            ):
+                branch["encoder"] = self.encoder_branches[i]["encoder"].cfg_dict
+
+        self.cfg_dict = cfg
+
+    @override
+    def _setup(self) -> List[str]:
         new_modules = []
 
         # Configure/initialise missing/conditional parts
@@ -62,6 +83,10 @@ class EncoderWrapper(BaseGeoEncoder):
 
             # Configure adapter/projector if requested
             if "projector" in branch:
+                if isinstance(encoder, IdentityEncoder):
+                    raise IllegalArgumentCombination(
+                        "Identity encoder cannot have linear projector"
+                    )
                 projector = branch["projector"]
 
                 intermediate_dim = encoder.output_dim

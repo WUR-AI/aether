@@ -19,23 +19,17 @@ class AverageEncoder(BaseGeoEncoder):
 
         self.dict_n_bands_default = {"s2": 4, "aef": 64, "tessera": 128}
         self.allowed_geo_data_names: list[str] = list(self.dict_n_bands_default.keys())
-
         assert (
             geo_data_name in self.allowed_geo_data_names
         ), f"geo_data_name must be one of {self.allowed_geo_data_names}, got {geo_data_name}"
         self.geo_data_name = geo_data_name
 
     @override
-    def setup(self) -> List[str]:
-        """Configures networks, data-dependent parts.
+    def _setup(self) -> List[str]:
+        """Configures modules and returns newly initialised, trainable module names."""
 
-        Gets called in model.setup() method. Returns names of any new module configured to be added
-        to the trainable modules list.
-        """
         self.output_dim = self.dict_n_bands_default[self.geo_data_name]
         self.geo_encoder = nn.Identity()
-        print(f"Model set up with average geo-encoder for {self.geo_data_name}")
-
         return []
 
     @override
@@ -46,3 +40,7 @@ class AverageEncoder(BaseGeoEncoder):
         if self.extra_projector:
             feats = self.extra_projector(feats)
         return feats
+
+    @property
+    def device(self):
+        return

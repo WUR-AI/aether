@@ -45,8 +45,6 @@ class CNNEncoder(BaseGeoEncoder):
         ), f"input_n_bands must be int >=3, got {self.input_n_bands}"
         self.output_dim = output_dim
 
-        self.geo_encoder = self.get_backbone()
-
     def set_n_input_bands(self, n_bands: int | None = None) -> None:
         """Sets number of input bands based on geo_data_name if n_bands is None.
 
@@ -132,10 +130,9 @@ class CNNEncoder(BaseGeoEncoder):
             raise ValueError(f"Unsupported backbone: {self.backbone}")
 
     @override
-    def setup(self) -> List[str]:
+    def _setup(self) -> List[str]:
         # TODO: could you make sure new layers are returned here to be added to trainable parts?
-        # Maybe move the get_backbone method in here?
-        print(f"Model setup with cnn geo-encoder for {self.geo_data_name}")
+        self.geo_encoder = self.get_backbone()
         return []
 
     @override
@@ -163,7 +160,3 @@ class CNNEncoder(BaseGeoEncoder):
             feats = self.extra_projector(feats)
 
         return feats.to(dtype)
-
-
-if __name__ == "__main__":
-    _ = CNNEncoder(None, None, None, None, None, None, None, None)
