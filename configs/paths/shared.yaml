@@ -9,7 +9,7 @@ data_dir: ${oc.env:DATA_DIR,${oc.env:SHARED_ROOT,${paths.root_dir}}/data}
 cache_dir: ${oc.env:SHARED_CACHE,${paths.data_dir}/cache}
 
 # path to logging directory
-log_dir: ${oc.env:SHARED_ROOT}/logs/
+log_dir: ${oc.env:SHARED_ROOT,${paths.root_dir}}/logs/
 
 # path to output directory, created dynamically by hydra
 # path generation pattern is specified in `configs/hydra/local.yaml`
