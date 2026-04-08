@@ -21,6 +21,7 @@ def adopt_encoder(ckpt_path: str) -> BaseGeoEncoder:
     encoder: BaseGeoEncoder = hydra.utils.instantiate(geo_config)
     print("---Adopted encoder------")
     encoder.setup()
+    encoder.cfg_dict = geo_config
     print("------------------------")
 
     # Load in the weights
@@ -31,7 +32,5 @@ def adopt_encoder(ckpt_path: str) -> BaseGeoEncoder:
     }
     res = encoder.load_state_dict(state_dict, strict=False)
     log_model_loading("geo_encoder_ckpt", res)
-
-    encoder.setup = lambda *args, **kwargs: None  # TODO: switch to maybe self.setup flag
 
     return encoder
