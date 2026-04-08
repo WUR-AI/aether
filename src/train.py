@@ -55,7 +55,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
 
     # Append model hparams from config to be saved in ckpg
     raw_model_cfg = OmegaConf.to_container(cfg.model, resolve=True)
-    model.hparams.update(raw_model_cfg)
+    model.update_configs(raw_model_cfg)
 
     log.info("Instantiating callbacks...")
     callbacks: List[Callback] = instantiate_callbacks(cfg.get("callbacks"))

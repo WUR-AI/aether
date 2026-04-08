@@ -1,4 +1,3 @@
-from io import text_encoding
 from typing import Dict, Tuple, override
 
 import numpy as np
@@ -12,9 +11,6 @@ from src.models.components.metrics.contrastive_validation import (
     RetrievalContrastiveValidation,
 )
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
-from src.models.components.pred_heads.linear_pred_head import (
-    BasePredictionHead,
-)
 from src.models.components.text_encoders.base_text_encoder import (
     BaseTextEncoder,
 )
@@ -23,81 +19,64 @@ from src.models.components.text_encoders.base_text_encoder import (
 class TextAlignmentModel(BaseModel):
     def __init__(
         self,
+        trainable_modules: list[str],
         geo_encoder: BaseGeoEncoder,
         text_encoder: BaseTextEncoder,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
         loss_fn: BaseLossFn,
-        trainable_modules: list[str],
         metrics: MetricsWrapper,
-        prediction_head: BasePredictionHead | None = None,
-        ks: list[int] | None = [5, 10, 15],
-        match_to_geo: bool = True,
         num_classes: int | None = None,
         tabular_dim: int | None = None,
+        ks: list[int] | None = [5, 10, 15],
+        match_to_geo: bool = True,
     ) -> None:
         """Implementation of contrastive text-eo modality alignment model.
 
-        :param geo_encoder: geo encoder module (replaceable)
-        :param text_encoder: text encoder module (replaceable)
-        :param optimizer: optimizer to use for training
-        :param scheduler: scheduler to use for training
-        :param loss_fn: loss function to use (contrastive)
-        :param trainable_modules: list of modules to train (parts/modules or modules, modules)
-        :param metrics: metrics to use for model performance evaluation
-        :param prediction_head: prediction head
+        :param trainable_modules: which modules to train
+        :param geo_encoder: module for encoding geo data
+        :param text_encoder: module for encoding text data
+        :param optimizer: optimizer for the model weight update
+        :param scheduler: scheduler for the model weight update
+        :param loss_fn: loss function
+        :param metrics: metrics to track for model performance estimation
+        :param num_classes: number of target classes
+        :param tabular_dim: number of tabular features
         :param ks: list of ks
         :param match_to_geo: whether to match dimensions of text encoder to geo_encoder or visa-
             versa
-        :param num_classes: number of target classes
-        :param tabular_dim: number of tabular features
         """
         super().__init__(
-            trainable_modules, optimizer, scheduler, loss_fn, metrics, num_classes, tabular_dim
+            trainable_modules=trainable_modules,
+            geo_encoder=geo_encoder,
+            text_encoder=text_encoder,
+            prediction_head=None,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            loss_fn=loss_fn,
+            metrics=metrics,
+            num_classes=num_classes,
+            tabular_dim=tabular_dim,
         )
 
         # Metrics
         self.ks = ks
         self.log_kwargs = dict(on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
 
-        # Encoders configuration
-        self.geo_encoder = geo_encoder
-        self.text_encoder = text_encoder
         self.match_to_geo = match_to_geo
 
-        # Prediction head
-        self.prediction_head = prediction_head
-
     @override
-    def setup(self, stage: str = "fit") -> None:
-        """Updates model based data-bound configurations (through datamodule), This method is
-        called after trainer is initialized and datamodule is available.
+    def _setup(self, stage: str = "fit") -> None:
+        """Set up encoders and missing adapters/projectors based data-bound configurations (through
+        datamodule), This method is called after trainer is initialized and datamodule is
+        available.
 
         Otherwise, some configuration variables must be made available
         """
-
-        if self._trainer is not None:
-            self.num_classes = self.trainer.datamodule.num_classes
-            self.tabular_dim = self.trainer.datamodule.tabular_dim
-
         # Set up encoders and missing adapters/projectors
         print("-------Model------------")
-        self.setup_encoders_adapters()
-        print("------------------------")
-
-        # Freeze not requested parts
-        if stage in ["inference", "test"]:
-            self.full_freezer()
-        else:
-            self.freezer()
-
-            # Configure contrastive retrieval evaluation
-            self.setup_retrieval_evaluation()
-
-    def setup_encoders_adapters(self):
-        """Set up encoders and missing adapters/projectors."""
-        # Setup encoders that need data-depended configurations
-        new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup()]
+        new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup() or []]
+        new_modules.extend([f"text_encoder.{i}" for i in self.text_encoder.setup() or []])
         self.trainable_modules.extend(new_modules)
 
         # Extra projector for text encoder if eo and text dim not match
@@ -109,12 +88,9 @@ class TextAlignmentModel(BaseModel):
                 self.geo_encoder.add_projector(projected_dim=self.text_encoder.output_dim)
                 self.trainable_modules.append("geo_encoder.extra_projector")
 
-        # Configure prediction head based on geo-encoder output_dim
-        if self.prediction_head is not None:
-            self.prediction_head.set_dim(
-                input_dim=self.geo_encoder.output_dim, output_dim=self.num_classes
-            )
-            self.prediction_head.setup()
+        # Configure contrastive retrieval evaluation
+        self.setup_retrieval_evaluation()
+        print("------------------------")
 
     def setup_retrieval_evaluation(self):
         self.concept_configs = self.trainer.datamodule.concept_configs
