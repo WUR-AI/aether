@@ -49,12 +49,8 @@ class MLPRegressionPredictionHead(BasePredictionHead):
         return self.net(feats)
 
     @override
-    def setup(self) -> None:
-        """Configures networks, data-dependent parts.
-
-        Gets called in model.setup() method. Returns names of any new module configured to be added
-        to the trainable modules list.
-        """
+    def _setup(self) -> None:
+        """Configures specific prediction head."""
         assert isinstance(self.input_dim, int), self.input_dim
         assert isinstance(self.output_dim, int), self.output_dim
 
@@ -70,5 +66,4 @@ class MLPRegressionPredictionHead(BasePredictionHead):
 
         layers.append(nn.Linear(in_dim, self.output_dim))
         self.net = nn.Sequential(*layers)
-        print("Model set up with MLP regression prediction head")
         return
