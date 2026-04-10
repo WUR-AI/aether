@@ -4,6 +4,7 @@ import os
 import threading
 
 import numpy as np
+from affine import Affine
 
 # Serialises concurrent reads/writes to the per-directory meta.csv log file.
 _meta_csv_lock = threading.Lock()
@@ -17,7 +18,6 @@ from rasterio.transform import from_origin
 from rasterio.warp import Resampling, calculate_default_transform, reproject
 
 from src.data_preprocessing.crs_utils import (
-    create_bbox_with_radius,
     crs_to_pixel_coords,
     get_point_utm_crs,
     point_reprojection,
@@ -75,6 +75,37 @@ def reproject_dataset(src_raster: MemoryFile, dst_crs: str) -> MemoryFile:
     return dst, memfile
 
 
+def get_tiles(lat_center, lon_center, half_size_m=75, year=2024):
+    """Find all 0.1deg tiles (referenced at 0.05deg) that overlap AOI."""
+
+    # Convert half-size from meters to degrees (approximate)
+    half_lat_deg = half_size_m / 111320.0
+    half_lon_deg = half_size_m / (111320.0 * np.cos(np.radians(lat_center)))
+
+    # AOI bounds
+    lat_min = lat_center - half_lat_deg
+    lat_max = lat_center + half_lat_deg
+    lon_min = lon_center - half_lon_deg
+    lon_max = lon_center + half_lon_deg
+
+    tile_size = 0.1
+
+    # Find tile indices overlapping the AOI
+    i_min = int(np.floor(lat_min / tile_size))
+    i_max = int(np.floor(lat_max / tile_size))
+    j_min = int(np.floor(lon_min / tile_size))
+    j_max = int(np.floor(lon_max / tile_size))
+
+    tiles = []
+    for i in range(i_min, i_max + 1):
+        for j in range(j_min, j_max + 1):
+            ref_lat = i * tile_size + 0.05  # tile reference (center)
+            ref_lon = j * tile_size + 0.05
+            tiles.append((year, round(ref_lon, 10), round(ref_lat, 10)))
+
+    return tiles
+
+
 def get_tessera_embeds(
     lon: float,
     lat: float,
@@ -107,13 +138,10 @@ def get_tessera_embeds(
     utm_crs = get_point_utm_crs(lon, lat)
     lon_utm, lat_utm = point_reprojection(lon, lat, "EPSG:4326", utm_crs)
 
-    # Bounding box
-    radius = math.ceil(tile_size / 2) + padding
-    bbox = create_bbox_with_radius(lon, lat, radius=radius, utm_crs=utm_crs, return_wgs=True)
-
     # Request to tessera
-    tiles_to_fetch = tessera_con.registry.load_blocks_for_region(
-        bounds=bbox.bounds, year=int(year)
+    radius = math.ceil(tile_size / 2) + padding
+    tiles_to_fetch = get_tiles(
+        lat_center=lat, lon_center=lon, half_size_m=radius * 10, year=int(year)
     )
 
     # Mosaic returned tiles for the bbox
@@ -185,6 +213,25 @@ def get_tessera_embeds(
     np.save(embed_tile_name, crop)
     print(f"Array saved as {embed_tile_name}")
 
+    # Temp save tif too
+    crop_transform = mosaic_transform * Affine.translation(col_min, row_min)
+    height, width, channels = crop.shape
+
+    with rasterio.open(
+        embed_tile_name[:-4] + ".tif",
+        "w",
+        driver="GTiff",
+        height=height,
+        width=width,
+        count=channels,
+        dtype=crop.dtype,
+        crs=utm_crs,
+        transform=crop_transform,
+    ) as dst:
+        for i in range(channels):
+            dst.write(crop[:, :, i], i + 1)
+    print(f"tif saved to {embed_tile_name[:-4]}.tif")
+
     # Log its metadata
     meta_df = pd.DataFrame(
         {"id": [name_loc], "year": [year], "lon": [lon], "lat": [lat], "crs": [utm_crs]}
@@ -228,8 +275,6 @@ def tessera_from_df(
     n = len(model_ready_df)
     for i, row in model_ready_df.iterrows():
         print(f"{i}/{n}")
-        if i < 238 or i in [1319]:
-            continue
         try:
             get_tessera_embeds(row.lon, row.lat, row.name_loc, year, f"{data_dir}/", tile_size, gt)
         except Exception as e:
@@ -302,20 +347,24 @@ def inspect_np_arr_as_tiff(
 
 
 if __name__ == "__main__":
+    # os.chdir('../..')
+
     print(os.getcwd())
 
     # df = pd.read_csv("data/heat_guatemala/model_ready_heat_guatemala.csv")
-    df = pd.read_csv("/lustre/backup/SHARED/AIN/aether/data/s2bms/model_ready_s2bms.csv")
+    # df = pd.read_csv("/lustre/backup/SHARED/AIN/aether/data/s2bms/model_ready_s2bms.csv")
+    df = pd.read_csv("data/s2bms/model_ready_s2bms.csv")
     # df.sort_values(by="name_loc", inplace=True, ascending=False)
-    with open(os.path.join("logs", "tessera_skipped.txt")) as f:
-        skipped = set(f.read().splitlines())
-
-    df = df[~df.name_loc.isin(skipped)]
+    if os.path.exists("logs/tessera_skipped.txt"):
+        with open(os.path.join("logs", "tessera_skipped.txt")) as f:
+            skipped = set(f.read().splitlines())
+        df = df[~df.name_loc.isin(skipped)]
+    # df.sort_values('name_loc', ascending=False, inplace=True)
 
     tessera_from_df(
         df,
-        "/lustre/backup/SHARED/AIN/aether/data/s2bms/eo/tessera",
+        "data/s2bms/eo/tessera",
         year=2024,
         tile_size=256,
-        cache_dir="/lustre/backup/SHARED/AIN/aether/data/cache",
+        cache_dir="data/cache",
     )
