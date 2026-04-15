@@ -1,6 +1,6 @@
-from io import text_encoding
 from typing import Dict, Tuple, override
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -11,9 +11,6 @@ from src.models.components.metrics.contrastive_validation import (
     RetrievalContrastiveValidation,
 )
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
-from src.models.components.pred_heads.linear_pred_head import (
-    BasePredictionHead,
-)
 from src.models.components.text_encoders.base_text_encoder import (
     BaseTextEncoder,
 )
@@ -22,75 +19,64 @@ from src.models.components.text_encoders.base_text_encoder import (
 class TextAlignmentModel(BaseModel):
     def __init__(
         self,
+        trainable_modules: list[str],
         geo_encoder: BaseGeoEncoder,
         text_encoder: BaseTextEncoder,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
         loss_fn: BaseLossFn,
-        trainable_modules: list[str],
         metrics: MetricsWrapper,
-        prediction_head: BasePredictionHead | None = None,
+        num_classes: int | None = None,
+        tabular_dim: int | None = None,
         ks: list[int] | None = [5, 10, 15],
         match_to_geo: bool = True,
     ) -> None:
         """Implementation of contrastive text-eo modality alignment model.
 
-        :param geo_encoder: geo encoder module (replaceable)
-        :param text_encoder: text encoder module (replaceable)
-        :param optimizer: optimizer to use for training
-        :param scheduler: scheduler to use for training
-        :param loss_fn: loss function to use (contrastive)
-        :param trainable_modules: list of modules to train (parts/modules or modules, modules)
-        :param metrics: metrics to use for model performance evaluation
+        :param trainable_modules: which modules to train
+        :param geo_encoder: module for encoding geo data
+        :param text_encoder: module for encoding text data
+        :param optimizer: optimizer for the model weight update
+        :param scheduler: scheduler for the model weight update
+        :param loss_fn: loss function
+        :param metrics: metrics to track for model performance estimation
         :param num_classes: number of target classes
         :param tabular_dim: number of tabular features
-        :param prediction_head: prediction head
         :param ks: list of ks
         :param match_to_geo: whether to match dimensions of text encoder to geo_encoder or visa-
             versa
         """
-        super().__init__(trainable_modules, optimizer, scheduler, loss_fn, metrics)
+        super().__init__(
+            trainable_modules=trainable_modules,
+            geo_encoder=geo_encoder,
+            text_encoder=text_encoder,
+            prediction_head=None,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            loss_fn=loss_fn,
+            metrics=metrics,
+            num_classes=num_classes,
+            tabular_dim=tabular_dim,
+        )
 
         # Metrics
         self.ks = ks
         self.log_kwargs = dict(on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
 
-        # Encoders configuration
-        self.geo_encoder = geo_encoder
-        self.text_encoder = text_encoder
         self.match_to_geo = match_to_geo
 
-        # Prediction head
-        self.prediction_head = prediction_head
-
     @override
-    def setup(self, stage: str) -> None:
-        self.num_classes = self.trainer.datamodule.num_classes
-        self.tabular_dim = self.trainer.datamodule.tabular_dim
+    def _setup(self, stage: str = "fit") -> None:
+        """Set up encoders and missing adapters/projectors based data-bound configurations (through
+        datamodule), This method is called after trainer is initialized and datamodule is
+        available.
 
+        Otherwise, some configuration variables must be made available
+        """
         # Set up encoders and missing adapters/projectors
         print("-------Model------------")
-        self.setup_encoders_adapters()
-        print("------------------------")
-
-        # Freeze requested parts
-        self.freezer()
-
-        # Configure contrastive retrieval evaluation
-        self.setup_retrieval_evaluation()
-
-    def setup_encoders_adapters(self):
-        """Set up encoders and missing adapters/projectors."""
-        # We don't use tabular encoders for wrapping
-        # if (
-        #     isinstance(self.geo_encoder, MultiModalEncoder)
-        #     and self.geo_encoder.use_tabular
-        #     and not self.geo_encoder._tabular_ready
-        # ):
-        #     self.geo_encoder.build_tabular_branch(self.tabular_dim)
-
-        # Setup encoders that need data-depended configurations
-        new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup()]
+        new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup() or []]
+        new_modules.extend([f"text_encoder.{i}" for i in self.text_encoder.setup() or []])
         self.trainable_modules.extend(new_modules)
 
         # Extra projector for text encoder if eo and text dim not match
@@ -102,21 +88,51 @@ class TextAlignmentModel(BaseModel):
                 self.geo_encoder.add_projector(projected_dim=self.text_encoder.output_dim)
                 self.trainable_modules.append("geo_encoder.extra_projector")
 
-        # Configure prediction head based on geo-encoder output_dim
-        if self.prediction_head is not None:
-            self.prediction_head.set_dim(
-                input_dim=self.geo_encoder.output_dim, output_dim=self.num_classes
-            )
-            self.prediction_head.setup()
-
-        # # Unify dtypes -> moving to data part, rather than changing parameter type
-        # if self.geo_encoder.dtype != self.text_encoder.dtype:
-        #     self.geo_encoder = self.geo_encoder.to(self.text_encoder.dtype)
-        #     print(f"Geo encoder dtype changed to {self.geo_encoder.dtype}")
+        # Configure contrastive retrieval evaluation
+        self.setup_retrieval_evaluation()
+        print("------------------------")
 
     def setup_retrieval_evaluation(self):
         self.concept_configs = self.trainer.datamodule.concept_configs
         self.concepts = [c["concept_caption"] for c in self.concept_configs]
+        self.concept_names = [
+            f"{c['col'].replace('aux_', '')}_{'max' if c['is_max'] else 'min'}"
+            for c in self.concept_configs
+        ]
+
+        dataset_names = ["train", "val", "test"]
+        self.dynamic_k_baselines = {}
+        for dataset_name in dataset_names:
+            if not hasattr(self.trainer.datamodule, f"data_{dataset_name}"):
+                continue
+
+            tmp_ds = getattr(self.trainer.datamodule, f"data_{dataset_name}")
+            n_ds = len(tmp_ds)
+            self.dynamic_k_baselines[dataset_name] = {}
+
+            # Placeholder for all concepts
+            aux_vals_per_concept = {i: [] for i in range(len(self.concept_configs))}
+
+            for item in tmp_ds:
+                aux_data = item["aux"]["aux"]
+                for i_c, c in enumerate(self.concept_configs):
+                    aux_col_id = c["id"]
+                    aux_vals_per_concept[i_c].append(aux_data[aux_col_id])
+
+            # Compute per concept
+            for i_c, c in enumerate(self.concept_configs):
+                c_name = self.concept_names[i_c]
+                aux_vals_current_ds = aux_vals_per_concept[i_c]
+
+                theta_k = self.find_elbow_point(aux_vals_current_ds)
+                self.concept_configs[i_c][
+                    "theta_k"
+                ] = theta_k  # assign new theta_k to concept_configs for later use in validation
+                if c["is_max"]:
+                    n_baseline = sum(aux_val >= theta_k for aux_val in aux_vals_current_ds)
+                else:
+                    n_baseline = sum(aux_val <= theta_k for aux_val in aux_vals_current_ds)
+                self.dynamic_k_baselines[dataset_name][c_name] = n_baseline / n_ds * 100
 
         self.contrastive_val = RetrievalContrastiveValidation(self.ks, self.concept_configs)
         self.outputs_epoch_memory = []
@@ -214,6 +230,12 @@ class TextAlignmentModel(BaseModel):
         for i, result in concept_scores.items():
             print(f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:')
             for k, v in result.items():
+                if k == "dynamic_k":
+                    self.log(f"dyn_k_{self.concept_names[i]}", v, **self.log_kwargs)
+                    indexed_v = (v - self.dynamic_k_baselines[mode][self.concept_names[i]]) / (
+                        100 - self.dynamic_k_baselines[mode][self.concept_names[i]]
+                    )
+                    self.log(f"dyn_k_index_{self.concept_names[i]}", indexed_v, **self.log_kwargs)
                 print(f"Top-{k}: {v:.1f}%")
                 avr_scores[f"{mode}_avr_top-{k}"].append(v)
 
@@ -254,3 +276,23 @@ class TextAlignmentModel(BaseModel):
         similarity_matrix = concept_embeds @ geo_embeds.T
 
         return similarity_matrix
+
+    @staticmethod
+    def find_elbow_point(vals):
+        vals = np.sort(vals)
+        x = np.arange(len(vals)) / len(vals)
+        y = vals
+        slope = (y[-1] - y[0]) / (x[-1] - x[0])  # diagonal from first to last point
+        intercept = y[0] - slope * x[0]
+        orthogonal_slope = -1 / slope
+
+        intercepts_orthogonal = y - orthogonal_slope * x
+        intersection_diagonal_orthogonal = (intercepts_orthogonal - intercept) / (
+            slope - orthogonal_slope
+        )
+        distances = np.sqrt(
+            (x - intersection_diagonal_orthogonal) ** 2 + (y - (slope * x + intercept)) ** 2
+        )  # distance to diagonal
+        elbow_index = np.argmax(distances)
+        elbow_point = y[elbow_index]
+        return elbow_point
