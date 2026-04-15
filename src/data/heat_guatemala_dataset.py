@@ -84,10 +84,12 @@ class HeatGuatemalaDataset(BaseDataset):
 
         # --- EO modalities ---
         for modality in self.modalities:
-            if modality == "coords":
-                sample["eo"]["coords"] = torch.tensor(
-                    [row["lat"], row["lon"]], dtype=torch.float32
-                )
+            if modality in ["coords"]:
+                sample["eo"][modality] = torch.tensor([row["lat"], row["lon"]])
+            elif modality == "tessera":
+                sample["eo"][modality] = self.load_tessera(row["tessera_path"])
+            elif modality == "aef":
+                sample["eo"][modality] = self.load_aef(row["aef_path"])
 
         # --- Tabular features (always included if present in CSV) ---
         if self.use_features and self.feat_names:

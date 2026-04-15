@@ -9,6 +9,7 @@ import torch
 from torch.utils.data import Dataset
 
 import src.data_preprocessing.data_utils as du
+from src.utils.data_utils import center_crop_npy
 
 
 class BaseDataset(Dataset, ABC):
@@ -242,7 +243,17 @@ class BaseDataset(Dataset, ABC):
                 if fname not in avail_files:
                     print(f"Retrieving missing Tessera data: {fname}")
                     gt = gt or GeoTessera(cache_dir=self.cache_dir)
-                    get_tessera_embeds(rec.lon, rec.lat, rec.name_loc, year, dst_dir, size)
+                    row = self.df[self.df["name_loc"] == rec["name_loc"]]
+                    lon, lat = row.lon.item(), row.lat.item()
+                    get_tessera_embeds(
+                        lon,
+                        lat,
+                        rec["name_loc"],
+                        year=year,
+                        save_dir=dst_dir,
+                        tile_size=size,
+                        tessera_con=gt,
+                    )
 
     @final
     def setup_aef(self) -> None:
@@ -285,6 +296,21 @@ class BaseDataset(Dataset, ABC):
         """Loads AEF data from file as a tensor."""
 
         im = du.load_tiff(filepath, datatype="np")
+        size = self.modalities["aef"]["size"]
+        if im.shape[1] != size:
+            im = center_crop_npy(im, (64, size, size))
         if np.isinf(im).any():
             im = np.clip(im, a_min=-0.5, a_max=0.5)
+        # TODO any normalisation needed
+
         return torch.tensor(im).float()
+
+    @final
+    def load_tessera(self, filepath: str) -> torch.Tensor:
+        """Loads."""
+        size = self.modalities["tessera"]["size"]
+        arr = self.load_npy(filepath)
+        if arr.size()[1] != size:
+            arr = center_crop_npy(arr, (128, size, size))
+        # TODO any normalisation needed
+        return arr
