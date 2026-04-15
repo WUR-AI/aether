@@ -9,9 +9,7 @@ from src.models.components.geo_encoders.encoder_wrapper import EncoderWrapper
 from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
 from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
-from src.models.components.pred_heads.linear_pred_head import (
-    BasePredictionHead,
-)
+from src.models.components.pred_heads.linear_pred_head import BasePredictionHead
 
 
 class PredictiveModel(BaseModel):
@@ -25,6 +23,7 @@ class PredictiveModel(BaseModel):
         loss_fn: BaseLossFn,
         metrics: MetricsWrapper,
         normalize_features: bool = True,
+        standardize_targets: bool = False,
     ) -> None:
         """Implementation of the predictive model with replaceable GEO encoder, and prediction
         head.
@@ -40,6 +39,9 @@ class PredictiveModel(BaseModel):
         :param tabular_dim: number of tabular features
         :param normalize_features: if True, apply L2 normalisation to encoder output before the
             prediction head (default: True)
+        :param standardize_targets: if True, z-score the target before computing the loss and
+            invert the scaling before computing metrics, so all reported metrics are in the
+            original target units (default: False)
         """
 
         super().__init__(trainable_modules, optimizer, scheduler, loss_fn, metrics)
@@ -52,6 +54,11 @@ class PredictiveModel(BaseModel):
 
         # Normalise features boolean
         self.normalize_features = normalize_features
+
+        # Target standardisation — buffers are populated in setup() from the datamodule stats
+        self.standardize_targets = standardize_targets
+        self.register_buffer("target_mean", None)
+        self.register_buffer("target_std", None)
 
     @override
     def setup(self, stage: str) -> None:
@@ -73,11 +80,24 @@ class PredictiveModel(BaseModel):
         """Set up encoders and missing adapters/projectors."""
         # TODO: move to multi-modal eo encoder
 
-        # If tabular encoder used, we need to specify tabular dim
+        # If tabular encoder used, we need to specify tabular dim and normalisation stats
         if isinstance(self.geo_encoder, TabularEncoder) or isinstance(
             self.geo_encoder, EncoderWrapper
         ):
             self.geo_encoder.set_tabular_input_dim(self.tabular_dim)
+
+            stats = getattr(self.trainer.datamodule, "tabular_normalisation_stats", None)
+            if stats is not None:
+                mean, std = stats
+                if isinstance(self.geo_encoder, TabularEncoder):
+                    self.geo_encoder.set_normalisation_stats(mean, std)
+                else:
+                    self.geo_encoder.set_tabular_normalisation_stats(mean, std)
+
+        if self.standardize_targets:
+            stats = getattr(self.trainer.datamodule, "target_normalisation_stats", None)
+            if stats is not None:
+                self.target_mean, self.target_std = stats
 
         # Setup encoders that need data-depended configurations
         new_modules = [f"geo_encoder.{i}]" for i in self.geo_encoder.setup()]
@@ -101,14 +121,25 @@ class PredictiveModel(BaseModel):
     @override
     def _step(self, batch: Dict[str, torch.Tensor], mode: str = "train") -> torch.Tensor:
         preds = self.forward(batch)
+        target = batch.get("target")
 
         log_kwargs = dict(
             on_step=False, on_epoch=True, prog_bar=True, sync_dist=True, batch_size=preds.size(0)
         )
-        loss = self.loss_fn(preds, batch.get("target"))
+
+        if self.standardize_targets and self.target_mean is not None:
+            # Compute loss in standardised space (preds are in standardised space too)
+            target_scaled = (target - self.target_mean) / self.target_std
+            loss = self.loss_fn(preds, target_scaled)
+            # Invert scaling so all logged metrics are in original target units
+            preds_for_metrics = preds * self.target_std + self.target_mean
+        else:
+            loss = self.loss_fn(preds, target)
+            preds_for_metrics = preds
+
         self.log(f"{mode}_loss", loss, **log_kwargs)
 
-        metrics = self.metrics(pred=preds, batch=batch, mode=mode)
+        metrics = self.metrics(pred=preds_for_metrics, batch=batch, mode=mode)
         self.log_dict(metrics, **log_kwargs)
 
         return loss
