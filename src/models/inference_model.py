@@ -22,9 +22,9 @@ log = RankedLogger(__name__, rank_zero_only=True)
 class InferenceModel(BaseModel):
     def __init__(
         self,
-        geo_encoder: BaseGeoEncoder,
-        text_encoder: BaseTextEncoder,
-        prediction_head: BasePredictionHead,
+        geo_encoder: BaseGeoEncoder | None,
+        text_encoder: BaseTextEncoder | None,
+        prediction_head: BasePredictionHead | None,
         num_classes: int | None,
         metrics: MetricsWrapper | None = None,
         ks: list[int] | None = [5, 10, 15],
@@ -68,18 +68,20 @@ class InferenceModel(BaseModel):
 
         print("-------Model------------")
         # Configure encoders
-        self.geo_encoder.setup()
-        self.text_encoder.setup()
+        if hasattr(self, "geo_encoder"):
+            self.geo_encoder.setup()
+        if hasattr(self, "text_encoder"):
+            self.text_encoder.setup()
 
-        # Configure optional extra projection so text embeddings match geo embeddings.
-        if self.text_encoder.output_dim != self.geo_encoder.output_dim:
-            if self.match_to_geo:
-                self.text_encoder.add_projector(projected_dim=self.geo_encoder.output_dim)
-            else:
-                self.geo_encoder.add_projector(projected_dim=self.text_encoder.output_dim)
-
+        if hasattr(self, "text_encoder") and hasattr(self, "geo_encoder"):
+            # Configure optional extra projection so text embeddings match geo embeddings.
+            if self.text_encoder.output_dim != self.geo_encoder.output_dim:
+                if self.match_to_geo:
+                    self.text_encoder.add_projector(projected_dim=self.geo_encoder.output_dim)
+                else:
+                    self.geo_encoder.add_projector(projected_dim=self.text_encoder.output_dim)
         # Configure prediction head
-        if self.prediction_head.net is None:
+        if hasattr(self, "prediction_head") and self.prediction_head.net is None:
             if self.num_classes is None:
                 raise ValueError(
                     "InferenceModel requires `num_classes` to build the prediction head."
@@ -108,14 +110,22 @@ class InferenceModel(BaseModel):
         """Model forward logic."""
 
         # Embed modalities
-        geo_feats = self.geo_encoder(batch)
-        text_feats = self.text_encoder(batch, mode)
-        pred_feats = self.prediction_head(geo_feats)
+        if hasattr(self, "geo_encoder"):
+            geo_feats = self.geo_encoder(batch)
+        if hasattr(self, "text_encoder"):
+            text_feats = self.text_encoder(batch, mode)
+        if hasattr(self, "prediction_head"):
+            pred_feats = self.prediction_head(geo_feats)
 
         # Change dtype of geo data if it does not match text dtype
-        if geo_feats.dtype != text_feats.dtype:
+        if (
+            hasattr(self, "text_encoder")
+            and hasattr(self, "geo_encoder")
+            and geo_feats.dtype != text_feats.dtype
+        ):
             geo_feats = geo_feats.to(text_feats.dtype)
-        return pred_feats, geo_feats, text_feats
+
+            return pred_feats, geo_feats, text_feats
 
     def concept_similarities(self, geo_embeds, concept=None) -> torch.Tensor:
         # Get concept embeddings
