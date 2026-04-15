@@ -3,14 +3,7 @@ import os
 
 import numpy as np
 
-
-def center_crop(arr, target_shape):
-    slices = []
-    for dim, target in zip(arr.shape, target_shape):
-        start = (dim - target) // 2
-        end = start + target
-        slices.append(slice(start, end))
-    return arr[tuple(slices)]
+from src.utils.data_utils import center_crop_npy
 
 
 def main(paths):
@@ -23,7 +16,7 @@ def main(paths):
             p_id = os.path.basename(p).split(".")[0].split("-")[-1]
             crop = img
             if s != img.shape[0]:
-                crop = center_crop(img, (s, s, 128))
+                crop = center_crop_npy(img, (s, s, 128))
 
             if crop.shape[0:2] != (s, s):
                 with open(f"logs/tessera_size_mismatch_{s}.txt", "a") as f:
