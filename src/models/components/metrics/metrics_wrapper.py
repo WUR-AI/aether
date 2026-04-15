@@ -19,6 +19,6 @@ class MetricsWrapper(nn.Module):
         for metric in self.metrics:
             metric_results = metric(mode=mode, return_label=True, **kwargs)
             for k, v in metric_results.items():
-                compiled_dict[f"{mode}_{k}"] = v
+                compiled_dict[k] = v
 
         return compiled_dict

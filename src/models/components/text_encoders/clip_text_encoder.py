@@ -29,8 +29,6 @@ class ClipTextEncoder(BaseTextEncoder):
 
         self.output_dim = 512
 
-        print("Model set up with CLIP text encoder")
-
     @override
     def forward(self, batch: Dict[str, torch.Tensor], mode: str) -> torch.Tensor:
         # Get text inputs
