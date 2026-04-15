@@ -16,7 +16,7 @@ class BaseModel(LightningModule, ABC):
     def __init__(
         self,
         trainable_modules: list[str],
-        geo_encoder: BaseGeoEncoder,
+        geo_encoder: BaseGeoEncoder | None,
         text_encoder: BaseTextEncoder | None,
         prediction_head: BasePredictionHead | None,
         optimizer: torch.optim.Optimizer | None,
@@ -55,7 +55,8 @@ class BaseModel(LightningModule, ABC):
         )
 
         self.trainable_modules = trainable_modules
-        self.geo_encoder = geo_encoder
+        if geo_encoder:
+            self.geo_encoder = geo_encoder
         if text_encoder:
             self.text_encoder = text_encoder
         if prediction_head:
@@ -212,7 +213,8 @@ class BaseModel(LightningModule, ABC):
 
     def update_configs(self, cfg):
         """Update hyper-parameters from the model."""
-        self.geo_encoder.update_configs(cfg["geo_encoder"])
+        if hasattr(self, "geo_encoder"):
+            self.geo_encoder.update_configs(cfg["geo_encoder"])
 
         if hasattr(self, "text_encoder"):
             self.text_encoder.cfg_dict = cfg["text_encoder"]
@@ -256,8 +258,8 @@ class BaseModel(LightningModule, ABC):
             }
         )
 
-        checkpoint["hyper_parameters"]["geo_encoder"] = self.geo_encoder.cfg_dict
-
+        if hasattr(self, "geo_encoder"):
+            checkpoint["hyper_parameters"]["geo_encoder"] = self.geo_encoder.cfg_dict
         if hasattr(self, "prediction_head"):
             checkpoint["hyper_parameters"]["prediction_head"] = self.prediction_head.cfg_dict
         if hasattr(self, "text_encoder"):
