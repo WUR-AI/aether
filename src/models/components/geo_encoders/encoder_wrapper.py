@@ -129,7 +129,7 @@ class EncoderWrapper(BaseGeoEncoder):
         if self.fusion_strategy == "concat":
             self.output_dim = sum(output_dims)
         elif self.fusion_strategy == "mean":
-            if set(output_dims) != 1:
+            if len(set(output_dims)) != 1:
                 raise ValueError(
                     f"Encoder branches produces different output dimensions {output_dims} and cannot be averaged."
                 )
@@ -151,7 +151,7 @@ class EncoderWrapper(BaseGeoEncoder):
             if self.extra_projector:
                 feats = self.extra_projector(feats)
         else:
-            feats = torch.cat(branch_feats, dim=1)
+            feats = torch.stack(branch_feats, dim=0).mean(dim=0)
             if self.extra_projector:
                 feats = self.extra_projector(feats)
         return feats
