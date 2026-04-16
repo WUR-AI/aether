@@ -1,0 +1,23 @@
+# @package _global_
+
+defaults:
+  - override /model: yield_tabular_reg
+  - override /data: yield_africa_KEN
+  - override /metrics: yield_africa_regression
+
+tags: ["yield_africa", "tabular_only", "regression", "Kenya"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 150
+
+data:
+  batch_size: 64
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "yield_africa"
+  aim:
+    experiment: "yield_africa"
