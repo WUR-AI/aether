@@ -33,9 +33,8 @@ class TabularEncoder(BaseGeoEncoder):
         self.geo_data_name = geo_data_name
 
     @override
-    def setup(self, input_dim: int = None) -> list[str]:
+    def _setup(self, input_dim: int = None) -> list[str]:
         self.configure_nn(input_dim)
-        print("Model setup with Tabular geo-encoder")
         return ["tabular_encoder"]
 
     def set_tabular_input_dim(self, input_dim: int) -> None:
@@ -67,5 +66,8 @@ class TabularEncoder(BaseGeoEncoder):
         if tab_data.dtype != dtype:
             tab_data = tab_data.to(dtype)
         feats = self.geo_encoder(tab_data)
+
+        if self.extra_projector:
+            feats = self.extra_projector(feats)
 
         return feats.to(dtype)

@@ -6,7 +6,7 @@ from torch import nn
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
 
 
-class AverageEncoder(BaseGeoEncoder):
+class IdentityEncoder(BaseGeoEncoder):
     def __init__(
         self,
         geo_data_name="aef",
@@ -28,7 +28,7 @@ class AverageEncoder(BaseGeoEncoder):
     def _setup(self) -> List[str]:
         """Configures modules and returns newly initialised, trainable module names."""
 
-        self.output_dim = self.dict_n_bands_default[self.geo_data_name]
+        self.output_dim = None
         self.geo_encoder = nn.Identity()
         return []
 
@@ -36,7 +36,11 @@ class AverageEncoder(BaseGeoEncoder):
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Data forward pass through the encoder."""
         tile = batch.get("eo", {}).get(self.geo_data_name)
-        feats = self.geo_encoder(tile.mean(dim=(-2, -1)))
+
+        if self.output_dim is None:
+            self.output_dim = tile.shape
+
+        feats = self.geo_encoder(tile)
         if self.extra_projector:
             feats = self.extra_projector(feats)
         return feats

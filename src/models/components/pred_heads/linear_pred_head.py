@@ -1,4 +1,4 @@
-from typing import override
+from typing import List, override
 
 import torch
 from torch import nn
@@ -24,16 +24,11 @@ class LinearPredictionHead(BasePredictionHead):
     @override
     def forward(self, feats: torch.Tensor) -> torch.Tensor:
         """Forward pass through the prediction head."""
-
         return torch.sigmoid(self.net(feats))
 
     @override
-    def setup(self) -> None:
-        """Configures networks, data-dependent parts.
-
-        Gets called in model.setup() method. Returns names of any new module configured to be added
-        to the trainable modules list.
-        """
+    def _setup(self) -> None:
+        """Configures specific prediction head."""
         assert type(self.input_dim) is int, self.input_dim
         assert type(self.output_dim) is int, self.output_dim
         self.net = nn.Linear(self.input_dim, self.output_dim)
