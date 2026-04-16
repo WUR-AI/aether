@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import final
+from typing import List, final
 
 import torch
 from torch import nn
@@ -9,9 +9,14 @@ class BasePredictionHead(nn.Module, ABC):
     def __init__(self) -> None:
         """Base prediction head interface class."""
         super().__init__()
+
+        # Modules
         self.net: nn.Module | None = None
+
         self.input_dim: int | None = None
         self.output_dim: int | None = None
+        self.setup_flag: bool = False
+        self.cfg_dict = {}
 
     @abstractmethod
     def forward(self, feats: torch.Tensor) -> torch.Tensor:
@@ -34,11 +39,23 @@ class BasePredictionHead(nn.Module, ABC):
         self.input_dim = input_dim
         self.output_dim = output_dim
 
-    @abstractmethod
-    def setup(self) -> None:
-        """Configures networks, data-dependent parts.
+    @final
+    def setup(self) -> List[str]:
+        """Configures modules.
 
         Gets called in model.setup() method. Returns names of any new module configured to be added
         to the trainable modules list.
         """
+        if self.setup_flag:
+            print(f"Module {self.__str__()} is already set up.")
+            return []
+        else:
+            self._setup()
+            print(f"Model set up with {self.__str__()}")
+            self.setup_flag = True
+            return ["prediction_head"]
+
+    @abstractmethod
+    def _setup(self) -> None:
+        """Configures specific prediction head."""
         pass

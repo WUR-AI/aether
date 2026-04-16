@@ -4,7 +4,9 @@ import torch
 import torch.nn as nn
 
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
+from src.models.components.geo_encoders.identity_encoder import IdentityEncoder
 from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
+from src.utils.errors import IllegalArgumentCombination
 
 
 class EncoderWrapper(BaseGeoEncoder):
@@ -46,7 +48,26 @@ class EncoderWrapper(BaseGeoEncoder):
             self.encoder_branches.append(module_dict)
 
     @override
-    def setup(self) -> List[str]:
+    def update_configs(self, cfg):
+        """Update model configurations."""
+        # If adopted encoder -> it should already saved the configs
+        if (
+            cfg["_target_"] == "src.models.components.geo_encoders.adopt_encoder.adopt_encoder"
+            and len(self.cfg_dict) != 0
+        ):
+            return
+
+        for i, branch in enumerate(cfg["encoder_branches"]):
+            if (
+                branch["encoder"]["_target_"]
+                == "src.models.components.geo_encoders.adopt_encoder.adopt_encoder"
+            ):
+                branch["encoder"] = self.encoder_branches[i]["encoder"].cfg_dict
+
+        self.cfg_dict = cfg
+
+    @override
+    def _setup(self) -> List[str]:
         new_modules = []
         branch_output_dims = []
 
@@ -72,6 +93,10 @@ class EncoderWrapper(BaseGeoEncoder):
 
             # Configure adapter/projector if requested
             if "projector" in branch:
+                if isinstance(encoder, IdentityEncoder):
+                    raise IllegalArgumentCombination(
+                        "Identity encoder cannot have linear projector"
+                    )
                 projector = branch["projector"]
 
                 projector.set_input_dim(input_dim=branch_dim)
@@ -141,7 +166,7 @@ class EncoderWrapper(BaseGeoEncoder):
         if self.fusion_strategy == "concat":
             self.output_dim = sum(output_dims)
         elif self.fusion_strategy == "mean":
-            if set(output_dims) != 1:
+            if len(set(output_dims)) != 1:
                 raise ValueError(
                     f"Encoder branches produces different output dimensions {output_dims} and cannot be averaged."
                 )
@@ -158,23 +183,34 @@ class EncoderWrapper(BaseGeoEncoder):
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         branch_feats = []
         for i, branch in enumerate(self.encoder_branches):
-            feats = branch["encoder"].forward(batch)  # each encoder knows what modality it needs
+            feats = branch["encoder"](batch)  # each encoder knows what modality it needs
 
-            if "projector" in branch:
-                feats = branch["projector"].forward(feats)
+            projector = branch.get("projector", None)
+            if projector is not None:
+                feats = projector(feats)
 
-            if self.branch_norms:
+            if self.branch_norms is not None:
                 feats = self.branch_norms[i](feats)
 
             branch_feats.append(feats)
 
         if self.fusion_strategy == "concat":
-            return torch.cat(branch_feats, dim=1)
+            feats = torch.cat(branch_feats, dim=1)
+
         elif self.fusion_strategy == "gated":
-            weights = torch.softmax(self.gate_logits, dim=0)              # [n_branches]
-            stacked = torch.stack(branch_feats, dim=0)                    # [n_branches, B, dim]
-            return (stacked * weights.view(-1, 1, 1)).sum(0)              # [B, dim]
-        return torch.mean(branch_feats, dim=1)
+            weights = torch.softmax(self.gate_logits, dim=0)
+            stacked = torch.stack(branch_feats, dim=0)
+            view_shape = [stacked.shape[0]] + [1] * (stacked.ndim - 1)
+            feats = (stacked * weights.view(*view_shape)).sum(dim=0)
+
+        else:
+            feats = torch.stack(branch_feats, dim=0).mean(dim=0)
+
+        # final (linear) project can be set in base class
+        if self.extra_projector is not None:
+            feats = self.extra_projector(feats)
+
+        return feats
 
     @property
     def device(self):

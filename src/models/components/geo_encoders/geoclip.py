@@ -21,10 +21,9 @@ class GeoClipCoordinateEncoder(BaseGeoEncoder):
         self.geo_data_name = geo_data_name
 
     @override
-    def setup(self) -> List[str]:
+    def _setup(self) -> List[str]:
         self.geo_encoder = LocationEncoder()
         self.output_dim = self.geo_encoder.LocEnc0.head[0].out_features
-        print("Model setup with GeoClip coordinate encoder")
         return []
 
     @override
@@ -39,6 +38,8 @@ class GeoClipCoordinateEncoder(BaseGeoEncoder):
         if coords.dtype != dtype:
             coords = coords.to(dtype)
         feats = self.geo_encoder(coords)
+        if self.extra_projector:
+            feats = self.extra_projector(feats)
 
         return feats.to(dtype)
 
