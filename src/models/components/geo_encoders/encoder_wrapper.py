@@ -185,9 +185,8 @@ class EncoderWrapper(BaseGeoEncoder):
         for i, branch in enumerate(self.encoder_branches):
             feats = branch["encoder"](batch)  # each encoder knows what modality it needs
 
-            projector = branch.get("projector", None)
-            if projector is not None:
-                feats = projector(feats)
+            if "projector" in branch:
+                feats = branch["projector"](feats)
 
             if self.branch_norms is not None:
                 feats = self.branch_norms[i](feats)

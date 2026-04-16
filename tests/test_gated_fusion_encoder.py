@@ -25,7 +25,7 @@ class _StubEncoder(BaseGeoEncoder):
         self._linear = torch.nn.Linear(output_dim, output_dim)  # gives it parameters
 
     @override
-    def setup(self) -> List[str]:
+    def _setup(self) -> List[str]:
         self.output_dim = self._out_dim
         return ["_linear"]
 
