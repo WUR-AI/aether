@@ -82,6 +82,8 @@ class YieldAfricaDataset(BaseDataset):
         cache_dir: str = None,
         mock: bool = False,
         use_features: bool = True,
+        use_country_features: bool = True,
+        csv_name: str = None,
         countries: List[str] | None = None,
         years: List[int] | None = None,
         exclude_countries: List[str] | None = None,
@@ -98,6 +100,7 @@ class YieldAfricaDataset(BaseDataset):
             implemented_mod={"coords", "tessera"},
             mock=mock,
             use_features=use_features,
+            csv_name=csv_name,
         )
 
         # Inject year and country one-hot columns as feat_* so that
@@ -111,8 +114,12 @@ class YieldAfricaDataset(BaseDataset):
             new_cols: Dict[str, Any] = {
                 "feat_year": (self.df["year"].astype(float) - _YEAR_MEAN) / _YEAR_STD
             }
-            for code in _ALL_COUNTRIES:
-                new_cols[f"feat_country_{code}"] = (self.df["country"] == code).astype(float)
+            # Country one-hots should be disabled for LOCO evaluation: the held-out
+            # country is unseen during training, so its one-hot is always 0 in train
+            # and always 1 at test time — a guaranteed distribution shift.
+            if use_country_features:
+                for code in _ALL_COUNTRIES:
+                    new_cols[f"feat_country_{code}"] = (self.df["country"] == code).astype(float)
 
             # Fourier harmonics of coordinates, normalised to the study-area extent.
             #
