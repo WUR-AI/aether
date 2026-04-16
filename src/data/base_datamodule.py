@@ -257,6 +257,64 @@ class BaseDataModule(LightningDataModule):
         if self.hparams.save_split:
             self.save_split_indices(split_indices)
 
+        self._compute_tabular_normalisation_stats()
+        self._compute_target_normalisation_stats()
+
+    def _compute_tabular_normalisation_stats(self) -> None:
+        """Compute per-feature mean and std on the training split for use by TabularEncoder.
+
+        Statistics are stored as ``self.tabular_normalisation_stats = (mean, std)`` —
+        both float32 tensors of shape ``(tabular_dim,)`` — or ``None`` if the dataset
+        has no tabular features.  The std is clamped to 1 for constant features so that
+        division is always safe.
+        """
+        self.tabular_normalisation_stats = None
+
+        if not getattr(self.dataset, "use_features", False):
+            return
+        feat_names = getattr(self.dataset, "feat_names", None)
+        if not feat_names:
+            return
+
+        train_indices = self.data_train.indices
+        train_df = self.dataset.df.iloc[train_indices][feat_names]
+
+        mean = train_df.mean(axis=0).values
+        std = train_df.std(axis=0).values
+        std = np.where(std == 0, 1.0, std)  # avoid division by zero for constant features
+
+        self.tabular_normalisation_stats = (
+            torch.tensor(mean, dtype=torch.float32),
+            torch.tensor(std, dtype=torch.float32),
+        )
+
+    def _compute_target_normalisation_stats(self) -> None:
+        """Compute per-target mean and std on the training split.
+
+        Statistics are stored as ``self.target_normalisation_stats = (mean, std)`` —
+        both float32 tensors of shape ``(num_targets,)`` — or ``None`` if the dataset
+        has no targets.  The std is clamped to 1 for constant targets.
+        """
+        self.target_normalisation_stats = None
+
+        if not getattr(self.dataset, "use_target_data", False):
+            return
+        target_names = getattr(self.dataset, "target_names", None)
+        if not target_names:
+            return
+
+        train_indices = self.data_train.indices
+        train_df = self.dataset.df.iloc[train_indices][target_names]
+
+        mean = train_df.mean(axis=0).values
+        std = train_df.std(axis=0).values
+        std = np.where(std == 0, 1.0, std)  # avoid division by zero for constant targets
+
+        self.target_normalisation_stats = (
+            torch.tensor(mean, dtype=torch.float32),
+            torch.tensor(std, dtype=torch.float32),
+        )
+
     def save_split_indices(self, split_indices: dict[str, Any] | dict):
         """Save split indices into file."""
         self.split_dir = os.path.join(self.hparams.dataset.data_dir, "splits")

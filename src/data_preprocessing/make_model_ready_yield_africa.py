@@ -5,12 +5,15 @@ Features:
 - Load raw dataset (CSV or Parquet)
 - Compute derived features (CN_ratio, layer deltas, WHC proxy, aridity index)
 - Apply log transforms to skewed features
-- Fit StandardScaler on train split only
-- Encode categorical features as integer indices
+- Encode categorical features as integer indices (fitted on train split)
 - Remove yield outliers beyond 3 IQR
 - Preserve metadata columns
-- Save fitted transformers for inference-time reuse
+- Save fitted label encoders for inference-time reuse
 - Calculate and save spatial cross-validation splits
+
+Note: continuous feature normalisation (StandardScaler) is intentionally omitted here.
+It is applied at training time by TabularEncoder using the actual training split, so that
+the same CSV can be used with any split strategy (random, LOCO, spatial) without leakage.
 """
 
 import argparse
@@ -24,7 +27,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import LabelEncoder
 
 log = logging.getLogger(__name__)
 
@@ -316,29 +319,6 @@ def remove_yield_outliers(
     return df[~outlier_mask].copy(), outlier_mask
 
 
-def fit_scaler(df: pd.DataFrame, continuous_features: List[str]) -> StandardScaler:
-    """Fit StandardScaler on continuous features."""
-    available_features = [f for f in continuous_features if f in df.columns]
-    if len(available_features) < len(continuous_features):
-        missing = set(continuous_features) - set(available_features)
-        warnings.warn(f"Missing continuous features: {missing}")
-    scaler = StandardScaler()
-    scaler.fit(df[available_features])
-    return scaler
-
-
-def apply_scaler(
-    df: pd.DataFrame,
-    scaler: StandardScaler,
-    continuous_features: List[str],
-) -> pd.DataFrame:
-    """Apply fitted StandardScaler to continuous features."""
-    df = df.copy()
-    available_features = [f for f in continuous_features if f in df.columns]
-    df[available_features] = scaler.transform(df[available_features])
-    return df
-
-
 def fit_label_encoders(
     df: pd.DataFrame,
     categorical_features: List[str],
@@ -463,7 +443,6 @@ def main(
     out_csv_path = Path(out_csv)
     data_dir = out_csv_path.parent
 
-    scaler_path = data_dir / f"fitted_scaler_{MODEL_READY_DATA_NAME}.pkl"
     encoders_path = data_dir / f"label_encoders_{MODEL_READY_DATA_NAME}.pkl"
     spatial_split_path = (
         data_dir
@@ -537,24 +516,16 @@ def main(
     train_df = df[train_mask]
     log.info(f"Training set size: {len(train_df)} samples")
 
-    # Fit transformers on train split only
-    log.info("Fitting StandardScaler on train split...")
-    scaler = fit_scaler(train_df, CONTINUOUS_FEATURES)
-
+    # Fit label encoders on train split only
     log.info("Fitting LabelEncoders on train split...")
     all_categorical = TABULAR_CATEGORICAL_FEATURES + AUX_FEATURES
     encoders = fit_label_encoders(train_df, all_categorical)
 
-    # Apply transformations to full dataset
-    log.info("Applying transformations to full dataset...")
-    df = apply_scaler(df, scaler, CONTINUOUS_FEATURES)
+    # Apply label encoders to full dataset
+    log.info("Applying label encoders to full dataset...")
     df = apply_label_encoders(df, encoders, all_categorical)
 
-    # Save transformers
-    scaler_path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(scaler, scaler_path)
-    log.info(f"Saved scaler to {scaler_path}")
-
+    # Save label encoders
     encoders_path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(encoders, encoders_path)
     log.info(f"Saved encoders to {encoders_path}")
@@ -611,11 +582,6 @@ def main(
         }
         df["location_accuracy"] = df["location_accuracy"].str.lower().map(accuracy_map)
 
-    # Keep scaler metadata in sync with new column names
-    if hasattr(scaler, "feature_names_in_") and scaler.feature_names_in_ is not None:
-        scaler.feature_names_in_ = np.array(
-            [rename_map.get(n, n) for n in scaler.feature_names_in_]
-        )
     encoders = {rename_map.get(k, k): v for k, v in encoders.items()}
 
     # Calculate and save spatial splits (optional)

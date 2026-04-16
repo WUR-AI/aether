@@ -26,6 +26,7 @@ class BaseDataset(Dataset, ABC):
         implemented_mod: set[str] = None,
         mock: bool = False,
         use_features: bool = True,
+        csv_name: str = None,
     ) -> None:
         """Interface for any use case dataset.
 
@@ -71,7 +72,8 @@ class BaseDataset(Dataset, ABC):
             os.makedirs(d, exist_ok=True)
 
         # Read model ready csv df
-        path_csv = os.path.join(self.data_dir, f"model_ready_{dataset_name}.csv")
+        csv_filename = csv_name or f"model_ready_{dataset_name}.csv"
+        path_csv = os.path.join(self.data_dir, csv_filename)
         assert os.path.exists(path_csv), f"{path_csv} does not exist."
         self.df: pd.DataFrame = pd.read_csv(path_csv)
 
@@ -183,10 +185,13 @@ class BaseDataset(Dataset, ABC):
         col = f"{modality}_path"
 
         # Write paths
-        self.df[col] = None
-        for i, row in self.df.iterrows():
-            file_path = path + f"{modality}_{row.name_loc}.{extension}"
-            self.df.loc[i, col] = file_path
+        self.df = pd.concat(
+            [
+                self.df,
+                self.df["name_loc"].apply(lambda loc: path + f"{modality}_{loc}.{extension}").rename(col),
+            ],
+            axis=1,
+        )
 
     @final
     def setup_tessera(self) -> None:
