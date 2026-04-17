@@ -1,0 +1,25 @@
+# @package _global_
+# configs/experiment/heat_guatemala_fusion_reg.yaml
+# Variant C: GeoClip + tabular fusion
+
+defaults:
+  - override /model: yield_fusion_reg
+  - override /data: yield_africa_all
+  - override /metrics: yield_africa_regression
+
+tags: ["yield_africa", "fusion", "regression"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 150
+
+data:
+  batch_size: 64
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "yield_africa"
+  aim:
+    experiment: "yield_africa"

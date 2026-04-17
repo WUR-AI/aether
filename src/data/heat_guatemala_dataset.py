@@ -42,7 +42,7 @@ class HeatGuatemalaDataset(BaseDataset):
         data_dir: str,
         modalities: dict,
         use_target_data: bool = True,
-        use_aux_data: bool = False,
+        use_aux_data: Dict[str, Any] | str = "all",
         seed: int = 12345,
         cache_dir: str = None,
         mock: bool = False,
@@ -56,7 +56,7 @@ class HeatGuatemalaDataset(BaseDataset):
             dataset_name="heat_guatemala",
             seed=seed,
             cache_dir=cache_dir,
-            implemented_mod={"coords"},
+            implemented_mod={"coords", "tessera"},
             mock=mock,
             use_features=use_features,
         )
@@ -67,6 +67,14 @@ class HeatGuatemalaDataset(BaseDataset):
 
     def setup(self) -> None:
         """No files to download / prepare for this dataset."""
+        # Set up each requested modality
+        for mod in self.modalities.keys():
+            if mod == "coords" and len(self.modalities.keys()) == 1:
+                return
+            elif mod == "tessera":
+                self.setup_tessera()
+            # elif mod == "aef":
+            #     self.setup_aef()
         return
 
     @override
@@ -76,10 +84,12 @@ class HeatGuatemalaDataset(BaseDataset):
 
         # --- EO modalities ---
         for modality in self.modalities:
-            if modality == "coords":
-                sample["eo"]["coords"] = torch.tensor(
-                    [row["lat"], row["lon"]], dtype=torch.float32
-                )
+            if modality in ["coords"]:
+                sample["eo"][modality] = torch.tensor([row["lat"], row["lon"]])
+            elif modality == "tessera":
+                sample["eo"][modality] = self.load_tessera(row["tessera_path"])
+            elif modality == "aef":
+                sample["eo"][modality] = self.load_aef(row["aef_path"])
 
         # --- Tabular features (always included if present in CSV) ---
         if self.use_features and self.feat_names:
@@ -95,6 +105,13 @@ class HeatGuatemalaDataset(BaseDataset):
 
         # --- Auxiliary data ---
         if self.use_aux_data:
-            sample["aux"] = [row[k] for k in self.aux_names]
+            sample["aux"] = {}
+            for aux_cat, vals in self.use_aux_data.items():
+                if aux_cat == "aux":
+                    sample["aux"][aux_cat] = torch.tensor(
+                        [row[v] for v in vals], dtype=torch.float32
+                    )
+                else:
+                    sample["aux"][aux_cat] = [row[v] for v in vals]
 
         return sample

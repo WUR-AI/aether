@@ -6,7 +6,7 @@ import rootutils
 from dotenv import load_dotenv
 from lightning import Callback, LightningModule, Trainer
 from lightning.pytorch.loggers import Logger
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from src.data.base_datamodule import BaseDataModule
 
@@ -51,9 +51,11 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     datamodule: BaseDataModule = hydra.utils.instantiate(cfg.data)
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
-    model: LightningModule = hydra.utils.instantiate(
-        cfg.model, num_classes=datamodule.num_classes, tabular_dim=datamodule.tabular_dim
-    )
+    model: LightningModule = hydra.utils.instantiate(cfg.model)
+
+    # Append model hparams from config to be saved in ckpg
+    raw_model_cfg = OmegaConf.to_container(cfg.model, resolve=True)
+    model.update_configs(raw_model_cfg)
 
     log.info("Instantiating callbacks...")
     callbacks: List[Callback] = instantiate_callbacks(cfg.get("callbacks"))

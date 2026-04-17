@@ -16,13 +16,14 @@ dataset:
       format: npy
       year: 2019
   use_target_data: true
-  use_aux_data: false
+  use_aux_data: none
   seed: ${seed}
   cache_dir: ${paths.cache_dir}
 
 caption_builder:
   _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
-  templates_fname: caption_templates.json
+  templates_fname: v3.json
+  concepts_fname: v1.json
   data_dir: ${paths.data_dir}/s2bms
   seed: ${seed}
 

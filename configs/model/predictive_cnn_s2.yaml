@@ -1,15 +1,15 @@
 _target_: src.models.predictive_model.PredictiveModel
 
-eo_encoder:
-  _target_: src.models.components.eo_encoders.cnn_encoder.CNNEncoder
+geo_encoder:
+  _target_: src.models.components.geo_encoders.cnn_encoder.CNNEncoder
   resnet_version: 18
   freezing_strategy: none
-  eo_data_name: s2
+  geo_data_name: s2
 
 prediction_head:
   _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
 
-trainable_modules: [eo_encoder, prediction_head]
+trainable_modules: [geo_encoder, prediction_head]
 
 metrics: ${metrics}
 

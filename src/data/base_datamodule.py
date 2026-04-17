@@ -1,12 +1,12 @@
 import copy
 import os
+import time
 from functools import partial
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 import torch
-from geopy.distance import distance as geodist  # avoid naming confusion
 from lightning import LightningDataModule
 from sklearn.cluster import DBSCAN
 from sklearn.model_selection import GroupShuffleSplit
@@ -63,6 +63,7 @@ class BaseDataModule(LightningDataModule):
             assert caption_builder is not None, "Caption_builder cannot be None"
             self.caption_builder = caption_builder
             self.caption_builder.sync_with_dataset(self.dataset)
+            self.concept_configs = caption_builder.concepts
 
         self.split_data()
 
@@ -120,20 +121,27 @@ class BaseDataModule(LightningDataModule):
                 }
 
         elif self.hparams.split_mode == "spatial_clusters":
-            print("Splitting dataset using spatial clusters. This can take a while...")
-            coords = np.array([self.dataset.df.lat, self.dataset.df.lon]).T
-            if len(coords) > 2000:
-                print(
-                    "Warning: DBSCAN clustering on more than 2000 samples may be slow. Maybe set n_jobs in DBScan?"
-                )
-            # 4000 m distance between points. Use geodist to calculate true distance.
             min_dist = self.hparams.spatial_split_distance_m
+            coords = np.array([self.dataset.df.lat, self.dataset.df.lon]).T
+            n = len(coords)
+            print(
+                f"Splitting {n} samples into spatial clusters "
+                f"(eps={min_dist / 1000:.1f} km, haversine, n_jobs=-1)..."
+            )
+            # Convert (lat, lon) degrees to radians for sklearn's haversine metric.
+            # haversine returns arc length on the unit sphere, so eps must be in radians.
+            _EARTH_RADIUS_M = 6_371_000
+            coords_rad = np.radians(coords)
+            eps_rad = min_dist / _EARTH_RADIUS_M
+            t0 = time.time()
             clustering = DBSCAN(
-                eps=min_dist,
-                metric=lambda u, v: geodist(u, v).meters,
+                eps=eps_rad,
+                metric="haversine",
+                algorithm="ball_tree",
                 min_samples=2,
-            ).fit(coords)
-            print("Clustering done. Creating splits and saving.")
+                n_jobs=-1,
+            ).fit(coords_rad)
+            print(f"DBSCAN done in {time.time() - t0:.1f}s. Creating splits...")
             # Non-clustered points are labeled -1. Change to new cluster label.
             clusters = copy.deepcopy(clustering.labels_)
             new_cl = np.max(clusters) + 1
@@ -248,6 +256,64 @@ class BaseDataModule(LightningDataModule):
 
         if self.hparams.save_split:
             self.save_split_indices(split_indices)
+
+        self._compute_tabular_normalisation_stats()
+        self._compute_target_normalisation_stats()
+
+    def _compute_tabular_normalisation_stats(self) -> None:
+        """Compute per-feature mean and std on the training split for use by TabularEncoder.
+
+        Statistics are stored as ``self.tabular_normalisation_stats = (mean, std)`` —
+        both float32 tensors of shape ``(tabular_dim,)`` — or ``None`` if the dataset
+        has no tabular features.  The std is clamped to 1 for constant features so that
+        division is always safe.
+        """
+        self.tabular_normalisation_stats = None
+
+        if not getattr(self.dataset, "use_features", False):
+            return
+        feat_names = getattr(self.dataset, "feat_names", None)
+        if not feat_names:
+            return
+
+        train_indices = self.data_train.indices
+        train_df = self.dataset.df.iloc[train_indices][feat_names]
+
+        mean = train_df.mean(axis=0).values
+        std = train_df.std(axis=0).values
+        std = np.where(std == 0, 1.0, std)  # avoid division by zero for constant features
+
+        self.tabular_normalisation_stats = (
+            torch.tensor(mean, dtype=torch.float32),
+            torch.tensor(std, dtype=torch.float32),
+        )
+
+    def _compute_target_normalisation_stats(self) -> None:
+        """Compute per-target mean and std on the training split.
+
+        Statistics are stored as ``self.target_normalisation_stats = (mean, std)`` —
+        both float32 tensors of shape ``(num_targets,)`` — or ``None`` if the dataset
+        has no targets.  The std is clamped to 1 for constant targets.
+        """
+        self.target_normalisation_stats = None
+
+        if not getattr(self.dataset, "use_target_data", False):
+            return
+        target_names = getattr(self.dataset, "target_names", None)
+        if not target_names:
+            return
+
+        train_indices = self.data_train.indices
+        train_df = self.dataset.df.iloc[train_indices][target_names]
+
+        mean = train_df.mean(axis=0).values
+        std = train_df.std(axis=0).values
+        std = np.where(std == 0, 1.0, std)  # avoid division by zero for constant targets
+
+        self.target_normalisation_stats = (
+            torch.tensor(mean, dtype=torch.float32),
+            torch.tensor(std, dtype=torch.float32),
+        )
 
     def save_split_indices(self, split_indices: dict[str, Any] | dict):
         """Save split indices into file."""

@@ -1,7 +1,7 @@
 _target_: src.models.text_alignment_model.TextAlignmentModel
 
-eo_encoder:
-  _target_: src.models.components.eo_encoders.geoclip.GeoClipCoordinateEncoder
+geo_encoder:
+  _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
 
 text_encoder:
   _target_: src.models.components.text_encoders.llm2clip_text_encoder.LLM2CLIPTextEncoder

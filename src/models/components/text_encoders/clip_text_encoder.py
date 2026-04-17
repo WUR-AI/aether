@@ -2,7 +2,6 @@ from typing import Dict, override
 
 import torch
 from geoclip import GeoCLIP
-from torch.nn import functional as F
 from transformers import CLIPModel, CLIPProcessor
 
 from src.models.components.text_encoders.base_text_encoder import (
@@ -25,6 +24,9 @@ class ClipTextEncoder(BaseTextEncoder):
 
         self.projector = GeoCLIP().image_encoder.mlp
 
+        self.model.vision_model = None
+        self.model.visual_projection = None
+
         self.output_dim = 512
 
     @override
@@ -38,7 +40,13 @@ class ClipTextEncoder(BaseTextEncoder):
         avr_embeds = []
         for captions_per_row in text_input:
             # Tokenize and embed
-            text_tokens = self.processor(text=captions_per_row, return_tensors="pt", padding=True)
+            text_tokens = self.processor(
+                text=captions_per_row,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=77,
+            )
             device = next(self.model.parameters()).device
             text_tokens = {k: v.to(device) for k, v in text_tokens.items()}
 

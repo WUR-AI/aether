@@ -1,6 +1,7 @@
 import os
+import re
 from abc import ABC, abstractmethod
-from typing import Any, Dict, final
+from typing import Any, Dict, List, final
 
 import numpy as np
 import pandas as pd
@@ -8,6 +9,7 @@ import torch
 from torch.utils.data import Dataset
 
 import src.data_preprocessing.data_utils as du
+from src.utils.data_utils import center_crop_npy
 
 
 class BaseDataset(Dataset, ABC):
@@ -16,7 +18,7 @@ class BaseDataset(Dataset, ABC):
         data_dir: str,
         modalities: dict,
         use_target_data: bool = True,
-        use_aux_data: bool = False,
+        use_aux_data: Dict[str, List[str] | str] | str | None = None,
         dataset_name: str = "BaseDataset",
         seed: int = 12345,
         mode: str = "train",
@@ -24,6 +26,7 @@ class BaseDataset(Dataset, ABC):
         implemented_mod: set[str] = None,
         mock: bool = False,
         use_features: bool = True,
+        csv_name: str = None,
     ) -> None:
         """Interface for any use case dataset.
 
@@ -69,7 +72,8 @@ class BaseDataset(Dataset, ABC):
             os.makedirs(d, exist_ok=True)
 
         # Read model ready csv df
-        path_csv = os.path.join(self.data_dir, f"model_ready_{dataset_name}.csv")
+        csv_filename = csv_name or f"model_ready_{dataset_name}.csv"
+        path_csv = os.path.join(self.data_dir, csv_filename)
         assert os.path.exists(path_csv), f"{path_csv} does not exist."
         self.df: pd.DataFrame = pd.read_csv(path_csv)
 
@@ -78,9 +82,25 @@ class BaseDataset(Dataset, ABC):
         self.num_classes = None
         self.tabular_dim = None
         self.seed = seed
-        self.use_target_data: bool = use_target_data
-        self.use_aux_data: bool = use_aux_data
+        self.use_target_data = use_target_data
         self.use_features = use_features
+
+        if use_aux_data is None or use_aux_data == "all":
+            self.use_aux_data = {
+                "aux": {
+                    "pattern": "^aux_(?!.*top).*",
+                    #     'columns' : []
+                },
+                "top": {
+                    "pattern": "^aux_.*top.*",
+                    #     'columns' : []
+                },
+            }
+
+        elif type(use_aux_data) is dict:
+            self.use_aux_data = use_aux_data
+        else:
+            self.use_aux_data = None
 
         self.mode: str = mode  # 'train', 'val', 'test'
         self.records: dict[str, Any] = self.get_records()
@@ -107,16 +127,25 @@ class BaseDataset(Dataset, ABC):
                 )
                 columns.append(f"{modality}_path")
 
-        # Include targets
+        # Include targets TODO: this could be moved under geo-modalities
         if self.use_target_data:
             self.target_names = [c for c in self.df.columns if "target_" in c]
             columns.extend(self.target_names)
             self.num_classes = len(self.target_names)
 
         # Include aux data
-        if self.use_aux_data:
-            self.aux_names = [c for c in self.df.columns if "aux_" in c]
-            columns.extend(self.aux_names)
+        if self.use_aux_data is not None:
+            for k, val in self.use_aux_data.items():
+                if val.get("pattern"):
+                    pattern = re.compile(val["pattern"])
+                    aux_names = [x for x in self.df.columns if pattern.match(x)]
+                else:
+                    aux_names = val.get(
+                        "columns",
+                        ValueError('use_aux_data should have "pattern" or "columns" defined'),
+                    )
+                self.use_aux_data[k] = aux_names
+                columns.extend(aux_names)
 
         # Include tabular features
         if self.use_features:
@@ -156,10 +185,13 @@ class BaseDataset(Dataset, ABC):
         col = f"{modality}_path"
 
         # Write paths
-        self.df[col] = None
-        for i, row in self.df.iterrows():
-            file_path = path + f"{modality}_{row.name_loc}.{extension}"
-            self.df.loc[i, col] = file_path
+        self.df = pd.concat(
+            [
+                self.df,
+                self.df["name_loc"].apply(lambda loc: path + f"{modality}_{loc}.{extension}").rename(col),
+            ],
+            axis=1,
+        )
 
     @final
     def setup_tessera(self) -> None:
@@ -211,7 +243,17 @@ class BaseDataset(Dataset, ABC):
                 if fname not in avail_files:
                     print(f"Retrieving missing Tessera data: {fname}")
                     gt = gt or GeoTessera(cache_dir=self.cache_dir)
-                    get_tessera_embeds(rec.lon, rec.lat, rec.name_loc, year, dst_dir, size)
+                    row = self.df[self.df["name_loc"] == rec["name_loc"]]
+                    lon, lat = row.lon.item(), row.lat.item()
+                    get_tessera_embeds(
+                        lon,
+                        lat,
+                        rec["name_loc"],
+                        year=year,
+                        save_dir=dst_dir,
+                        tile_size=size,
+                        tessera_con=gt,
+                    )
 
     @final
     def setup_aef(self) -> None:
@@ -254,6 +296,21 @@ class BaseDataset(Dataset, ABC):
         """Loads AEF data from file as a tensor."""
 
         im = du.load_tiff(filepath, datatype="np")
+        size = self.modalities["aef"]["size"]
+        if im.shape[1] != size:
+            im = center_crop_npy(im, (64, size, size))
         if np.isinf(im).any():
             im = np.clip(im, a_min=-0.5, a_max=0.5)
+        # TODO any normalisation needed
+
         return torch.tensor(im).float()
+
+    @final
+    def load_tessera(self, filepath: str) -> torch.Tensor:
+        """Loads."""
+        size = self.modalities["tessera"]["size"]
+        arr = self.load_npy(filepath)
+        if arr.size()[1] != size:
+            arr = center_crop_npy(arr, (128, size, size))
+        # TODO any normalisation needed
+        return arr
