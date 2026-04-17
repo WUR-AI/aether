@@ -154,8 +154,7 @@ class ButterflyDataset(BaseDataset):
                 formatted_row["eo"][modality] = self.load_s2(row["s2_path"])
                 # TODO: augmentations
             elif modality == "tessera":
-                formatted_row["eo"][modality] = self.load_npy(row["tessera_path"])
-                # TODO any normalisation needed
+                formatted_row["eo"][modality] = self.load_tessera(row["tessera_path"])
             elif modality == "aef":
                 formatted_row["eo"][modality] = self.load_aef(row["aef_path"])
 
