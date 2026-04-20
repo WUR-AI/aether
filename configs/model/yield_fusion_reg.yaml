@@ -6,6 +6,10 @@ geo_encoder:
   encoder_branches:
     - encoder:
         _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
+      projector:
+        _target_: src.models.components.geo_encoders.mlp_projector.MLPProjector
+        nn_layers: 1
+        output_dim: 256
     - encoder:
         _target_: src.models.components.geo_encoders.tabular_encoder.TabularEncoder
         output_dim: 256
@@ -22,8 +26,10 @@ prediction_head:
 
 # GeoClip frozen; tabular projection + head are trained.
 trainable_modules: [geo_encoder, prediction_head]
-# Disable L2 normalization before MLP regression to keep magnitude of features
+# Disable L2 unit-sphere projection (F.normalize) — regression needs full vector structure, not just direction
 normalize_features: false
+# Z-score the target before loss; metrics are reported in original yield units
+standardize_targets: true
 
 metrics: ${metrics}
 

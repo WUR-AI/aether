@@ -33,13 +33,19 @@ dependencies = [
     "peft>=0.18.1",
     "llm2vec",
     "setuptools<81",
-    "geotessera>=0.7.3",
+    "scipy-stubs~=1.17.1",
+    "xgboost>=2.0.0",
 ]
 
 [project.optional-dependencies]
 create-data = [
     "geemap>=0.36.6",
     "pipreqs>=0.5.0",
+    "earthaccess>=0.11.0",
+    "pyhdf>=0.11.4",
+]
+geotessera = [
+    "geotessera>=0.7.3",
 ]
 
 [tool.pytest.ini_options]
