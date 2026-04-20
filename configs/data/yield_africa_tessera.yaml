@@ -11,6 +11,7 @@ dataset:
       format: npy
       # year is intentionally omitted: yield_africa fetches per-record year tiles
       # via the preprocessing script rather than a single bulk-year download.
+  csv_name: null
   use_target_data: true
   use_features: true
   use_aux_data: none

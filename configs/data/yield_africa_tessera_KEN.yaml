@@ -5,7 +5,8 @@ dataset:
   data_dir: ${paths.data_dir}
   modalities:
     tessera:
-      # size must match the tile_size used when running the preprocessing script.
+      # size must match or be smaller than the tile_size used when running the
+      # preprocessing script.
       # Default: 9 pixels (set by yield_africa_tessera_preprocess.py --tile_size).
       size: 9
       format: npy
