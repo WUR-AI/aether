@@ -6,3 +6,4 @@ metrics:
   - _target_: src.models.components.loss_fns.mae_loss.MAELoss
   - _target_: src.models.components.loss_fns.rrmse_loss.RRMSELoss
   - _target_: src.models.components.metrics.r2.RSquared
+  - _target_: src.models.components.metrics.mape.MAPE
