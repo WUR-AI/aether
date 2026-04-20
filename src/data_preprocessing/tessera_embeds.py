@@ -205,7 +205,8 @@ def get_tessera_embeds(
             tiles.append(reproject_tile)
             if reproject_memfile:
                 memfiles.append(reproject_memfile)
-    except Exception:
+    except Exception as e:
+        print(f"Failed to close resource: {e}")
         _close_all()
         raise
 
@@ -221,10 +222,13 @@ def get_tessera_embeds(
     # Crop patch tile
     c, r = crs_to_pixel_coords(lon_utm, lat_utm, mosaic_transform)
     half = tile_size // 2
+
+    corr_odd = 1 if tile_size % 2 == 1 else 0
+
     row_min = r - half
-    row_max = r + half + 1  # +1: slice end is exclusive, needed for odd tile_size
+    row_max = r + half + corr_odd  # +1: slice end is exclusive, needed for odd tile_size
     col_min = c - half
-    col_max = c + half + 1
+    col_max = c + half + corr_odd
 
     h, w = mosaic.shape[0], mosaic.shape[1]
     if row_min < 0 or col_min < 0 or row_max > h or col_max > w:
