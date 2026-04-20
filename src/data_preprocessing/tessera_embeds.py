@@ -3,6 +3,7 @@ import os
 import threading
 
 import numpy as np
+from affine import Affine
 
 # Serialises concurrent reads/writes to the per-directory meta.csv log file.
 # A threading.Lock is sufficient here because meta.csv writes always happen in
@@ -130,6 +131,7 @@ def get_tessera_embeds(
     tile_size: int,
     tessera_con: GeoTessera | None,
     padding: int = 100,
+    save_tif=False,
 ) -> None:
     """Obtain tessera embedding tile with specified size for a given coordinates.
 
@@ -141,6 +143,7 @@ def get_tessera_embeds(
     :param tile_size: tile size in pixels
     :param tessera_con: GeoTessera instance
     :param padding: how many meters to pad initial bbox, fixes some inconsistencies when mosaicing
+    :param save_tif: boolean to indicate if to save tif
     :return: None
     """
 
@@ -170,11 +173,15 @@ def get_tessera_embeds(
 
     def _close_all():
         for t in tiles:
-            try: t.close()
-            except Exception: pass
+            try:
+                t.close()
+            except Exception as e:
+                print(f"Failed to close resource: {e}")
         for mf in memfiles:
-            try: mf.close()
-            except Exception: pass
+            try:
+                mf.close()
+            except Exception as e:
+                print(f"Failed to close resource: {e}")
 
     try:
         for _, _, _, embedding, crs, transform in tessera_con.fetch_embeddings(tiles_to_fetch):
@@ -237,9 +244,31 @@ def get_tessera_embeds(
     if crop.min() == 0.0 and crop.max() == 0.0:
         raise NoTileError(f"Crop {name_loc} has embeddings of 0.0s with tiles: {tiles_to_fetch}")
 
-    # Save array
-    os.makedirs(save_dir, exist_ok=True)
-    np.save(embed_tile_name, crop)
+    if not save_tif:
+        # Save array
+        os.makedirs(save_dir, exist_ok=True)
+        np.save(embed_tile_name, crop)
+        print(f"Array saved as {embed_tile_name}")
+
+    else:
+        # Temp save tif too
+        crop_transform = mosaic_transform * Affine.translation(col_min, row_min)
+        height, width, channels = crop.shape
+
+        with rasterio.open(
+            embed_tile_name[:-4] + ".tif",
+            "w",
+            driver="GTiff",
+            height=height,
+            width=width,
+            count=channels,
+            dtype=crop.dtype,
+            crs=utm_crs,
+            transform=crop_transform,
+        ) as dst:
+            for i in range(channels):
+                dst.write(crop[:, :, i], i + 1)
+        print(f"tif saved to {embed_tile_name[:-4]}.tif")
 
     # Log its metadata
     meta_df = pd.DataFrame(
@@ -356,7 +385,7 @@ def inspect_np_arr_as_tiff(
 
 
 if __name__ == "__main__":
-    # os.chdir('../..')
+    os.chdir("../..")
 
     print(os.getcwd())
 
