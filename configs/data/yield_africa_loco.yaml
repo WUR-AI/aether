@@ -7,14 +7,16 @@ dataset:
     coords: {}
   use_target_data: true
   use_features: true
+  use_country_features: false
   use_aux_data: none
+  csv_name: null
   seed: ${seed}
   cache_dir: ${paths.cache_dir}
   # Include all countries and years so the split file determines the partition.
   countries: ["BF", "BUR", "ETH", "KEN", "MAL", "RWA", "TAN", "ZAM"]
   years: [2014, 2016, 2017, 2018, 2019, 2020, 2021, 2023, 2024]
   exclude_countries: null
-  exclude_years: null
+  exclude_years: [2014]
 
 batch_size: 64
 num_workers: 0
@@ -28,6 +30,6 @@ pin_memory: false
 #   python src/train.py experiment=yield_africa_tabular_loco \
 #     data.saved_split_file_name=split_loco_RWA.pth
 split_mode: "from_file"
-saved_split_file_name: "split_loco_KEN.pth"
+saved_split_file_name: "split_loco_TAN.pth"
 save_split: false
 seed: ${seed}
