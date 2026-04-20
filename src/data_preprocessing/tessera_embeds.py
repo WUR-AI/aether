@@ -1,13 +1,19 @@
-import concurrent.futures
 import math
 import os
 import threading
 
 import numpy as np
-from affine import Affine
 
 # Serialises concurrent reads/writes to the per-directory meta.csv log file.
+# A threading.Lock is sufficient here because meta.csv writes always happen in
+# the main process (workers write .npy tiles only); cross-process safety is not
+# needed.
 _meta_csv_lock = threading.Lock()
+
+# Sanity limit on reprojected tile dimensions.  calculate_default_transform
+# across UTM zone boundaries (e.g. a cross-equator reproject) can produce
+# degenerate output sizes that fill gigabytes of memory and peg the CPU.
+_MAX_REPROJECT_DIM = 5000
 import pandas as pd
 import rasterio
 from geotessera import GeoTessera
@@ -50,6 +56,15 @@ def reproject_dataset(src_raster: MemoryFile, dst_crs: str) -> MemoryFile:
     transform, width, height = calculate_default_transform(
         src_raster.crs, dst_crs, src_raster.width, src_raster.height, *src_raster.bounds
     )
+
+    # Guard against degenerate output dimensions from cross-UTM-zone reprojects
+    # (e.g. a southern-hemisphere tile reprojected into a northern UTM CRS).
+    # Such transforms produce gigabyte-scale arrays and peg the CPU.
+    if width > _MAX_REPROJECT_DIM or height > _MAX_REPROJECT_DIM:
+        raise RuntimeError(
+            f"Reprojection output too large ({width}x{height}); "
+            "likely a cross-UTM-zone transform — skipping tile."
+        )
 
     # Update metadata
     metadata = src_raster.meta.copy()
@@ -134,8 +149,13 @@ def get_tessera_embeds(
     if os.path.exists(embed_tile_name):
         return
 
-    # Local utm projection
-    utm_crs = get_point_utm_crs(lon, lat)
+    # Local utm projection.  Points within 0.15° of the equator may straddle
+    # the UTM zone boundary, causing reproject_dataset() to compute a
+    # cross-hemisphere transform with degenerate output dimensions.  Snapping
+    # to the northern zone keeps all fetched tiles in the same hemisphere and
+    # avoids the cross-zone reprojection entirely.
+    snap_lat = max(lat, 0.0) if abs(lat) < 0.15 else lat
+    utm_crs = get_point_utm_crs(lon, snap_lat)
     lon_utm, lat_utm = point_reprojection(lon, lat, "EPSG:4326", utm_crs)
 
     # Request to tessera
@@ -148,54 +168,63 @@ def get_tessera_embeds(
     tiles = []
     memfiles = []
 
-    for _, _, _, embedding, crs, transform in tessera_con.fetch_embeddings(tiles_to_fetch):
-        memfile = MemoryFile()
-        memfiles.append(memfile)
+    def _close_all():
+        for t in tiles:
+            try: t.close()
+            except Exception: pass
+        for mf in memfiles:
+            try: mf.close()
+            except Exception: pass
 
-        tile = memfile.open(
-            driver="GTiff",
-            height=embedding.shape[0],
-            width=embedding.shape[1],
-            count=embedding.shape[2],
-            dtype=embedding.dtype,
-            crs=crs,
-            transform=transform,
-        )
+    try:
+        for _, _, _, embedding, crs, transform in tessera_con.fetch_embeddings(tiles_to_fetch):
+            memfile = MemoryFile()
+            memfiles.append(memfile)
 
-        for c in range(embedding.shape[2]):
-            tile.write(embedding[:, :, c], c + 1)
+            tile = memfile.open(
+                driver="GTiff",
+                height=embedding.shape[0],
+                width=embedding.shape[1],
+                count=embedding.shape[2],
+                dtype=embedding.dtype,
+                crs=crs,
+                transform=transform,
+            )
 
-        reproject_tile, reproject_memfile = reproject_dataset(tile, utm_crs)
-        tiles.append(reproject_tile)
-        if reproject_memfile:
-            memfiles.append(reproject_memfile)
+            for c in range(embedding.shape[2]):
+                tile.write(embedding[:, :, c], c + 1)
+
+            reproject_tile, reproject_memfile = reproject_dataset(tile, utm_crs)
+            tiles.append(reproject_tile)
+            if reproject_memfile:
+                memfiles.append(reproject_memfile)
+    except Exception:
+        _close_all()
+        raise
 
     if len(tiles) == 0:
-        for mf in memfiles:
-            mf.close()
-        raise NoTileError(f"No tiles found for {name_loc}")  # if no tiles, add to skipped.txt
+        _close_all()
+        raise NoTileError(f"No tiles found for {name_loc}")
 
     mosaic, mosaic_transform = merge(tiles)
     mosaic = mosaic.transpose(1, 2, 0)
 
-    for tile in tiles:
-        tile.close()
-    for mf in memfiles:
-        mf.close()
+    _close_all()
 
     # Crop patch tile
     c, r = crs_to_pixel_coords(lon_utm, lat_utm, mosaic_transform)
     half = tile_size // 2
     row_min = r - half
-    row_max = r + half
+    row_max = r + half + 1  # +1: slice end is exclusive, needed for odd tile_size
     col_min = c - half
-    col_max = c + half
+    col_max = c + half + 1
 
-    if row_min < 0 or row_max < 0 or col_min < 0 or col_max < 0:
-        # retry with bigger padding
+    h, w = mosaic.shape[0], mosaic.shape[1]
+    if row_min < 0 or col_min < 0 or row_max > h or col_max > w:
+        # retry with bigger padding so the mosaic covers the full crop window
         if padding > 500:
             raise NoTileError(f"Padding {padding} > 500")
-        get_tessera_embeds(
+        return get_tessera_embeds(
             lon, lat, name_loc, year, save_dir, tile_size, tessera_con, padding=padding + 100
         )
 
@@ -211,26 +240,6 @@ def get_tessera_embeds(
     # Save array
     os.makedirs(save_dir, exist_ok=True)
     np.save(embed_tile_name, crop)
-    print(f"Array saved as {embed_tile_name}")
-
-    # Temp save tif too
-    crop_transform = mosaic_transform * Affine.translation(col_min, row_min)
-    height, width, channels = crop.shape
-
-    with rasterio.open(
-        embed_tile_name[:-4] + ".tif",
-        "w",
-        driver="GTiff",
-        height=height,
-        width=width,
-        count=channels,
-        dtype=crop.dtype,
-        crs=utm_crs,
-        transform=crop_transform,
-    ) as dst:
-        for i in range(channels):
-            dst.write(crop[:, :, i], i + 1)
-    print(f"tif saved to {embed_tile_name[:-4]}.tif")
 
     # Log its metadata
     meta_df = pd.DataFrame(
