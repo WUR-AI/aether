@@ -33,20 +33,19 @@ Usage
 
 import argparse
 import logging
+import multiprocessing
 import os
 import socket
+import time
 import sys
-import threading
-from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 
 # Ensure the project root is on sys.path when the script is run directly.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import pandas as pd
-from geotessera import GeoTessera
 
-from src.data_preprocessing.tessera_embeds import get_tessera_embeds
+from src.data_preprocessing.tessera_embeds import NoTileError, PartialTileError, get_tessera_embeds
 
 log = logging.getLogger(__name__)
 
@@ -59,13 +58,45 @@ MODEL_READY_CSV = f"model_ready_{DATASET_NAME}.csv"
 DEFAULT_TILE_SIZE = 9
 
 
+# Per-process GeoTessera instance, created once by _init_worker.
+_process_gt = None
+
+
+def _init_worker(cache_dir: str, use_local_registry: bool, registry_dir: str) -> None:
+    """Pool initializer: runs once per worker process to set up GeoTessera."""
+    from geotessera import GeoTessera
+    global _process_gt
+    socket.setdefaulttimeout(60)
+    embeddings_dir = str(Path(cache_dir) / "raw")
+    gt_kwargs = {"verify_hashes": False, "embeddings_dir": embeddings_dir}
+    if use_local_registry:
+        _process_gt = GeoTessera(registry_dir=Path(registry_dir), **gt_kwargs)
+    else:
+        _process_gt = GeoTessera(cache_dir=cache_dir, **gt_kwargs)
+
+
+def _worker_fetch(args: tuple) -> str:
+    """Multiprocessing worker — reuses the per-process GeoTessera instance.
+
+    Must be a top-level function so it is picklable across processes.
+    Returning normally means success; raising means error (logged by caller).
+    """
+    lon, lat, name_loc, year, save_dir, tile_size = args
+    get_tessera_embeds(
+        lon=lon, lat=lat, name_loc=name_loc, year=year,
+        save_dir=save_dir, tile_size=tile_size, tessera_con=_process_gt,
+    )
+    return name_loc
+
+
 def fetch_tessera_tiles(
     data_dir: str,
     tile_size: int = DEFAULT_TILE_SIZE,
     countries: list[str] | None = None,
     years: list[int] | None = None,
     cache_dir: str | None = None,
-    workers: int = 2,
+    workers: int = 1,
+    retry_stuck: bool = False,
 ) -> None:
     """Fetch TESSERA tiles for every record in the yield_africa CSV.
 
@@ -79,9 +110,10 @@ def fetch_tessera_tiles(
         subfolder.  Defaults to the ``TESSERA_EMBEDDINGS_DIR`` env var when set,
         otherwise ``{data_dir}/cache/tessera``.  Point this at an external drive
         when disk space is limited.
-    :param workers: number of parallel download threads.  Each thread keeps its
-        own GeoTessera instance to avoid shared state.  Default: 2 (external
-        drive I/O is usually the bottleneck; more workers add contention).
+    :param workers: number of parallel worker processes.  Each process owns its
+        own GeoTessera instance and can be killed on timeout.  Default: 1.
+    :param retry_stuck: if True, clear stuck.txt and retry previously-stuck
+        records instead of skipping them.
     """
     dataset_dir = Path(data_dir) / DATASET_NAME
     csv_path = dataset_dir / MODEL_READY_CSV
@@ -122,90 +154,85 @@ def fetch_tessera_tiles(
         f"  embeddings_dir: {embeddings_dir}"
     )
 
-    # Build GeoTessera constructor kwargs shared across all threads.
-    # Each thread creates its own instance (thread-local) to avoid sharing
-    # internal state such as open file handles and rasterio MemoryFiles.
     _default_registry_dir = Path.home() / ".cache" / "geotessera"
     _use_local_registry = (_default_registry_dir / "registry.parquet").exists()
-    _gt_kwargs: dict = {
-        # Skip SHA-256 hash verification after each tile download.  Verification
-        # reads the entire (potentially large) file again after download, adding
-        # noticeable CPU time per tile and making progress look stalled.
-        "verify_hashes": False,
-    }
-    _gt_kwargs["embeddings_dir"] = embeddings_dir
 
-    _thread_local = threading.local()
+    # Per-task timeout: when a worker process exceeds this, it is killed and
+    # the record added to stuck.txt.  Multiprocessing (unlike threading) allows
+    # true process termination, so stuck downloads cannot block forward progress.
+    HEARTBEAT = 15      # seconds between "still fetching" log lines
+    TILE_TIMEOUT = 60   # seconds per record before the worker process is killed
+    # Note: stuck workers spin at 100% CPU and leak ~55 MB/s of rasterio
+    # MemoryFile objects inside GeoTessera's fetch loop.  60s caps peak memory
+    # at ~3 GB per stuck record and recovers 3x faster than the old 180s limit.
 
-    def _get_gt() -> GeoTessera:
-        """Return a thread-local GeoTessera instance, creating it on first use."""
-        if not hasattr(_thread_local, "gt"):
-            if _use_local_registry:
-                _thread_local.gt = GeoTessera(registry_dir=_default_registry_dir, **_gt_kwargs)
-            else:
-                _thread_local.gt = GeoTessera(cache_dir=cache_dir, **_gt_kwargs)
-        return _thread_local.gt
+    # Records that caused a stall in a previous run are skipped unless
+    # --retry-stuck is passed, which clears stuck.txt before the run.
+    stuck_file = save_dir / "stuck.txt"
+    stuck_records: set[str] = set()
+    if stuck_file.exists():
+        if retry_stuck:
+            stuck_file.unlink()
+            print("  Cleared stuck.txt — previously-stuck records will be retried.")
+        else:
+            stuck_records = set(stuck_file.read_text().splitlines())
+            if stuck_records:
+                print(f"  Skipping {len(stuck_records)} previously-stuck record(s): {sorted(stuck_records)}")
 
-    def _fetch_one(row) -> str:
-        get_tessera_embeds(
-            lon=row.lon,
-            lat=row.lat,
-            name_loc=row.name_loc,
-            year=int(row.year),
-            save_dir=str(save_dir),
-            tile_size=tile_size,
-            tessera_con=_get_gt(),
-        )
-        return row.name_loc
-
-    # Bound all socket operations (urllib HTTP requests inside geotessera).
-    # Without this, a stalled connection blocks the thread until the OS TCP
-    # keepalive fires, which can take many minutes.
-    SOCKET_TIMEOUT = 60  # seconds per socket operation
-    HEARTBEAT = 30  # print a heartbeat when no future completes this fast
-    TILE_TIMEOUT = 600  # give up warning after 10 min of complete silence
-    socket.setdefaulttimeout(SOCKET_TIMEOUT)
-
-    rows = [row for _, row in df.iterrows()]
+    rows = [row for _, row in df.iterrows() if row.name_loc not in stuck_records]
     done = 0
-    pending: set = set()
-    silent_seconds = 0
 
+    _pool_initargs = (cache_dir, _use_local_registry, str(_default_registry_dir))
+    pool = multiprocessing.Pool(processes=workers, initializer=_init_worker, initargs=_pool_initargs)
     try:
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            # Submit all jobs up-front; the pool queues them internally.
-            futures = {pool.submit(_fetch_one, row): row.name_loc for row in rows}
-            pending = set(futures)
+        for row in rows:
+            args = (row.lon, row.lat, row.name_loc, int(row.year), str(save_dir), tile_size)
+            result = pool.apply_async(_worker_fetch, (args,))
+            start = time.monotonic()
+            timed_out = False
+            while True:
+                try:
+                    result.get(timeout=HEARTBEAT)
+                    break  # completed successfully
+                except multiprocessing.TimeoutError:
+                    elapsed = int(time.monotonic() - start)
+                    if elapsed >= TILE_TIMEOUT:
+                        timed_out = True
+                        break
+                    print(f"  ... fetching {row.name_loc} ({elapsed}s)")
+                except NoTileError:
+                    print(f"  Skipped {row.name_loc}: no TESSERA data for this location/year")
+                    break
+                except PartialTileError:
+                    print(f"  Skipped {row.name_loc}: tile too close to mosaic edge, not enough context")
+                    break
+                except Exception as exc:
+                    print(f"  ERROR fetching {row.name_loc}: {exc}")
+                    break
 
-            while pending:
-                finished, pending = wait(pending, timeout=HEARTBEAT, return_when=FIRST_COMPLETED)
+            if timed_out:
+                pool.terminate()
+                pool.join()
+                pool = multiprocessing.Pool(processes=workers, initializer=_init_worker, initargs=_pool_initargs)
+                with open(stuck_file, "a") as fh:
+                    fh.write(row.name_loc + "\n")
+                print(
+                    f"  Stuck: {row.name_loc}  "
+                    f"lon={row.lon:.4f} lat={row.lat:.4f} year={int(row.year)}"
+                )
 
-                if not finished:
-                    silent_seconds += HEARTBEAT
-                    print(
-                        f"  ... still working — {done}/{n_total} done, "
-                        f"{len(pending)} pending, {silent_seconds}s since last completion"
-                    )
-                    if silent_seconds >= TILE_TIMEOUT:
-                        print(
-                            f"  WARNING: no progress in {TILE_TIMEOUT}s, something may be stuck."
-                        )
-                    continue
-
-                silent_seconds = 0
-                for fut in finished:
-                    done += 1
-                    if done % 100 == 0 or done == n_total:
-                        print(f"  {done}/{n_total}")
-                    try:
-                        fut.result()
-                    except Exception as exc:
-                        print(f"  ERROR fetching {futures[fut]}: {exc}")
+            done += 1
+            if done % 100 == 0 or done == len(rows):
+                print(f"  {done}/{n_total}")
 
     except KeyboardInterrupt:
-        print("\nInterrupted — cancelling queued futures (in-flight downloads will finish).")
-        for fut in pending:
-            fut.cancel()
+        print("\nInterrupted.")
+        pool.terminate()
+        pool.join()
+        return
+
+    pool.close()
+    pool.join()
 
     print(f"Done. Tiles saved to: {save_dir}")
 
@@ -259,12 +286,18 @@ def main() -> None:
     parser.add_argument(
         "--workers",
         type=int,
-        default=2,
+        default=1,
         help=(
-            "Number of parallel download threads. Default: 2. "
+            "Number of parallel download threads. Default: 1. "
             "When writing to an external drive too many workers can cause I/O "
-            "bottlenecks. Reduce the number of workers to improve throughput."
+            "bottlenecks. Increase with caution."
         ),
+    )
+    parser.add_argument(
+        "--retry-stuck",
+        action="store_true",
+        default=False,
+        help="Clear stuck.txt and retry previously-stuck records instead of skipping them.",
     )
     args = parser.parse_args()
 
@@ -280,6 +313,7 @@ def main() -> None:
         years=args.years,
         cache_dir=args.cache_dir,
         workers=args.workers,
+        retry_stuck=args.retry_stuck,
     )
 
 
