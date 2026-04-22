@@ -14,8 +14,8 @@ class MAPE(BaseMetrics):
 
     A separate MeanAbsolutePercentageError accumulator is kept per mode so that train, val, and
     test statistics never mix.  Lightning detects the returned torchmetrics Metric objects and
-    calls .compute()/.reset() at epoch boundaries, giving a correct epoch-wide MAPE instead of
-    an average of per-batch MAPE values.
+    calls .compute()/.reset() at epoch boundaries, giving a correct epoch-wide MAPE instead of an
+    average of per-batch MAPE values.
     """
 
     def __init__(self) -> None:
@@ -23,9 +23,7 @@ class MAPE(BaseMetrics):
         self.name = "mape"
         # Keys are prefixed to avoid clashing with nn.Module attribute names
         # (e.g. "train" conflicts with nn.Module.train()).
-        self._mape = nn.ModuleDict(
-            {f"mode_{m}": MeanAbsolutePercentageError() for m in _MODES}
-        )
+        self._mape = nn.ModuleDict({f"mode_{m}": MeanAbsolutePercentageError() for m in _MODES})
 
     @override
     def forward(
@@ -38,7 +36,9 @@ class MAPE(BaseMetrics):
         if labels is None:
             labels = batch.get("target") if batch is not None else None
         if labels is None:
-            raise ValueError("MAPE.forward: labels must be provided via `labels` or `batch['target']`")
+            raise ValueError(
+                "MAPE.forward: labels must be provided via `labels` or `batch['target']`"
+            )
         mode = kwargs.get("mode", "train")
 
         metric = self._mape[f"mode_{mode}"]

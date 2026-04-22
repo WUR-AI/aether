@@ -1,5 +1,5 @@
-"""Augment the crop yield Africa model-ready dataset with year-specific AgERA5/CHIRPS
-climate features.
+"""Augment the crop yield Africa model-ready dataset with year-specific AgERA5/CHIRPS climate
+features.
 
 For each unique (lat, lon, year) in the model-ready CSV this script fetches daily
 climate data from the AgERA5 weather API (https://agera5.containers.wurnet.nl) and
@@ -10,7 +10,7 @@ These in-season features capture inter-annual climate variability that the exist
 static long-term averages (MAP, MAT, CMD, etc.) cannot represent — a key gap
 identified in the AI readiness analysis.
 
-New columns added (feat_agera5_ prefix):
+New columns added (``feat_agera5_`` prefix):
     feat_agera5_{var}_{season}   where
         var    ∈ {tmax, tmin, tavg, vp, ws, prec, rad, snow}
         season ∈ {mam, jja, son, djf, grow}   (grow = March–October)
@@ -198,7 +198,11 @@ def fetch_year(
                 log.warning(
                     f"HTTP {exc.response.status_code} from {endpoint} "
                     f"({lat:.4f}, {lon:.4f}, {year})"
-                    + (f" — retrying with {API_ENDPOINT_AGERA5}" if endpoint == API_ENDPOINT_CHIRPS else "")
+                    + (
+                        f" — retrying with {API_ENDPOINT_AGERA5}"
+                        if endpoint == API_ENDPOINT_CHIRPS
+                        else ""
+                    )
                 )
             except Exception as exc:
                 log.warning(f"Fetch failed ({lat:.4f}, {lon:.4f}, {year}): {exc}")
@@ -223,7 +227,9 @@ def fetch_year(
                 records = raw[key]
                 break
         if records is None:
-            log.warning(f"Unexpected response structure ({lat:.4f}, {lon:.4f}, {year}): {list(raw)[:5]}")
+            log.warning(
+                f"Unexpected response structure ({lat:.4f}, {lon:.4f}, {year}): {list(raw)[:5]}"
+            )
             return None
     else:
         log.warning(f"Unrecognised response type ({lat:.4f}, {lon:.4f}, {year}): {type(raw)}")
@@ -241,7 +247,9 @@ def fetch_year(
         None,
     )
     if date_col is None:
-        log.warning(f"No date column found ({lat:.4f}, {lon:.4f}, {year}); columns: {list(df.columns)}")
+        log.warning(
+            f"No date column found ({lat:.4f}, {lon:.4f}, {year}); columns: {list(df.columns)}"
+        )
         return None
 
     # pd.to_datetime handles both "20200101" and "2020-01-01T00:00:00" automatically.
@@ -321,18 +329,19 @@ def build_agera5_feature_table(
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     triplets = list(
-        df[["lat", "lon", "year"]]
-        .drop_duplicates()
-        .itertuples(index=False, name=None)
+        df[["lat", "lon", "year"]].drop_duplicates().itertuples(index=False, name=None)
     )
 
     n_total = len(triplets)
-    n_cached = sum(1 for lat, lon, year in triplets if _cache_file(cache_dir, lat, lon, year).exists())
+    n_cached = sum(
+        1 for lat, lon, year in triplets if _cache_file(cache_dir, lat, lon, year).exists()
+    )
     n_to_fetch = 0 if cache_only else (n_total - n_cached)
     print(
         f"Triplets: {n_total} total, {n_cached} already cached, "
         f"{n_to_fetch} to fetch  (workers={workers}, timeout={timeout}s)"
-        + ("  [cache_only — API calls disabled]" if cache_only else "") + "\n"
+        + ("  [cache_only — API calls disabled]" if cache_only else "")
+        + "\n"
         f"  api_base  : {api_base}\n"
         f"  cache_dir : {cache_dir}"
     )
@@ -349,17 +358,26 @@ def build_agera5_feature_table(
 
     def _worker(triplet: Tuple[float, float, int]):
         lat, lon, year = triplet
-        daily = fetch_year(_get_session(), api_base, lat, lon, int(year), cache_dir, timeout, cache_only=cache_only)
+        daily = fetch_year(
+            _get_session(),
+            api_base,
+            lat,
+            lon,
+            int(year),
+            cache_dir,
+            timeout,
+            cache_only=cache_only,
+        )
         if daily is None or daily.empty:
             return triplet, {}
         return triplet, compute_features(daily)
 
     # Progress tracking
-    HEARTBEAT = 30        # seconds: emit a line even when no future completes
-    PROGRESS_INTERVAL = 5 # seconds: minimum gap between progress lines
+    HEARTBEAT = 30  # seconds: emit a line even when no future completes
+    PROGRESS_INTERVAL = 5  # seconds: minimum gap between progress lines
     done = 0
-    done_cached = 0       # triplets served from cache (no API call)
-    done_fetched = 0      # triplets actually downloaded
+    done_cached = 0  # triplets served from cache (no API call)
+    done_fetched = 0  # triplets actually downloaded
     errors = 0
     last_progress_time = 0.0
     pending: set = set()
@@ -389,8 +407,7 @@ def build_agera5_feature_table(
             # Record cache status at submission time — after completion the file
             # exists regardless of whether it was a hit or a fresh download.
             futures = {
-                pool.submit(_worker, t): (t, _cache_file(cache_dir, *t).exists())
-                for t in triplets
+                pool.submit(_worker, t): (t, _cache_file(cache_dir, *t).exists()) for t in triplets
             }
             pending = set(futures)
 
@@ -433,7 +450,9 @@ def build_agera5_feature_table(
         rows.append({"lat": lat, "lon": lon, "year": int(year), **feats})
 
     feat_df = pd.DataFrame(rows)
-    print(f"Feature table built: {len(feat_df)} rows, {feat_df.columns.size - 3} new feature columns")
+    print(
+        f"Feature table built: {len(feat_df)} rows, {feat_df.columns.size - 3} new feature columns"
+    )
     return feat_df
 
 
@@ -472,7 +491,9 @@ def main(
     df["year"] = df["year"].astype(int)
 
     # ------------------------------------------------------------------ fetch
-    feat_df = build_agera5_feature_table(df, api_base, cache_path, workers, timeout, cache_only=cache_only)
+    feat_df = build_agera5_feature_table(
+        df, api_base, cache_path, workers, timeout, cache_only=cache_only
+    )
     feat_df["year"] = feat_df["year"].astype(int)
 
     meta_cols = {"lat", "lon", "year"}
