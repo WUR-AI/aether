@@ -72,8 +72,12 @@ MOCK_N_AUX = len(MOCK_AUX_COLS)  # 4
 
 
 @pytest.fixture
-def yield_africa_csv(tmp_path) -> str:
+def yield_africa_csv(request, tmp_path) -> str:
     """Mock CSV with column names matching the real model_ready_yield-africa.csv."""
+    use_mock = request.config.getoption("--use-mock")
+    if not use_mock:
+        assert False, "Real data not available in test environment."
+
     data = {
         "name_loc": [f"ETH_{i:04d}" for i in range(MOCK_N_ROWS)],
         "lat": [5.0 + i * 0.5 for i in range(MOCK_N_ROWS)],
@@ -93,8 +97,9 @@ def yield_africa_csv(tmp_path) -> str:
 
 
 @pytest.fixture
-def yield_africa_dataset(yield_africa_csv, tmp_path):
+def yield_africa_dataset(request, yield_africa_csv, tmp_path):
     """YieldAfricaDataset backed by mock data, features enabled, no aux."""
+    use_mock = request.config.getoption("--use-mock")
     return YieldAfricaDataset(
         data_dir=yield_africa_csv,
         cache_dir=str(tmp_path / "cache"),
@@ -102,14 +107,15 @@ def yield_africa_dataset(yield_africa_csv, tmp_path):
         use_target_data=True,
         use_aux_data="none",
         seed=42,
-        mock=True,
+        mock=use_mock,
         use_features=True,
     )
 
 
 @pytest.fixture
-def yield_africa_dataset_with_aux(yield_africa_csv, tmp_path):
+def yield_africa_dataset_with_aux(request, yield_africa_csv, tmp_path):
     """YieldAfricaDataset backed by mock data, features enabled, aux enabled."""
+    use_mock = request.config.getoption("--use-mock")
     return YieldAfricaDataset(
         data_dir=yield_africa_csv,
         cache_dir=str(tmp_path / "cache"),
@@ -117,14 +123,15 @@ def yield_africa_dataset_with_aux(yield_africa_csv, tmp_path):
         use_target_data=True,
         use_aux_data="all",
         seed=42,
-        mock=True,
+        mock=use_mock,
         use_features=True,
     )
 
 
 @pytest.fixture
-def yield_africa_datamodule(yield_africa_csv, tmp_path):
+def yield_africa_datamodule(request, yield_africa_csv, tmp_path):
     """BaseDataModule wrapping YieldAfricaDataset with a random split."""
+    use_mock = request.config.getoption("--use-mock")
     dataset = YieldAfricaDataset(
         data_dir=yield_africa_csv,
         cache_dir=str(tmp_path / "cache"),
@@ -132,7 +139,7 @@ def yield_africa_datamodule(yield_africa_csv, tmp_path):
         use_target_data=True,
         use_aux_data="none",
         seed=42,
-        mock=True,
+        mock=use_mock,
         use_features=True,
     )
     return BaseDataModule(
@@ -211,8 +218,9 @@ def test_yield_africa_dataset_target_values(yield_africa_dataset):
         assert sample["target"][0].item() == pytest.approx(exp, rel=1e-5)
 
 
-def test_yield_africa_dataset_no_features(yield_africa_csv, tmp_path):
+def test_yield_africa_dataset_no_features(request, yield_africa_csv, tmp_path):
     """With use_features=False, tabular is absent and tabular_dim is None."""
+    use_mock = request.config.getoption("--use-mock")
     ds = YieldAfricaDataset(
         data_dir=yield_africa_csv,
         cache_dir=str(tmp_path / "cache"),
@@ -220,12 +228,32 @@ def test_yield_africa_dataset_no_features(yield_africa_csv, tmp_path):
         use_target_data=True,
         use_aux_data="none",
         seed=0,
-        mock=True,
+        mock=use_mock,
         use_features=False,
     )
     sample = ds[0]
     assert "tabular" not in sample["eo"]
     assert ds.tabular_dim is None
+
+
+def test_yield_africa_dataset_no_country_features(request, yield_africa_csv, tmp_path):
+    """With use_country_features=False, no feat_country_* columns are injected."""
+    use_mock = request.config.getoption("--use-mock")
+    ds = YieldAfricaDataset(
+        data_dir=yield_africa_csv,
+        cache_dir=str(tmp_path / "cache"),
+        modalities={"coords": {}},
+        use_target_data=True,
+        use_aux_data="none",
+        seed=0,
+        mock=use_mock,
+        use_features=True,
+        use_country_features=False,
+    )
+    for name in ds.feat_names:
+        assert not name.startswith("feat_country_"), f"Unexpected country feature: {name}"
+    expected_dim = len(MOCK_FEAT_COLS) + 1 + 6  # CSV feats + feat_year + Fourier harmonics
+    assert ds.tabular_dim == expected_dim
 
 
 def test_yield_africa_dataset_aux_keys(yield_africa_dataset_with_aux):
@@ -271,7 +299,9 @@ def test_yield_africa_datamodule_train_loader(yield_africa_datamodule):
     assert batch["target"].shape == (4, 1)
 
 
-def test_yield_africa_datamodule_split_deterministic(yield_africa_csv, tmp_path):
+def test_yield_africa_datamodule_split_deterministic(request, yield_africa_csv, tmp_path):
+    use_mock = request.config.getoption("--use-mock")
+
     def make_dm():
         dataset = YieldAfricaDataset(
             data_dir=yield_africa_csv,
@@ -280,7 +310,7 @@ def test_yield_africa_datamodule_split_deterministic(yield_africa_csv, tmp_path)
             use_target_data=True,
             use_aux_data="none",
             seed=42,
-            mock=True,
+            mock=use_mock,
         )
         return BaseDataModule(
             dataset=dataset,

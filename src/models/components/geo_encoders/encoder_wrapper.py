@@ -23,10 +23,19 @@ class EncoderWrapper(BaseGeoEncoder):
 
         self._reformat_set_branches(encoder_branches)
 
-        assert fusion_strategy in ["mean", "concat", "none"], ValueError(
-            f'Unsupported fusion strategy "{fusion_strategy}"'
-        )
+        # Populated by setup() — one norm per branch (Identity for TabularEncoder branches,
+        # LayerNorm for all others that do not have a built-in final normalisation).
+        self.branch_norms = nn.ModuleList()
+
+        if fusion_strategy not in ["mean", "concat", "none", "gated", "dynamic_gate"]:
+            raise ValueError(f'Unsupported fusion strategy "{fusion_strategy}"')
         self.fusion_strategy = fusion_strategy
+
+        # Populated by setup() for gated fusion only.
+        self.gate_logits: nn.Parameter | None = None
+
+        # Populated by setup() for dynamic_gate fusion only.
+        self.dynamic_gate_mlp: nn.Module | None = None
 
     def _reformat_set_branches(self, encoder_branches: List[Dict[str, Any]]):
         """Reformatting to allow registering modules properly."""
@@ -62,6 +71,7 @@ class EncoderWrapper(BaseGeoEncoder):
     @override
     def _setup(self) -> List[str]:
         new_modules = []
+        branch_output_dims = []
 
         # Configure/initialise missing/conditional parts
         for i, branch in enumerate(self.encoder_branches):
@@ -81,6 +91,8 @@ class EncoderWrapper(BaseGeoEncoder):
                 else []
             )
 
+            branch_dim = encoder.output_dim
+
             # Configure adapter/projector if requested
             if "projector" in branch:
                 if isinstance(encoder, IdentityEncoder):
@@ -89,14 +101,45 @@ class EncoderWrapper(BaseGeoEncoder):
                     )
                 projector = branch["projector"]
 
-                intermediate_dim = encoder.output_dim
-                projector.set_input_dim(input_dim=intermediate_dim)
+                projector.set_input_dim(input_dim=branch_dim)
                 new_parts = projector.setup()
                 new_modules.extend(
                     [f"encoder_branches.{str(i)}.projector.{p}" for p in new_parts]
                     if len(new_parts) != 0
                     else []
                 )
+                branch_dim = projector.output_dim
+
+            branch_output_dims.append(branch_dim)
+
+        # Per-branch LayerNorm applied after encoder (+projector) output, before fusion.
+        # TabularEncoder already ends with LayerNorm internally, so skip it there.
+        self.branch_norms = nn.ModuleList()
+        for i, (branch, dim) in enumerate(zip(self.encoder_branches, branch_output_dims)):
+            if isinstance(branch["encoder"], TabularEncoder):
+                self.branch_norms.append(nn.Identity())
+            else:
+                self.branch_norms.append(nn.LayerNorm(dim))
+                new_modules.append(f"branch_norms.{i}")
+
+        # Gated fusion: learnable scalar gate logit per branch.
+        # All branches must have equal output dims; use per-branch projectors to align if needed.
+        if self.fusion_strategy == "gated":
+            self.gate_logits = nn.Parameter(torch.zeros(len(branch_output_dims)))
+            new_modules.append("gate_logits")
+
+        # Dynamic gate: small MLP predicts per-sample branch weights from concatenated branch outputs.
+        # All branches must have equal output dims; use per-branch projectors to align if needed.
+        elif self.fusion_strategy == "dynamic_gate":
+            n_branches = len(branch_output_dims)
+            dim = branch_output_dims[0]
+            hidden_dim = max(n_branches * dim // 2, n_branches)
+            self.dynamic_gate_mlp = nn.Sequential(
+                nn.Linear(n_branches * dim, hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, n_branches),
+            )
+            new_modules.append("dynamic_gate_mlp")
 
         self.set_output_dim()
         return new_modules
@@ -106,9 +149,18 @@ class EncoderWrapper(BaseGeoEncoder):
         self.tabular_dim = None
 
         for branch in self.encoder_branches:
-            branch_out_dim = branch["encoder"]
-            if isinstance(branch_out_dim, TabularEncoder):
+            encoder = branch["encoder"]
+            if isinstance(encoder, TabularEncoder):
                 self.tabular_dim = tabular_dim
+                return
+
+    def set_tabular_normalisation_stats(
+        self, mean: torch.Tensor, std: torch.Tensor
+    ) -> None:
+        """Propagate normalisation statistics to the TabularEncoder branch, if present."""
+        for branch in self.encoder_branches:
+            if isinstance(branch["encoder"], TabularEncoder):
+                branch["encoder"].set_normalisation_stats(mean, std)
                 return
 
     def set_output_dim(self):
@@ -134,26 +186,67 @@ class EncoderWrapper(BaseGeoEncoder):
                     f"Encoder branches produces different output dimensions {output_dims} and cannot be averaged."
                 )
             self.output_dim = output_dims[0]
+        elif self.fusion_strategy == "gated":
+            if len(set(output_dims)) != 1:
+                raise ValueError(
+                    f"Gated fusion requires all branches to have the same output dimension, "
+                    f"got {output_dims}. Use per-branch projectors to align dimensions."
+                )
+            self.output_dim = output_dims[0]
+        elif self.fusion_strategy == "none":
+            if len(set(output_dims)) != 1:
+                raise ValueError(
+                    f"Encoder branches produce different output dimensions {output_dims} and cannot be used with fusion strategy 'none'."
+                )
+            self.output_dim = output_dims[0]
+        elif self.fusion_strategy == "dynamic_gate":
+            if len(set(output_dims)) != 1:
+                raise ValueError(
+                    f"Dynamic gate fusion requires all branches to have the same output dimension, "
+                    f"got {output_dims}. Use per-branch projectors to align dimensions."
+                )
+            self.output_dim = output_dims[0]
 
     @override
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         branch_feats = []
-        for branch in self.encoder_branches:
-            feats = branch["encoder"].forward(batch)  # each encoder knows what modality it needs
+        for i, branch in enumerate(self.encoder_branches):
+            feats = branch["encoder"](batch)  # each encoder knows what modality it needs
 
             if "projector" in branch:
-                feats = branch["projector"].forward(feats)
+                feats = branch["projector"](feats)
+
+            feats = self.branch_norms[i](feats)
 
             branch_feats.append(feats)
 
         if self.fusion_strategy == "concat":
             feats = torch.cat(branch_feats, dim=1)
-            if self.extra_projector:
-                feats = self.extra_projector(feats)
-        else:
+
+        elif self.fusion_strategy == "gated":
+            weights = torch.softmax(self.gate_logits, dim=0)
+            stacked = torch.stack(branch_feats, dim=0)
+            view_shape = [stacked.shape[0]] + [1] * (stacked.ndim - 1)
+            feats = (stacked * weights.view(*view_shape)).sum(dim=0)
+
+        elif self.fusion_strategy == "dynamic_gate":
+            # Predict per-sample branch weights from the concatenated branch outputs.
+            # [batch, n_branches * dim] -> MLP -> [batch, n_branches] -> softmax
+            stacked = torch.stack(branch_feats, dim=1)  # [batch, n_branches, dim]
+            gate_input = stacked.flatten(start_dim=1)   # [batch, n_branches * dim]
+            weights = torch.softmax(self.dynamic_gate_mlp(gate_input), dim=1)  # [batch, n_branches]
+            feats = (stacked * weights.unsqueeze(-1)).sum(dim=1)  # [batch, dim]
+
+        elif self.fusion_strategy == "mean":
             feats = torch.stack(branch_feats, dim=0).mean(dim=0)
-            if self.extra_projector:
-                feats = self.extra_projector(feats)
+
+        else:  # "none"
+            feats = torch.stack(branch_feats, dim=0).mean(dim=0)
+
+        # final (linear) project can be set in base class
+        if self.extra_projector is not None:
+            feats = self.extra_projector(feats)
+
         return feats
 
     @property
@@ -181,5 +274,5 @@ class EncoderWrapper(BaseGeoEncoder):
                 dtypes.update({p.dtype for p in projector.parameters()})
 
         if len(dtypes) != 1:
-            raise RuntimeError("GEO encoder is on multiple devices")
+            raise RuntimeError("GEO encoder has multiple dtypes")
         return dtypes.pop()
