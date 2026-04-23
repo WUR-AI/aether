@@ -7,7 +7,11 @@ from src.utils.data_utils import center_crop_npy
 
 
 def main(paths):
+    """Check for missing data in available tessera tiles.
 
+    :param paths: paths with all tessera tiles
+    :return: None
+    """
     sizes = [256, 128]
 
     for p in paths:
@@ -27,13 +31,13 @@ def main(paths):
                 with open(f"logs/tessera_nans_{s}.txt", "a") as f:
                     f.write(f"{p_id}\n")
 
-            nulls = np.sum(crop == 0)
-            if nulls > (s * s * 128) * 0.5:
+            nulls = np.sum(np.all(crop == 0, axis=-1))
+            if nulls > (s * s) * 0.5:
                 with open(f"logs/tessera_50per_empty_{s}.txt", "a") as f:
                     print(f"50% of {p_id} is 0")
                     f.write(f"{p_id}\n")
 
-            if nulls > (s * s * 128) * 0.25:
+            if nulls > (s * s) * 0.25:
                 with open(f"logs/tessera_25per_empty_{s}.txt", "a") as f:
                     print(f"25% of {p_id} is 0")
                     f.write(f"{p_id}\n")
