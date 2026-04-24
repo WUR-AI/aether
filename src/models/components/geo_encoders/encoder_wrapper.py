@@ -84,7 +84,7 @@ class EncoderWrapper(BaseGeoEncoder):
                     raise ValueError("TabularEncoder requires tabular_dim")
                 encoder.set_tabular_input_dim(self.tabular_dim)
 
-            new_parts = encoder.setup()
+            new_parts = encoder.setup(quiet=True)
             new_modules.extend(
                 [f"encoder_branches.{str(i)}.encoder.{p}" for p in new_parts]
                 if len(new_parts) != 0
@@ -102,7 +102,7 @@ class EncoderWrapper(BaseGeoEncoder):
                 projector = branch["projector"]
 
                 projector.set_input_dim(input_dim=branch_dim)
-                new_parts = projector.setup()
+                new_parts = projector.setup(quiet=True)
                 new_modules.extend(
                     [f"encoder_branches.{str(i)}.projector.{p}" for p in new_parts]
                     if len(new_parts) != 0
