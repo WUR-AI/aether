@@ -17,6 +17,7 @@ class MSELoss(BaseLossFn):
         pred: torch.Tensor,
         labels: torch.Tensor | None = None,
         batch: Dict[str, torch.Tensor] | None = None,
+        mode: str | None = None,
         **kwargs,
     ) -> torch.Tensor | Dict[str, torch.Tensor]:
 
@@ -24,6 +25,6 @@ class MSELoss(BaseLossFn):
         mse_loss = self.criterion(pred, labels)
 
         if "return_label" in kwargs:
-            return {self.name: mse_loss}
+            return {f"{mode}_{self.name}": mse_loss}
         else:
             return mse_loss
