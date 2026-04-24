@@ -108,7 +108,7 @@ class PredictiveModel(BaseModel):
                 self.target_mean, self.target_std = stats
 
         # Setup encoders that need data-depended configurations
-        new_modules = [f"geo_encoder.{i}]" for i in self.geo_encoder.setup()]
+        new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup()]
         self.trainable_modules.extend(new_modules)
 
         if self.normalize_features:
