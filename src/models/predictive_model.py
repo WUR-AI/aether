@@ -92,7 +92,7 @@ class PredictiveModel(BaseModel):
         """Set up encoders and missing adapters/projectors."""
         # If tabular encoder used, we need to specify tabular dim and normalisation stats
         if isinstance(self.geo_encoder, TabularEncoder) or isinstance(
-                self.geo_encoder, EncoderWrapper
+            self.geo_encoder, EncoderWrapper
         ):
             self.geo_encoder.set_tabular_input_dim(self.tabular_dim)
 
@@ -104,7 +104,7 @@ class PredictiveModel(BaseModel):
                 else:
                     self.geo_encoder.set_tabular_normalisation_stats(mean, std)
 
-        # standarize target values if so requested
+        # standardize target values if so requested
         if self.standardize_targets:
             stats = getattr(self.trainer.datamodule, "target_normalisation_stats", None)
             if stats is not None:
