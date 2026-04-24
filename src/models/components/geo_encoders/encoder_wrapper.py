@@ -159,9 +159,7 @@ class EncoderWrapper(BaseGeoEncoder):
                 self.tabular_dim = tabular_dim
                 return
 
-    def set_tabular_normalisation_stats(
-        self, mean: torch.Tensor, std: torch.Tensor
-    ) -> None:
+    def set_tabular_normalisation_stats(self, mean: torch.Tensor, std: torch.Tensor) -> None:
         """Propagate normalisation statistics to the TabularEncoder branch, if present."""
         for branch in self.encoder_branches:
             if isinstance(branch["encoder"], TabularEncoder):
@@ -239,8 +237,10 @@ class EncoderWrapper(BaseGeoEncoder):
             # Predict per-sample branch weights from the concatenated branch outputs.
             # [batch, n_branches * dim] -> MLP -> [batch, n_branches] -> softmax
             stacked = torch.stack(branch_feats, dim=1)  # [batch, n_branches, dim]
-            gate_input = stacked.flatten(start_dim=1)   # [batch, n_branches * dim]
-            weights = torch.softmax(self.dynamic_gate_mlp(gate_input), dim=1)  # [batch, n_branches]
+            gate_input = stacked.flatten(start_dim=1)  # [batch, n_branches * dim]
+            weights = torch.softmax(
+                self.dynamic_gate_mlp(gate_input), dim=1
+            )  # [batch, n_branches]
             feats = (stacked * weights.unsqueeze(-1)).sum(dim=1)  # [batch, dim]
 
         elif self.fusion_strategy == "mean":

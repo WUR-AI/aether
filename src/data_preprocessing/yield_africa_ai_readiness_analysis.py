@@ -35,17 +35,18 @@ import warnings
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")  # non-interactive backend; safe in scripts
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import xgboost as xgb
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import cross_val_score, GroupShuffleSplit
+from sklearn.model_selection import GroupShuffleSplit, cross_val_score
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-import xgboost as xgb
 
 warnings.filterwarnings("ignore")
 
@@ -54,28 +55,69 @@ warnings.filterwarnings("ignore")
 # ---------------------------------------------------------------------------
 
 SOIL_FEATURES = [
-    "C_0_20", "C_20_50", "N_0_20", "N_20_50",
-    "P_0_20", "P_20_50", "MA_0_20", "MA_20_50",
-    "PO_0_20", "PO_20_50", "pH_0_20", "pH_20_50",
-    "BD_0_20", "BD_20_50", "ECX_0_20", "ECX_20_50",
-    "CA_0_20", "CA_20_50",
+    "C_0_20",
+    "C_20_50",
+    "N_0_20",
+    "N_20_50",
+    "P_0_20",
+    "P_20_50",
+    "MA_0_20",
+    "MA_20_50",
+    "PO_0_20",
+    "PO_20_50",
+    "pH_0_20",
+    "pH_20_50",
+    "BD_0_20",
+    "BD_20_50",
+    "ECX_0_20",
+    "ECX_20_50",
+    "CA_0_20",
+    "CA_20_50",
 ]
 
 CLIMATE_FEATURES = [
-    "PrecJJA", "PrecMAM", "PrecSON", "PrecDJF",
-    "TaveJJA", "TaveMAM", "TaveSON", "TaveDJF",
-    "TmaxJJA", "TmaxMAM", "TmaxSON", "TmaxDJF",
-    "TminJJA", "TminMAM", "TminSON", "TminDJF",
-    "CMD", "Eref", "MAP", "MAT", "TD", "MWMT", "MCMT",
-    "DD_above_5", "DD_above_18", "DD_below_18",
+    "PrecJJA",
+    "PrecMAM",
+    "PrecSON",
+    "PrecDJF",
+    "TaveJJA",
+    "TaveMAM",
+    "TaveSON",
+    "TaveDJF",
+    "TmaxJJA",
+    "TmaxMAM",
+    "TmaxSON",
+    "TmaxDJF",
+    "TminJJA",
+    "TminMAM",
+    "TminSON",
+    "TminDJF",
+    "CMD",
+    "Eref",
+    "MAP",
+    "MAT",
+    "TD",
+    "MWMT",
+    "MCMT",
+    "DD_above_5",
+    "DD_above_18",
+    "DD_below_18",
 ]
 
 TERRAIN_FEATURES = [
-    "DEM", "Slope", "Aspect", "CHILI", "Top_div",
+    "DEM",
+    "Slope",
+    "Aspect",
+    "CHILI",
+    "Top_div",
 ]
 
 CONTEXT_FEATURES = [
-    "Tree_c", "Dist_water", "Paved", "Unpaved", "Pop_10km",
+    "Tree_c",
+    "Dist_water",
+    "Paved",
+    "Unpaved",
+    "Pop_10km",
 ]
 
 CATEGORICAL_FEATURES = ["TX_0_20_cl", "TX_20_50_cl"]
@@ -99,20 +141,35 @@ FEATURE_GROUPS = {
 
 LOG_TRANSFORM_FEATURES = ["Dist_water", "Paved", "Unpaved", "Pop_10km"]
 
-DERIVED_FEATURE_NAMES = ["CN_ratio", "C_layer_delta", "BD_layer_delta", "WHC_proxy", "aridity_index"]
+DERIVED_FEATURE_NAMES = [
+    "CN_ratio",
+    "C_layer_delta",
+    "BD_layer_delta",
+    "WHC_proxy",
+    "aridity_index",
+]
 
 # Water holding capacity lookup (Saxton & Rawls 2006, ~2.5% OM, mm/m)
 WHC_LOOKUP = {
-    "sand": 50, "loamy sand": 70, "sandy loam": 100, "loam": 140,
-    "silt loam": 200, "silt": 250, "sandy clay loam": 100,
-    "clay loam": 140, "silty clay loam": 170, "silty clay": 140,
-    "sandy clay": 110, "clay": 120,
+    "sand": 50,
+    "loamy sand": 70,
+    "sandy loam": 100,
+    "loam": 140,
+    "silt loam": 200,
+    "silt": 250,
+    "sandy clay loam": 100,
+    "clay loam": 140,
+    "silty clay loam": 170,
+    "silty clay": 140,
+    "sandy clay": 110,
+    "clay": 120,
 }
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _parse_comma_float(series: pd.Series) -> pd.Series:
     """Convert European-style comma-decimal strings to float (e.g. '1,5' → 1.5)."""
@@ -136,6 +193,7 @@ def _pct(n: int, total: int) -> str:
 # ---------------------------------------------------------------------------
 # Loading and parsing
 # ---------------------------------------------------------------------------
+
 
 def load_data(csv_path: Path) -> pd.DataFrame:
     sep("Loading data")
@@ -162,6 +220,7 @@ def load_data(csv_path: Path) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Data quality
 # ---------------------------------------------------------------------------
+
 
 def data_quality_report(df: pd.DataFrame) -> None:
     sep("Data quality")
@@ -213,12 +272,15 @@ def data_quality_report(df: pd.DataFrame) -> None:
     # Spatial extent
     lat = df[LAT_COL]
     lon = df[LON_COL]
-    print(f"\nSpatial extent: lat [{lat.min():.2f}, {lat.max():.2f}]  lon [{lon.min():.2f}, {lon.max():.2f}]")
+    print(
+        f"\nSpatial extent: lat [{lat.min():.2f}, {lat.max():.2f}]  lon [{lon.min():.2f}, {lon.max():.2f}]"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Feature engineering (mirrors make_model_ready_yield_africa.py)
 # ---------------------------------------------------------------------------
+
 
 def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     sep("Feature engineering")
@@ -251,6 +313,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Build feature matrix
 # ---------------------------------------------------------------------------
+
 
 def build_feature_matrix(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series, list[str]]:
     """Return (X, y, feature_names) with imputed + encoded features."""
@@ -285,6 +348,7 @@ def build_feature_matrix(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series, lis
 # Random forest regression
 # ---------------------------------------------------------------------------
 
+
 def run_random_forest(
     X: pd.DataFrame,
     y: pd.Series,
@@ -301,7 +365,9 @@ def run_random_forest(
     rf_cv = RandomForestRegressor(n_estimators=n_trees, n_jobs=-1, random_state=seed)
     cv_r2 = cross_val_score(rf_cv, X, y, cv=gss, groups=groups, scoring="r2")
     cv_mae = cross_val_score(rf_cv, X, y, cv=gss, groups=groups, scoring="neg_mean_absolute_error")
-    cv_rmse = cross_val_score(rf_cv, X, y, cv=gss, groups=groups, scoring="neg_root_mean_squared_error")
+    cv_rmse = cross_val_score(
+        rf_cv, X, y, cv=gss, groups=groups, scoring="neg_root_mean_squared_error"
+    )
     print(f"  R²    : {cv_r2.mean():.3f} ± {cv_r2.std():.3f}  (folds: {np.round(cv_r2, 3)})")
     print(f"  MAE   : {-cv_mae.mean():.3f} ± {cv_mae.std():.3f} t/ha")
     print(f"  RMSE  : {-cv_rmse.mean():.3f} ± {cv_rmse.std():.3f} t/ha")
@@ -323,7 +389,7 @@ def run_random_forest(
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
     baseline_mae = mean_absolute_error(y_test, np.full_like(y_test, y_train.mean()))
 
-    print(f"\nHoldout metrics:")
+    print("\nHoldout metrics:")
     print(f"  R²          : {r2:.3f}")
     print(f"  MAE         : {mae:.3f} t/ha")
     print(f"  RMSE        : {rmse:.3f} t/ha")
@@ -336,6 +402,7 @@ def run_random_forest(
 # ---------------------------------------------------------------------------
 # XGBoost regression
 # ---------------------------------------------------------------------------
+
 
 def run_xgboost(
     X: pd.DataFrame,
@@ -361,8 +428,12 @@ def run_xgboost(
         verbosity=0,
     )
     cv_r2 = cross_val_score(xgb_cv, X, y, cv=gss, groups=groups, scoring="r2")
-    cv_mae = cross_val_score(xgb_cv, X, y, cv=gss, groups=groups, scoring="neg_mean_absolute_error")
-    cv_rmse = cross_val_score(xgb_cv, X, y, cv=gss, groups=groups, scoring="neg_root_mean_squared_error")
+    cv_mae = cross_val_score(
+        xgb_cv, X, y, cv=gss, groups=groups, scoring="neg_mean_absolute_error"
+    )
+    cv_rmse = cross_val_score(
+        xgb_cv, X, y, cv=gss, groups=groups, scoring="neg_root_mean_squared_error"
+    )
     print(f"  R²    : {cv_r2.mean():.3f} ± {cv_r2.std():.3f}  (folds: {np.round(cv_r2, 3)})")
     print(f"  MAE   : {-cv_mae.mean():.3f} ± {cv_mae.std():.3f} t/ha")
     print(f"  RMSE  : {-cv_rmse.mean():.3f} ± {cv_rmse.std():.3f} t/ha")
@@ -392,7 +463,7 @@ def run_xgboost(
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
     baseline_mae = mean_absolute_error(y_test, np.full_like(y_test, y_train.mean()))
 
-    print(f"\nHoldout metrics:")
+    print("\nHoldout metrics:")
     print(f"  R²          : {r2:.3f}")
     print(f"  MAE         : {mae:.3f} t/ha")
     print(f"  RMSE        : {rmse:.3f} t/ha")
@@ -405,6 +476,7 @@ def run_xgboost(
 # ---------------------------------------------------------------------------
 # Feature importance
 # ---------------------------------------------------------------------------
+
 
 def feature_importance_report(
     model,
@@ -421,7 +493,9 @@ def feature_importance_report(
     y_test = y.iloc[test_idx]
 
     # ── MDI (Mean Decrease in Impurity) ──────────────────────────────────────
-    mdi_importances = pd.Series(model.feature_importances_, index=feature_names).sort_values(ascending=False)
+    mdi_importances = pd.Series(model.feature_importances_, index=feature_names).sort_values(
+        ascending=False
+    )
 
     # ── Permutation importance (on test set) ─────────────────────────────────
     print("Computing permutation importance on test set (n_repeats=10)…")
@@ -429,17 +503,26 @@ def feature_importance_report(
     perm_mean = pd.Series(perm.importances_mean, index=feature_names)
     perm_std = pd.Series(perm.importances_std, index=feature_names)
 
-    importance_df = pd.DataFrame({
-        "mdi": mdi_importances,
-        "perm_mean": perm_mean,
-        "perm_std": perm_std,
-    }).sort_values("perm_mean", ascending=False)
+    importance_df = pd.DataFrame(
+        {
+            "mdi": mdi_importances,
+            "perm_mean": perm_mean,
+            "perm_std": perm_std,
+        }
+    ).sort_values("perm_mean", ascending=False)
 
     # Print top-30
     print(f"\n{'Feature':30s}  {'MDI':>7s}  {'Perm':>7s}  {'±':>6s}  Group")
     print("─" * 68)
     for feat, row in importance_df.head(30).iterrows():
-        group = next((g for g, cols in FEATURE_GROUPS.items() if feat in cols or feat.rstrip("_enc") in cols), "Derived")
+        group = next(
+            (
+                g
+                for g, cols in FEATURE_GROUPS.items()
+                if feat in cols or feat.rstrip("_enc") in cols
+            ),
+            "Derived",
+        )
         if feat in DERIVED_FEATURE_NAMES:
             group = "Derived"
         print(f"  {feat:28s}  {row.mdi:7.4f}  {row.perm_mean:7.4f}  {row.perm_std:6.4f}  {group}")
@@ -453,19 +536,29 @@ def feature_importance_report(
             continue
         total_mdi = importance_df.loc[group_cols, "mdi"].sum()
         total_perm = importance_df.loc[group_cols, "perm_mean"].sum()
-        print(f"  {group:30s}  MDI: {total_mdi:.4f}  Perm: {total_perm:.4f}  ({len(group_cols)} features)")
+        print(
+            f"  {group:30s}  MDI: {total_mdi:.4f}  Perm: {total_perm:.4f}  ({len(group_cols)} features)"
+        )
     derived_cols = [c for c in importance_df.index if c in DERIVED_FEATURE_NAMES]
     if derived_cols:
         total_mdi = importance_df.loc[derived_cols, "mdi"].sum()
         total_perm = importance_df.loc[derived_cols, "perm_mean"].sum()
-        print(f"  {'Derived':30s}  MDI: {total_mdi:.4f}  Perm: {total_perm:.4f}  ({len(derived_cols)} features)")
+        print(
+            f"  {'Derived':30s}  MDI: {total_mdi:.4f}  Perm: {total_perm:.4f}  ({len(derived_cols)} features)"
+        )
 
     # ── Figure: top-20 permutation importances ────────────────────────────────
     top20 = importance_df.head(20)
     fig, ax = plt.subplots(figsize=(9, 6))
     y_pos = range(len(top20))
-    ax.barh(list(y_pos), top20["perm_mean"].values[::-1], xerr=top20["perm_std"].values[::-1],
-            color="steelblue", ecolor="gray", capsize=3)
+    ax.barh(
+        list(y_pos),
+        top20["perm_mean"].values[::-1],
+        xerr=top20["perm_std"].values[::-1],
+        color="steelblue",
+        ecolor="gray",
+        capsize=3,
+    )
     ax.set_yticks(list(y_pos))
     ax.set_yticklabels(list(top20.index[::-1]), fontsize=9)
     ax.set_xlabel("Mean permutation importance (R² decrease)")
@@ -482,6 +575,7 @@ def feature_importance_report(
 # ---------------------------------------------------------------------------
 # PCA analysis
 # ---------------------------------------------------------------------------
+
 
 def pca_analysis(
     X: pd.DataFrame,
@@ -501,7 +595,9 @@ def pca_analysis(
 
     for threshold in (0.80, 0.90, 0.95, 0.99):
         n_components = int(np.searchsorted(cumulative, threshold) + 1)
-        print(f"  {int(threshold*100):3d}% variance explained by {n_components:2d} / {len(feature_names)} components")
+        print(
+            f"  {int(threshold*100):3d}% variance explained by {n_components:2d} / {len(feature_names)} components"
+        )
 
     # Effective rank (Shannon entropy on explained variance)
     ev = explained[explained > 0]
@@ -519,12 +615,16 @@ def pca_analysis(
         pca_g.fit(X_g)
         cum_g = np.cumsum(pca_g.explained_variance_ratio_)
         n90 = int(np.searchsorted(cum_g, 0.90) + 1)
-        print(f"  {group:30s} {len(group_cols):2d} features → {n90:2d} components for 90% var  "
-              f"(redundancy: {(1 - n90/len(group_cols))*100:.0f}%)")
+        print(
+            f"  {group:30s} {len(group_cols):2d} features → {n90:2d} components for 90% var  "
+            f"(redundancy: {(1 - n90/len(group_cols))*100:.0f}%)"
+        )
 
     # ── Figure: scree plot ────────────────────────────────────────────────────
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot(range(1, len(explained) + 1), cumulative * 100, marker="o", markersize=3, linewidth=1.5)
+    ax.plot(
+        range(1, len(explained) + 1), cumulative * 100, marker="o", markersize=3, linewidth=1.5
+    )
     for t in (80, 90, 95):
         ax.axhline(t, color="gray", linestyle="--", linewidth=0.8)
         ax.text(len(explained) * 0.98, t + 0.5, f"{t}%", ha="right", fontsize=8, color="gray")
@@ -541,6 +641,7 @@ def pca_analysis(
 # ---------------------------------------------------------------------------
 # Residual / spatial bias analysis
 # ---------------------------------------------------------------------------
+
 
 def residual_analysis(
     model,
@@ -573,7 +674,9 @@ def residual_analysis(
         p_c = y_pred[mask]
         r_c = y_c - p_c
         r2_c = r2_score(y_c, p_c) if len(y_c) > 1 else float("nan")
-        print(f"  {country:8s}  {mask.sum():5d}  {r2_c:6.3f}  {mean_absolute_error(y_c,p_c):6.3f}  {r_c.mean():+7.3f}")
+        print(
+            f"  {country:8s}  {mask.sum():5d}  {r2_c:6.3f}  {mean_absolute_error(y_c, p_c):6.3f}  {r_c.mean():+7.3f}"
+        )
 
     # Per-year breakdown
     print("\nPer-year metrics (test set):")
@@ -586,7 +689,9 @@ def residual_analysis(
         y_c = y_test.values[mask]
         p_c = y_pred[mask]
         r_c = y_c - p_c
-        print(f"  {year:6d}  {mask.sum():5d}  {mean_absolute_error(y_c,p_c):6.3f}  {r_c.mean():+7.3f}")
+        print(
+            f"  {year:6d}  {mask.sum():5d}  {mean_absolute_error(y_c, p_c):6.3f}  {r_c.mean():+7.3f}"
+        )
 
     # ── Figure: predicted vs actual + spatial residual map ────────────────────
     fig, axes = plt.subplots(1, 2, figsize=(13, 5))
@@ -597,14 +702,13 @@ def residual_analysis(
     ax1.plot(lims, lims, "r--", linewidth=1)
     ax1.set_xlabel("Actual yield (t/ha)")
     ax1.set_ylabel("Predicted yield (t/ha)")
-    ax1.set_title(f"Predicted vs Actual  (R²={r2_score(y_test,y_pred):.3f})")
+    ax1.set_title(f"Predicted vs Actual  (R²={r2_score(y_test, y_pred):.3f})")
 
     ax2 = axes[1]
     lat = meta_test[LAT_COL].values
     lon = meta_test[LON_COL].values
     vmax = max(abs(residuals.min()), abs(residuals.max()))
-    sc = ax2.scatter(lon, lat, c=residuals, cmap="RdBu_r", s=8, alpha=0.5,
-                     vmin=-vmax, vmax=vmax)
+    sc = ax2.scatter(lon, lat, c=residuals, cmap="RdBu_r", s=8, alpha=0.5, vmin=-vmax, vmax=vmax)
     plt.colorbar(sc, ax=ax2, label="Residual (t/ha)")
     ax2.set_xlabel("Longitude")
     ax2.set_ylabel("Latitude")
@@ -620,6 +724,7 @@ def residual_analysis(
 # ---------------------------------------------------------------------------
 # Correlation among top features
 # ---------------------------------------------------------------------------
+
 
 def correlation_heatmap(
     X: pd.DataFrame,
@@ -665,6 +770,7 @@ def correlation_heatmap(
 # AI-readiness gap analysis
 # ---------------------------------------------------------------------------
 
+
 def ai_readiness_report(
     df: pd.DataFrame,
     importance_df: pd.DataFrame,
@@ -680,14 +786,20 @@ def ai_readiness_report(
     country_counts = df[COUNTRY_COL].value_counts()
     dominant = country_counts.index[0]
     pct_dominant = 100 * country_counts.iloc[0] / total
-    print(f"  Countries             : {df[COUNTRY_COL].nunique()}  ({', '.join(sorted(df[COUNTRY_COL].unique()))})")
+    print(
+        f"  Countries             : {df[COUNTRY_COL].nunique()}  ({', '.join(sorted(df[COUNTRY_COL].unique()))})"
+    )
     print(f"  Dominant country      : {dominant} ({pct_dominant:.1f}% of data)")
     if pct_dominant > 50:
-        print(f"  ⚠  Heavy country imbalance: {dominant} dominates. Models may overfit to its "
-              "agro-climatic conditions. Country-stratified sampling or re-weighting recommended.")
+        print(
+            f"  ⚠  Heavy country imbalance: {dominant} dominates. Models may overfit to its "
+            "agro-climatic conditions. Country-stratified sampling or re-weighting recommended."
+        )
 
     years_covered = sorted(df[YEAR_COL].unique())
-    print(f"  Years covered         : {years_covered[0]}–{years_covered[-1]}  (n={len(years_covered)})")
+    print(
+        f"  Years covered         : {years_covered[0]}–{years_covered[-1]}  (n={len(years_covered)})"
+    )
     thin_years = df[YEAR_COL].value_counts()
     thin_years = thin_years[thin_years < 200]
     if not thin_years.empty:
@@ -698,8 +810,10 @@ def ai_readiness_report(
     print(f"  High location accuracy: {_pct(high_acc, total)}")
     low_acc = (df[LOC_ACC_COL] == "Low location accuracy").sum()
     if low_acc / total > 0.1:
-        print(f"  ⚠  {_pct(low_acc, total)} samples have low location accuracy — "
-              "EO pixel matching will be unreliable for those.")
+        print(
+            f"  ⚠  {_pct(low_acc, total)} samples have low location accuracy — "
+            "EO pixel matching will be unreliable for those."
+        )
 
     # ── 2. Feature completeness ───────────────────────────────────────────────
     print("\n[2] FEATURE COMPLETENESS")
@@ -714,7 +828,7 @@ def ai_readiness_report(
     nan_counts = df[num_cols].isna().sum()
     nan_cols = nan_counts[nan_counts > 0]
     if nan_cols.empty:
-        print(f"  No NaN values in feature columns (after parsing)")
+        print("  No NaN values in feature columns (after parsing)")
     else:
         print(f"  Columns with NaN: {dict(nan_cols)}")
 
@@ -726,7 +840,7 @@ def ai_readiness_report(
     if not low_var.empty:
         print(f"  ⚠  Near-zero variance features: {low_var.index.tolist()}")
     else:
-        print(f"  No near-zero variance features.")
+        print("  No near-zero variance features.")
 
     # ── 3. Target leakage risks ───────────────────────────────────────────────
     print("\n[3] LEAKAGE / PROXY RISKS")
@@ -739,7 +853,9 @@ def ai_readiness_report(
     print("\n[4] SPATIAL AUTOCORRELATION")
     # Quick estimate: what fraction of test samples are within 10 km of a training sample?
     print("  ⚠  Most climate, soil, and terrain features are spatially smooth — nearby samples")
-    print("     share nearly identical feature vectors. Random splits will overestimate performance.")
+    print(
+        "     share nearly identical feature vectors. Random splits will overestimate performance."
+    )
     print("     → Spatial or country-based cross-validation is essential (already implemented).")
     print("     → Leave-one-country-out (LOCO) splits expose generalisation to new regions.")
 
@@ -748,15 +864,39 @@ def ai_readiness_report(
     top5 = importance_df.head(5).index.tolist()
     print(f"  Top-5 features (permutation): {', '.join(top5)}")
     # Check if management / variety features are present
-    mgmt_keywords = ["fertilizer", "fertil", "irrig", "variety", "crop_type", "planting", "harvest",
-                     "pesticide", "tillage", "manure", "nitrogen_applied"]
+    mgmt_keywords = [
+        "fertilizer",
+        "fertil",
+        "irrig",
+        "variety",
+        "crop_type",
+        "planting",
+        "harvest",
+        "pesticide",
+        "tillage",
+        "manure",
+        "nitrogen_applied",
+    ]
     present_mgmt = [k for k in mgmt_keywords if any(k in c.lower() for c in df.columns)]
-    print(f"\n  Management / agronomic features present: {present_mgmt if present_mgmt else 'NONE'}")
+    print(
+        f"\n  Management / agronomic features present: {present_mgmt if present_mgmt else 'NONE'}"
+    )
     print("  ⚠  No crop management variables detected (fertilizer, irrigation, variety, planting")
     print("     date, etc.). These are the strongest drivers of yield variation in smallholder")
     print("     contexts and are the primary explanation gap for yield prediction models.")
 
-    eo_keywords = ["ndvi", "evi", "lai", "s2", "sentinel", "eo_", "modis", "landsat", "radar", "sar"]
+    eo_keywords = [
+        "ndvi",
+        "evi",
+        "lai",
+        "s2",
+        "sentinel",
+        "eo_",
+        "modis",
+        "landsat",
+        "radar",
+        "sar",
+    ]
     present_eo = [k for k in eo_keywords if any(k in c.lower() for c in df.columns)]
     print(f"\n  EO / remote sensing features present: {present_eo if present_eo else 'NONE'}")
     print("  ⚠  No satellite-derived vegetation indices (NDVI, EVI, LAI) or SAR backscatter")
@@ -769,7 +909,8 @@ def ai_readiness_report(
     # ── 6. AI-readiness summary ───────────────────────────────────────────────
     sep("AI-readiness summary")
     low_pct = 100 * low_acc / total
-    print(f"""
+    print(
+        f"""
 STRENGTHS
 ─────────
   ✓  30,000+ samples across 8 African countries and 7+ years.
@@ -836,12 +977,14 @@ RECOMMENDED NEXT STEPS
   • Establish a held-out test set from a country not used in training to report
     unbiased generalisation performance; use LOCO splits as a proxy in the meantime.
   • Document crop types per record to enable crop-stratified modelling.
-""")
+"""
+    )
 
 
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     _data_dir = Path(os.environ.get("DATA_DIR", "data"))
@@ -859,11 +1002,21 @@ def main() -> None:
         default=str(_data_dir / "yield_africa" / "analysis_ai_readiness"),
         help="Output directory for figures (default: <DATA_DIR>/yield_africa/analysis_ai_readiness)",
     )
-    parser.add_argument("--n_trees", type=int, default=300, help="Number of RF trees (default: 300)")
-    parser.add_argument("--xgb_n_estimators", type=int, default=300,
-                        help="Number of XGBoost estimators (default: 300)")
-    parser.add_argument("--model", choices=["rf", "xgb", "both"], default="both",
-                        help="Which model(s) to run: rf, xgb, or both (default: both)")
+    parser.add_argument(
+        "--n_trees", type=int, default=300, help="Number of RF trees (default: 300)"
+    )
+    parser.add_argument(
+        "--xgb_n_estimators",
+        type=int,
+        default=300,
+        help="Number of XGBoost estimators (default: 300)",
+    )
+    parser.add_argument(
+        "--model",
+        choices=["rf", "xgb", "both"],
+        default="both",
+        help="Which model(s) to run: rf, xgb, or both (default: both)",
+    )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     args = parser.parse_args()
 
@@ -924,9 +1077,12 @@ def main() -> None:
             xgb_model, X, y, xgb_test_idx, feature_names, xgb_out_dir, args.seed
         )
         residual_analysis(
-            xgb_model, X, y,
+            xgb_model,
+            X,
+            y,
             df[[COUNTRY_COL, YEAR_COL, LAT_COL, LON_COL]],
-            xgb_test_idx, xgb_out_dir,
+            xgb_test_idx,
+            xgb_out_dir,
         )
         # When running both, use RF results for the shared reports below;
         # when running xgb-only, promote to the primary model.
@@ -934,13 +1090,17 @@ def main() -> None:
             model, train_idx, test_idx = xgb_model, xgb_train_idx, xgb_test_idx
 
     # ── Feature importance (RF or xgb-only path) ──────────────────────────────
-    importance_df = feature_importance_report(model, X, y, test_idx, feature_names, out_dir, args.seed)
+    importance_df = feature_importance_report(
+        model, X, y, test_idx, feature_names, out_dir, args.seed
+    )
 
     # ── PCA ───────────────────────────────────────────────────────────────────
     pca_analysis(X, feature_names, out_dir)
 
     # ── Residual analysis (RF or xgb-only path) ───────────────────────────────
-    residual_analysis(model, X, y, df[[COUNTRY_COL, YEAR_COL, LAT_COL, LON_COL]], test_idx, out_dir)
+    residual_analysis(
+        model, X, y, df[[COUNTRY_COL, YEAR_COL, LAT_COL, LON_COL]], test_idx, out_dir
+    )
 
     # ── Correlation heatmap ───────────────────────────────────────────────────
     correlation_heatmap(X, importance_df, out_dir)
