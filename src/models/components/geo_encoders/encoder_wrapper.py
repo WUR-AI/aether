@@ -16,6 +16,7 @@ class EncoderWrapper(BaseGeoEncoder):
         self,
         encoder_branches: List[Dict[str, Any]],
         fusion_strategy: str = "concat",
+        normalise: bool = True,
     ):
         super().__init__()
 
@@ -25,7 +26,9 @@ class EncoderWrapper(BaseGeoEncoder):
 
         # Populated by setup() — one norm per branch (Identity for TabularEncoder branches,
         # LayerNorm for all others that do not have a built-in final normalisation).
-        self.branch_norms = nn.ModuleList()
+        self.normalise = normalise
+        if self.normalise:
+            self.branch_norms = nn.ModuleList()
 
         if fusion_strategy not in ["mean", "concat", "none", "gated", "dynamic_gate"]:
             raise ValueError(f'Unsupported fusion strategy "{fusion_strategy}"')
@@ -114,13 +117,15 @@ class EncoderWrapper(BaseGeoEncoder):
 
         # Per-branch LayerNorm applied after encoder (+projector) output, before fusion.
         # TabularEncoder already ends with LayerNorm internally, so skip it there.
-        self.branch_norms = nn.ModuleList()
-        for i, (branch, dim) in enumerate(zip(self.encoder_branches, branch_output_dims)):
-            if isinstance(branch["encoder"], TabularEncoder):
-                self.branch_norms.append(nn.Identity())
-            else:
-                self.branch_norms.append(nn.LayerNorm(dim))
-                new_modules.append(f"branch_norms.{i}")
+        # self.branch_norms = nn.ModuleList()  # why is repeated (also found in init?)
+        if self.normalise:
+            print("Model set up to normalise features from branch(es).")
+            for i, (branch, dim) in enumerate(zip(self.encoder_branches, branch_output_dims)):
+                if isinstance(branch["encoder"], TabularEncoder):
+                    self.branch_norms.append(nn.Identity())
+                else:
+                    self.branch_norms.append(nn.LayerNorm(dim))
+                    new_modules.append(f"branch_norms.{i}")
 
         # Gated fusion: learnable scalar gate logit per branch.
         # All branches must have equal output dims; use per-branch projectors to align if needed.
@@ -216,7 +221,8 @@ class EncoderWrapper(BaseGeoEncoder):
             if "projector" in branch:
                 feats = branch["projector"](feats)
 
-            feats = self.branch_norms[i](feats)
+            if self.normalise:
+                feats = self.branch_norms[i](feats)
 
             branch_feats.append(feats)
 
