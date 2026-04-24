@@ -1,7 +1,7 @@
 from typing import Dict, override
 
 import torch
-import torch.nn.functional as F
+import torch.nn as nn
 
 from src.models.base_model import BaseModel
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
@@ -111,6 +111,11 @@ class PredictiveModel(BaseModel):
         new_modules = [f"geo_encoder.{i}]" for i in self.geo_encoder.setup()]
         self.trainable_modules.extend(new_modules)
 
+        if self.normalize_features:
+            self.normalizer = nn.LayerNorm(self.geo_encoder.output_dim)
+            self.trainable_modules.append("normalizer")
+            print("Model set up to normalise geo_encoder features.")
+
         # Configure prediction head based on geo-encoder output_dim
         self.prediction_head.set_dim(
             input_dim=self.geo_encoder.output_dim, output_dim=self.num_classes
@@ -124,7 +129,7 @@ class PredictiveModel(BaseModel):
         """Forward pass of a batch through the model."""
         feats = self.geo_encoder(batch)
         if self.normalize_features:
-            feats = F.normalize(feats, dim=-1)
+            feats = self.normalizer(feats)
         return self.prediction_head(feats)
 
     @override
