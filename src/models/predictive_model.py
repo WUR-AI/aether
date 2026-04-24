@@ -85,9 +85,6 @@ class PredictiveModel(BaseModel):
         self._setup_encoders_adapters()
         print("------------------------")
 
-        # freeze requested parts
-        self.freezer()
-
     def _setup_encoders_adapters(self):
         """Set up encoders and missing adapters/projectors."""
         # If tabular encoder used, we need to specify tabular dim and normalisation stats
