@@ -10,6 +10,7 @@ from torch.utils.data import Dataset
 
 import src.data_preprocessing.data_utils as du
 from src.utils.data_utils import center_crop_npy
+from src.utils.errors import MissingDataError
 
 
 class BaseDataset(Dataset, ABC):
@@ -240,22 +241,31 @@ class BaseDataset(Dataset, ABC):
             # Download missing rows (if any)
             avail_files = os.listdir(dst_dir)
             gt = None
-            for rec in self.records:
+            for i, rec in enumerate(self.records):
                 fname = os.path.basename(rec["tessera_path"])
                 if fname not in avail_files:
-                    print(f"Retrieving missing Tessera data: {fname}")
-                    gt = gt or GeoTessera(cache_dir=self.cache_dir)
-                    row = self.df[self.df["name_loc"] == rec["name_loc"]]
-                    lon, lat = row.lon.item(), row.lat.item()
-                    get_tessera_embeds(
-                        lon,
-                        lat,
-                        rec["name_loc"],
-                        year=year,
-                        save_dir=dst_dir,
-                        tile_size=size,
-                        tessera_con=gt,
-                    )
+                    #     print(f"Retrieving missing Tessera data: {fname}")
+                    #     gt = gt or GeoTessera(cache_dir=self.cache_dir)
+                    #     row = self.df[self.df["name_loc"] == rec["name_loc"]]
+                    #     lon, lat = row.lon.item(), row.lat.item()
+                    #     try:
+                    #         get_tessera_embeds(
+                    #             lon,
+                    #             lat,
+                    #             rec["name_loc"],
+                    #             year=year,
+                    #             save_dir=dst_dir,
+                    #             tile_size=size,
+                    #             tessera_con=gt,
+                    #         )
+                    #     except:
+                    if self.mode == "train":
+                        self.records.pop(i)
+                        print(f"{fname} will not be used in training")
+                    else:
+                        raise MissingDataError(
+                            f"Missing data for: {fname} in {self.mode} datasplit"
+                        )
 
     @final
     def setup_aef(self) -> None:
@@ -318,5 +328,10 @@ class BaseDataset(Dataset, ABC):
             )
         elif arr.size()[1] != size:
             arr = center_crop_npy(arr, (128, size, size))
+
+        # Nans are 0 across all 128 channels
+        # mask = np.all(arr == 0, axis=0)
+        # arr[mask] = torch.nan
         # TODO any normalisation needed
+
         return arr
