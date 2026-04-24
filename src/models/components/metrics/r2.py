@@ -36,7 +36,9 @@ class RSquared(BaseMetrics):
         if labels is None:
             labels = batch.get("target") if batch is not None else None
         if labels is None:
-            raise ValueError("RSquared.forward: labels must be provided via `labels` or `batch['target']`")
+            raise ValueError(
+                "RSquared.forward: labels must be provided via `labels` or `batch['target']`"
+            )
         mode = kwargs.get("mode", "train")
 
         metric = self._r2[f"mode_{mode}"]

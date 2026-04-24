@@ -1,9 +1,9 @@
 """Tests for the gated fusion strategy in EncoderWrapper.
 
-Static gated fusion learns one scalar logit per branch (nn.Parameter, shape [n_branches]).
-At inference time the logits are passed through softmax to produce branch weights that are
-identical for every sample in every batch — the model learns which modality to trust more,
-but that preference is fixed after training.  All branches must share the same output dim.
+Static gated fusion learns one scalar logit per branch (nn.Parameter, shape [n_branches]). At
+inference time the logits are passed through softmax to produce branch weights that are identical
+for every sample in every batch — the model learns which modality to trust more, but that
+preference is fixed after training.  All branches must share the same output dim.
 """
 
 from typing import Dict, List, override
@@ -14,7 +14,6 @@ import torch
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
 from src.models.components.geo_encoders.encoder_wrapper import EncoderWrapper
 from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
-
 
 # ---------------------------------------------------------------------------
 # Minimal stub encoder for testing — outputs a fixed-size embedding.
@@ -44,10 +43,7 @@ class _StubEncoder(BaseGeoEncoder):
 def _make_wrapper(branch_dims=(32, 32), keys=None) -> EncoderWrapper:
     if keys is None:
         keys = [f"b{i}" for i in range(len(branch_dims))]
-    branches = [
-        {"encoder": _StubEncoder(dim, key=key)}
-        for dim, key in zip(branch_dims, keys)
-    ]
+    branches = [{"encoder": _StubEncoder(dim, key=key)} for dim, key in zip(branch_dims, keys)]
     wrapper = EncoderWrapper(encoder_branches=branches, fusion_strategy="gated")
     wrapper.set_tabular_input_dim(None)
     wrapper.setup()
@@ -126,7 +122,9 @@ def test_single_branch():
 
 def test_mismatched_dims_raises():
     """Branches with different output dims must raise at setup time.
-    Use per-branch projectors to align dims before fusion."""
+
+    Use per-branch projectors to align dims before fusion.
+    """
     branches = [{"encoder": _StubEncoder(16, "b0")}, {"encoder": _StubEncoder(32, "b1")}]
     wrapper = EncoderWrapper(encoder_branches=branches, fusion_strategy="gated")
     wrapper.set_tabular_input_dim(None)
@@ -136,7 +134,9 @@ def test_mismatched_dims_raises():
 
 def test_with_tabular_encoder():
     """TabularEncoder as one branch; set_tabular_input_dim must flow through.
-    Both branches projected to the same output_dim (32) via per-branch projectors."""
+
+    Both branches projected to the same output_dim (32) via per-branch projectors.
+    """
     from src.models.components.geo_encoders.mlp_projector import MLPProjector
 
     tabular_dim = 23

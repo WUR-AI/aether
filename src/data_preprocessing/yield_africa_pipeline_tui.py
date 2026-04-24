@@ -1,6 +1,5 @@
-"""
-Interactive terminal UI to guide users through the Crop Yield Africa
-preprocessing pipeline in the correct order.
+"""Interactive terminal UI to guide users through the Crop Yield Africa preprocessing pipeline in
+the correct order.
 
 Usage:
     python src/data_preprocessing/yield_africa_pipeline_tui.py
@@ -16,7 +15,7 @@ from __future__ import annotations
 import os
 import shutil
 import signal
-import subprocess
+import subprocess  # nosec B404
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -26,16 +25,14 @@ from typing import List, Optional
 # Load .env early — before any os.environ reads
 # ---------------------------------------------------------------------------
 
+
 def _load_dotenv() -> None:
     """Load the project .env file into os.environ.
 
-    Tries python-dotenv first (already a project dependency via train.py).
-    Falls back to a minimal built-in parser that handles the subset of syntax
-    used in this project's .env.example:
-      KEY="value"           quoted or unquoted values
-      KEY="${OTHER}/sub"    simple ${VAR} interpolation (already-resolved vars)
-      # comment lines       skipped
-      blank lines           skipped
+    Tries python-dotenv first (already a project dependency via train.py). Falls back to a minimal
+    built-in parser that handles the subset of syntax used in this project's .env.example:
+    KEY="value"           quoted or unquoted values   KEY="${OTHER}/sub"    simple ${VAR}
+    interpolation (already-resolved vars)   # comment lines       skipped   blank lines skipped
     """
     # Locate the .env file: walk up from this script's directory until we find
     # a .project-root marker or the filesystem root.
@@ -53,6 +50,7 @@ def _load_dotenv() -> None:
     # Prefer python-dotenv (available in the project's venv).
     try:
         from dotenv import load_dotenv as _ld
+
         _ld(dotenv_path=env_file, override=False)
         return
     except ImportError:
@@ -60,6 +58,7 @@ def _load_dotenv() -> None:
 
     # Minimal fallback parser.
     import re
+
     resolved: dict[str, str] = {}
     with env_file.open() as fh:
         for raw_line in fh:
@@ -71,10 +70,12 @@ def _load_dotenv() -> None:
             key, _, val = line.partition("=")
             key = key.strip()
             val = val.strip().strip('"').strip("'")
+
             # Expand ${VAR} references using already-resolved values then os.environ.
             def _expand(m: re.Match) -> str:
                 name = m.group(1)
                 return resolved.get(name, os.environ.get(name, m.group(0)))
+
             val = re.sub(r"\$\{([^}]+)\}", _expand, val)
             resolved[key] = val
             if key not in os.environ:
@@ -87,15 +88,16 @@ _load_dotenv()
 # Optional rich import
 # ---------------------------------------------------------------------------
 try:
+    from rich import box
+    from rich.columns import Columns
     from rich.console import Console
+    from rich.markup import escape
     from rich.panel import Panel
+    from rich.prompt import Confirm, Prompt
+    from rich.rule import Rule
     from rich.table import Table
     from rich.text import Text
-    from rich import box
-    from rich.prompt import Prompt, Confirm
-    from rich.columns import Columns
-    from rich.rule import Rule
-    from rich.markup import escape
+
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
@@ -104,33 +106,37 @@ except ImportError:
 # ANSI colour helpers (used when rich is not available)
 # ---------------------------------------------------------------------------
 
-RESET  = "\033[0m"
-BOLD   = "\033[1m"
-DIM    = "\033[2m"
+RESET = "\033[0m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
 
-FG_BLACK   = "\033[30m"
-FG_RED     = "\033[31m"
-FG_GREEN   = "\033[32m"
-FG_YELLOW  = "\033[33m"
-FG_BLUE    = "\033[34m"
+FG_BLACK = "\033[30m"
+FG_RED = "\033[31m"
+FG_GREEN = "\033[32m"
+FG_YELLOW = "\033[33m"
+FG_BLUE = "\033[34m"
 FG_MAGENTA = "\033[35m"
-FG_CYAN    = "\033[36m"
-FG_WHITE   = "\033[37m"
+FG_CYAN = "\033[36m"
+FG_WHITE = "\033[37m"
 FG_BRIGHT_WHITE = "\033[97m"
 
-BG_BLUE    = "\033[44m"
-BG_CYAN    = "\033[46m"
-BG_GREEN   = "\033[42m"
+BG_BLUE = "\033[44m"
+BG_CYAN = "\033[46m"
+BG_GREEN = "\033[42m"
+
 
 def _c(*parts: str) -> str:
     return "".join(parts)
 
+
 def _supports_color() -> bool:
     return hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
+
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PipelineStep:
@@ -139,13 +145,14 @@ class PipelineStep:
     description: str
     script: str
     required: bool
-    depends_on: List[str] = field(default_factory=list)
+    depends_on: list[str] = field(default_factory=list)
     args_hint: str = ""
     output_hint: str = ""
-    extra_deps: List[str] = field(default_factory=list)
+    extra_deps: list[str] = field(default_factory=list)
     advice: str = ""
 
-STEPS: List[PipelineStep] = [
+
+STEPS: list[PipelineStep] = [
     PipelineStep(
         id="ai_readiness",
         title="0. AI-readiness analysis (raw data)",
@@ -287,11 +294,15 @@ STEPS: List[PipelineStep] = [
         args_hint=(
             "--data_dir  data/\n"
             "[--countries KEN RWA]   # subset of countries\n"
-            "[--tile_size 9]         # pixels around plot centre"
+            "[--years 2019 2020]     # subset of years\n"
+            "[--tile_size 9]         # pixels around plot centre\n"
+            "[--workers 1]           # parallel download threads\n"
+            "[--retry-stuck]         # retry records that stalled previously"
         ),
         output_hint=(
             "data/yield_africa/eo/tessera/tessera_{name_loc}.npy\n"
-            "(one NumPy array per plot)"
+            "(one NumPy array per plot)\n"
+            "data/yield_africa/eo/tessera/stuck.txt  (records that stalled)"
         ),
         extra_deps=["geotessera  (install with: uv sync --extra geotessera)"],
         advice=(
@@ -299,7 +310,9 @@ STEPS: List[PipelineStep] = [
             "  uv sync --extra geotessera\n"
             "Set TESSERA_EMBEDDINGS_DIR in .env to point to a directory with\n"
             "enough disk space (can be on an external drive).\n"
-            "This step is resumable — existing .npy files are skipped."
+            "This step is resumable — existing .npy files are skipped on rerun.\n"
+            "Records whose download stalls are written to stuck.txt and skipped\n"
+            "on subsequent runs. Use --retry-stuck to attempt them again."
         ),
     ),
     PipelineStep(
@@ -312,7 +325,12 @@ STEPS: List[PipelineStep] = [
             "exactly once — no duplication.  The AgERA5 sentinel column\n"
             "'agera5_fetched' is preserved.  Use --how left (default) to keep all\n"
             "base rows and fill missing augmentation values with NaN, or --how\n"
-            "inner to keep only rows present in every provided CSV."
+            "inner to keep only rows present in every provided CSV.\n\n"
+            "After merging, NDVI seasonal means and AgERA5 variables are classified\n"
+            "into 5-class ordinal aux_*_cl columns (42 new columns) using training-\n"
+            "split quintile boundaries.  The fitted LabelEncoders are saved into\n"
+            "label_encoders_yield_africa.pkl alongside the base CSV.  Use\n"
+            "--no_classify to skip this step."
         ),
         script="src/data_preprocessing/yield_africa_merge_augmentations.py",
         required=False,
@@ -322,10 +340,12 @@ STEPS: List[PipelineStep] = [
             "[--ndvi_csv   data/yield_africa/model_ready_yield_africa_ndvi.csv]\n"
             "[--agera5_csv data/yield_africa/model_ready_yield_africa_agera5.csv]\n"
             "[--out_csv    data/yield_africa/model_ready_yield_africa_merged.csv]\n"
-            "[--how        left]"
+            "[--how        left]\n"
+            "[--no_classify]"
         ),
         output_hint=(
-            "data/yield_africa/model_ready_yield_africa_merged.csv"
+            "data/yield_africa/model_ready_yield_africa_merged.csv\n"
+            "data/yield_africa/label_encoders_yield_africa.pkl  (updated)"
         ),
         advice=(
             "Run after whichever augmentation steps (2a, 2b) you have completed.\n"
@@ -334,7 +354,9 @@ STEPS: List[PipelineStep] = [
             "  data.dataset.csv_name: model_ready_yield_africa_merged.csv\n"
             "Use --how inner if you only want rows with complete augmentation data;\n"
             "use --how left (default) to retain all base rows with NaN for missing\n"
-            "augmentation rows (the model will impute them at runtime)."
+            "augmentation rows (the model will impute them at runtime).\n"
+            "The 42 new aux_ndvi_*_cl and aux_agera5_*_cl columns are required for\n"
+            "caption generation (YieldAfricaCaptionBuilder)."
         ),
     ),
     PipelineStep(
@@ -393,8 +415,7 @@ STEPS: List[PipelineStep] = [
         required=False,
         depends_on=["make_ready"],
         args_hint=(
-            "--data_dir      data/\n"
-            "[--distance_km  10 25 50]   # cluster radii to generate"
+            "--data_dir      data/\n" "[--distance_km  10 25 50]   # cluster radii to generate"
         ),
         output_hint=(
             "data/yield_africa/splits/split_spatial_10km.pth\n"
@@ -419,8 +440,7 @@ STEPS: List[PipelineStep] = [
         required=False,
         depends_on=["make_ready"],
         args_hint=(
-            "--data_dir  data/\n"
-            "[--country  KEN]   # generate for a single country only"
+            "--data_dir  data/\n" "[--country  KEN]   # generate for a single country only"
         ),
         output_hint=(
             "data/yield_africa/splits/split_loco_BUR.pth\n"
@@ -438,25 +458,27 @@ STEPS: List[PipelineStep] = [
 STEP_INDEX = {s.id: s for s in STEPS}
 
 EXPERIMENTS = [
-    ("yield_africa_coords_reg",           "Coordinates only (baseline)"),
-    ("yield_africa_tabular_reg",          "Tabular soil/climate features"),
-    ("yield_africa_fusion_reg",           "Tabular + coordinate fusion"),
-    ("yield_africa_tabular_spatial",      "Tabular + spatial split"),
-    ("yield_africa_fusion_spatial",       "Fusion + spatial split"),
-    ("yield_africa_tabular_loco",         "Tabular + LOCO split"),
-    ("yield_africa_fusion_loco",          "Fusion + LOCO split"),
-    ("yield_africa_tessera_reg",          "TESSERA embeddings"),
-    ("yield_africa_tessera_fusion_reg",   "TESSERA + tabular fusion"),
-    ("yield_africa_tessera_fusion_spatial","TESSERA fusion + spatial split"),
-    ("yield_africa_tessera_fusion_loco",  "TESSERA fusion + LOCO split"),
+    ("yield_africa_coords_reg", "Coordinates only (baseline)"),
+    ("yield_africa_tabular_reg", "Tabular soil/climate features"),
+    ("yield_africa_fusion_reg", "Tabular + coordinate fusion"),
+    ("yield_africa_tabular_spatial", "Tabular + spatial split"),
+    ("yield_africa_fusion_spatial", "Fusion + spatial split"),
+    ("yield_africa_tabular_loco", "Tabular + LOCO split"),
+    ("yield_africa_fusion_loco", "Fusion + LOCO split"),
+    ("yield_africa_tessera_reg", "TESSERA embeddings"),
+    ("yield_africa_tessera_fusion_reg", "TESSERA + tabular fusion"),
+    ("yield_africa_tessera_fusion_spatial", "TESSERA fusion + spatial split"),
+    ("yield_africa_tessera_fusion_loco", "TESSERA fusion + LOCO split"),
 ]
 
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
 
+
 def _term_width() -> int:
     return shutil.get_terminal_size((80, 24)).columns
+
 
 def _data_dir() -> Path:
     """Return the resolved DATA_DIR path (never a bare 'data/' relative path)."""
@@ -474,12 +496,15 @@ def _data_dir() -> Path:
             return parent / "data"
     return Path("data")
 
+
 def _expand_paths(text: str) -> str:
     """Replace the 'data/' prefix in path tokens with the resolved DATA_DIR."""
     data = str(_data_dir())
     import re
+
     # Replace bare 'data/' at the start of a path token (word boundary or line start)
     return re.sub(r"(?<![/\w])data/", data + "/", text)
+
 
 def _check_env() -> dict:
     """Return a dict of env-var status."""
@@ -493,25 +518,29 @@ def _check_env() -> dict:
     ]
     return {k: os.environ.get(k) for k in keys}
 
-def _check_output_exists(step: PipelineStep) -> Optional[bool]:
+
+def _check_output_exists(step: PipelineStep) -> bool | None:
     """Best-effort check whether the step's primary output exists."""
     first_line = step.output_hint.split("\n")[0].strip().split("(")[0].strip()
     if not first_line or first_line.startswith("["):
         return None
     return Path(_expand_paths(first_line)).exists()
 
+
 def _script_path(step: PipelineStep) -> Path:
     """Resolve script path relative to project root (best effort)."""
     root = os.environ.get("PROJECT_ROOT", ".")
     return Path(root) / step.script
 
+
 @dataclass
 class _OptionalArg:
     """One optional argument parsed from an args_hint line."""
-    raw: str          # full token string, e.g. "--ndvi_csv /abs/path/foo.csv"
-    flag: str         # just the flag name, e.g. "--ndvi_csv"
-    value: str        # the value portion, e.g. "/abs/path/foo.csv"  (empty for bare flags)
-    is_path: bool     # True when value looks like an absolute or data-relative path
+
+    raw: str  # full token string, e.g. "--ndvi_csv /abs/path/foo.csv"
+    flag: str  # just the flag name, e.g. "--ndvi_csv"
+    value: str  # the value portion, e.g. "/abs/path/foo.csv"  (empty for bare flags)
+    is_path: bool  # True when value looks like an absolute or data-relative path
 
 
 def _parse_optional_args(step: PipelineStep) -> tuple[str, list[_OptionalArg]]:
@@ -521,6 +550,7 @@ def _parse_optional_args(step: PipelineStep) -> tuple[str, list[_OptionalArg]]:
     Comment tokens (#...) are stripped. Paths are expanded via _expand_paths.
     """
     import re
+
     required_parts: list[str] = []
     optional_args: list[_OptionalArg] = []
 
@@ -552,6 +582,7 @@ def _parse_optional_args(step: PipelineStep) -> tuple[str, list[_OptionalArg]]:
 
 def _prompt_optional_args_plain(optional_args: list[_OptionalArg]) -> str:
     """Interactively prompt for each optional arg in plain-ANSI mode.
+
     Returns a string of extra args to append to the command (may be empty).
     """
     if not optional_args:
@@ -561,7 +592,11 @@ def _prompt_optional_args_plain(optional_args: list[_OptionalArg]) -> str:
     print(BOLD + FG_YELLOW + "  Optional arguments:" + RESET)
     for opt in optional_args:
         if opt.is_path:
-            exists_hint = FG_GREEN + " (file exists)" + RESET if Path(opt.value).exists() else DIM + " (not found)" + RESET
+            exists_hint = (
+                FG_GREEN + " (file exists)" + RESET
+                if Path(opt.value).exists()
+                else DIM + " (not found)" + RESET
+            )
             prompt_str = (
                 f"\n  Include {BOLD}{opt.flag}{RESET}?\n"
                 f"  {DIM}{opt.value}{RESET}{exists_hint}\n"
@@ -591,26 +626,30 @@ def _prompt_optional_args_plain(optional_args: list[_OptionalArg]) -> str:
                     extras.append(opt.flag)
     return (" " + " ".join(extras)) if extras else ""
 
+
 # ===========================================================================
 # RICH UI  (when rich is available)
 # ===========================================================================
+
 
 def run_rich() -> None:
     console = Console()
 
     def header() -> None:
         console.print()
-        console.print(Panel(
-            Text.from_markup(
-                "[bold bright_green]AETHER-xAI[/] [cyan]|[/] "
-                "[bold white]Crop Yield Africa[/] [cyan]|[/] "
-                "[bold yellow]Preprocessing Pipeline[/]\n"
-                "[dim]Interactive guide to prepare data for model training[/]"
-            ),
-            box=box.DOUBLE_EDGE,
-            border_style="cyan",
-            padding=(0, 2),
-        ))
+        console.print(
+            Panel(
+                Text.from_markup(
+                    "[bold bright_green]AETHER-xAI[/] [cyan]|[/] "
+                    "[bold white]Crop Yield Africa[/] [cyan]|[/] "
+                    "[bold yellow]Preprocessing Pipeline[/]\n"
+                    "[dim]Interactive guide to prepare data for model training[/]"
+                ),
+                box=box.DOUBLE_EDGE,
+                border_style="cyan",
+                padding=(0, 2),
+            )
+        )
 
     def _step_status_icon(step: PipelineStep) -> Text:
         exists = _check_output_exists(step)
@@ -682,13 +721,15 @@ def run_rich() -> None:
 
         required_missing = [k for k in ("PROJECT_ROOT", "DATA_DIR") if not env.get(k)]
         if required_missing:
-            console.print(Panel(
-                "[bold red]WARNING:[/] Required variables not set: "
-                + ", ".join(required_missing)
-                + "\nEdit your [bold].env[/] file — this TUI loads it automatically on startup.",
-                border_style="red",
-                padding=(0, 1),
-            ))
+            console.print(
+                Panel(
+                    "[bold red]WARNING:[/] Required variables not set: "
+                    + ", ".join(required_missing)
+                    + "\nEdit your [bold].env[/] file — this TUI loads it automatically on startup.",
+                    border_style="red",
+                    padding=(0, 1),
+                )
+            )
         else:
             console.print("[green]All required env vars are set.[/]")
 
@@ -698,12 +739,14 @@ def run_rich() -> None:
         console.print()
 
         # Description
-        console.print(Panel(
-            step.description,
-            title="[bold]What it does[/]",
-            border_style="blue",
-            padding=(0, 1),
-        ))
+        console.print(
+            Panel(
+                step.description,
+                title="[bold]What it does[/]",
+                border_style="blue",
+                padding=(0, 1),
+            )
+        )
 
         # Dependency
         if step.depends_on:
@@ -719,38 +762,44 @@ def run_rich() -> None:
 
         # Args hint
         console.print()
-        console.print(Panel(
-            f"[bold green]uv run python {step.script}[/]\n"
-            + "\n".join(
-                f"  [cyan]{escape(_expand_paths(line))}[/]"
-                for line in step.args_hint.splitlines()
-            ),
-            title="[bold]Command[/]",
-            border_style="green",
-            padding=(0, 1),
-        ))
+        console.print(
+            Panel(
+                f"[bold green]uv run python {step.script}[/]\n"
+                + "\n".join(
+                    f"  [cyan]{escape(_expand_paths(line))}[/]"
+                    for line in step.args_hint.splitlines()
+                ),
+                title="[bold]Command[/]",
+                border_style="green",
+                padding=(0, 1),
+            )
+        )
 
         # Outputs
         console.print()
-        console.print(Panel(
-            "\n".join(
-                f"  [green]{escape(_expand_paths(line))}[/]"
-                for line in step.output_hint.splitlines()
-            ),
-            title="[bold]Outputs[/]",
-            border_style="dim",
-            padding=(0, 1),
-        ))
+        console.print(
+            Panel(
+                "\n".join(
+                    f"  [green]{escape(_expand_paths(line))}[/]"
+                    for line in step.output_hint.splitlines()
+                ),
+                title="[bold]Outputs[/]",
+                border_style="dim",
+                padding=(0, 1),
+            )
+        )
 
         # Advice
         if step.advice:
             console.print()
-            console.print(Panel(
-                f"[italic]{step.advice}[/]",
-                title="[bold yellow]Advice[/]",
-                border_style="yellow",
-                padding=(0, 1),
-            ))
+            console.print(
+                Panel(
+                    f"[italic]{step.advice}[/]",
+                    title="[bold yellow]Advice[/]",
+                    border_style="yellow",
+                    padding=(0, 1),
+                )
+            )
 
     def show_experiments() -> None:
         header()
@@ -797,18 +846,28 @@ def run_rich() -> None:
                         else Text(" (not found)", style="dim")
                     )
                     label = Text.assemble(
-                        "Include ", (opt.flag, "bold cyan"), "?\n  ",
-                        (opt.value, "dim"), exists_note,
+                        "Include ",
+                        (opt.flag, "bold cyan"),
+                        "?\n  ",
+                        (opt.value, "dim"),
+                        exists_note,
                     )
                     if Confirm.ask(label, default=False):
                         extras.append(f"{opt.flag} {opt.value}")
                 elif opt.value:
                     label = Text.assemble(
                         (opt.flag, "bold cyan"),
-                        ("  (Enter to use default, type new value, or leave blank to skip)", "dim"),
+                        (
+                            f"  [default: {opt.value}] Enter to keep, new value to override, 's' to skip",
+                            "dim",
+                        ),
                     )
-                    ans = Prompt.ask(label, default=opt.value)
-                    if ans and ans != "skip":
+                    ans = Prompt.ask(label, default="").strip()
+                    if ans.lower() == "s":
+                        pass
+                    elif ans == "":
+                        extras.append(f"{opt.flag} {opt.value}")
+                    else:
                         extras.append(f"{opt.flag} {ans}")
                 else:
                     label = Text.assemble("Include flag ", (opt.flag, "bold cyan"), "?")
@@ -822,7 +881,7 @@ def run_rich() -> None:
         console.print(f"[dim]Running:[/] [bold]{escape(user_cmd)}[/]")
         console.print(Rule(style="dim"))
 
-        proc = subprocess.Popen(user_cmd, shell=True, start_new_session=True)
+        proc = subprocess.Popen(user_cmd, shell=True, start_new_session=True)  # nosec B602
         try:
             ret = proc.wait()
             console.print(Rule(style="dim"))
@@ -852,28 +911,34 @@ def run_rich() -> None:
         header()
         console.print()
 
-        console.print(Panel(
-            "[bold white]Select an option:[/]\n\n"
-            "  [bold cyan]1[/]  Pipeline overview & status\n"
-            "  [bold cyan]2[/]  Environment variables\n"
-            "  [bold cyan]3[/]  Step 0  — AI-readiness analysis (raw data)  [dim](optional)[/]\n"
-            "  [bold cyan]4[/]  Step 1  — Build model-ready CSV  [bold yellow](required)[/]\n"
-            "  [bold cyan]5[/]  Step 2a — Augment with NDVI\n"
-            "  [bold cyan]6[/]  Step 2b — Augment with AgERA5 climate\n"
-            "  [bold cyan]7[/]  Step 2c — Download TESSERA embeddings\n"
-            "  [bold cyan]8[/]  Step 2d — Merge augmented CSVs             [dim](optional)[/]\n"
-            "  [bold cyan]9[/]  Step 2e — Compare all augmentations        [dim](optional)[/]\n"
-            "  [bold cyan]a[/]  Step 3a — Generate spatial splits\n"
-            "  [bold cyan]b[/]  Step 3b — Generate LOCO splits\n"
-            "  [bold cyan]c[/]  Training experiments reference\n"
-            "  [bold cyan]q[/]  Quit",
-            title="[bold cyan]Menu[/]",
-            border_style="cyan",
-            padding=(0, 2),
-        ))
+        console.print(
+            Panel(
+                "[bold white]Select an option:[/]\n\n"
+                "  [bold cyan]1[/]  Pipeline overview & status\n"
+                "  [bold cyan]2[/]  Environment variables\n"
+                "  [bold cyan]3[/]  Step 0  — AI-readiness analysis (raw data)  [dim](optional)[/]\n"
+                "  [bold cyan]4[/]  Step 1  — Build model-ready CSV  [bold yellow](required)[/]\n"
+                "  [bold cyan]5[/]  Step 2a — Augment with NDVI\n"
+                "  [bold cyan]6[/]  Step 2b — Augment with AgERA5 climate\n"
+                "  [bold cyan]7[/]  Step 2c — Download TESSERA embeddings\n"
+                "  [bold cyan]8[/]  Step 2d — Merge augmented CSVs             [dim](optional)[/]\n"
+                "  [bold cyan]9[/]  Step 2e — Compare all augmentations        [dim](optional)[/]\n"
+                "  [bold cyan]a[/]  Step 3a — Generate spatial splits\n"
+                "  [bold cyan]b[/]  Step 3b — Generate LOCO splits\n"
+                "  [bold cyan]c[/]  Training experiments reference\n"
+                "  [bold cyan]q[/]  Quit",
+                title="[bold cyan]Menu[/]",
+                border_style="cyan",
+                padding=(0, 2),
+            )
+        )
         console.print()
 
-        choice = Prompt.ask("[bold]Choice[/]", choices=["1","2","3","4","5","6","7","8","9","a","b","c","q"], show_choices=False)
+        choice = Prompt.ask(
+            "[bold]Choice[/]",
+            choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "q"],
+            show_choices=False,
+        )
 
         if choice == "q":
             console.print("\n[dim]Goodbye.[/]\n")
@@ -914,11 +979,12 @@ def run_rich() -> None:
 # PLAIN ANSI UI  (fallback when rich is not installed)
 # ===========================================================================
 
-def _box(title: str, lines: List[str], width: int = 72, border: str = FG_CYAN) -> str:
+
+def _box(title: str, lines: list[str], width: int = 72, border: str = FG_CYAN) -> str:
     inner = width - 4
-    top    = border + "╔" + "═" * (width - 2) + "╗" + RESET
+    top = border + "╔" + "═" * (width - 2) + "╗" + RESET
     bottom = border + "╚" + "═" * (width - 2) + "╝" + RESET
-    bar    = border + "║" + RESET
+    bar = border + "║" + RESET
     title_line = bar + " " + BOLD + FG_YELLOW + title.ljust(inner) + RESET + " " + bar
 
     body_lines = [top, title_line, border + "╟" + "─" * (width - 2) + "╢" + RESET]
@@ -930,15 +996,18 @@ def _box(title: str, lines: List[str], width: int = 72, border: str = FG_CYAN) -
     body_lines.append(bottom)
     return "\n".join(body_lines)
 
+
 def _strip_ansi(s: str) -> str:
     import re
+
     return re.sub(r"\033\[[0-9;]*m", "", s)
 
-def _thin_box(lines: List[str], width: int = 72, border: str = FG_BLUE) -> str:
+
+def _thin_box(lines: list[str], width: int = 72, border: str = FG_BLUE) -> str:
     inner = width - 4
-    top    = border + "┌" + "─" * (width - 2) + "┐" + RESET
+    top = border + "┌" + "─" * (width - 2) + "┐" + RESET
     bottom = border + "└" + "─" * (width - 2) + "┘" + RESET
-    bar    = border + "│" + RESET
+    bar = border + "│" + RESET
 
     body = [top]
     for line in lines:
@@ -947,40 +1016,86 @@ def _thin_box(lines: List[str], width: int = 72, border: str = FG_BLUE) -> str:
     body.append(bottom)
     return "\n".join(body)
 
+
 def _rule(width: int = 72, colour: str = FG_CYAN) -> str:
     return colour + "─" * width + RESET
+
 
 def _header_ansi() -> None:
     w = min(_term_width(), 80)
     print()
     title = (
-        BOLD + FG_GREEN + "AETHER-xAI" + RESET +
-        FG_CYAN + "  |  " + RESET +
-        BOLD + FG_WHITE + "Crop Yield Africa" + RESET +
-        FG_CYAN + "  |  " + RESET +
-        BOLD + FG_YELLOW + "Preprocessing Pipeline" + RESET
+        BOLD
+        + FG_GREEN
+        + "AETHER-xAI"
+        + RESET
+        + FG_CYAN
+        + "  |  "
+        + RESET
+        + BOLD
+        + FG_WHITE
+        + "Crop Yield Africa"
+        + RESET
+        + FG_CYAN
+        + "  |  "
+        + RESET
+        + BOLD
+        + FG_YELLOW
+        + "Preprocessing Pipeline"
+        + RESET
     )
     sub = DIM + "Interactive guide to prepare data for model training" + RESET
     print(_box("", [title, sub], width=w, border=FG_CYAN))
+
 
 def _menu_ansi() -> str:
     w = min(_term_width(), 80)
     lines = [
         BOLD + FG_CYAN + "  1" + RESET + "  Pipeline overview & status",
         BOLD + FG_CYAN + "  2" + RESET + "  Environment variables",
-        BOLD + FG_CYAN + "  3" + RESET + "  Step 0  — AI-readiness analysis (raw data)  " + DIM + "(optional)" + RESET,
-        BOLD + FG_CYAN + "  4" + RESET + "  Step 1  — Build model-ready CSV  " + BOLD + FG_YELLOW + "(required)" + RESET,
+        BOLD
+        + FG_CYAN
+        + "  3"
+        + RESET
+        + "  Step 0  — AI-readiness analysis (raw data)  "
+        + DIM
+        + "(optional)"
+        + RESET,
+        BOLD
+        + FG_CYAN
+        + "  4"
+        + RESET
+        + "  Step 1  — Build model-ready CSV  "
+        + BOLD
+        + FG_YELLOW
+        + "(required)"
+        + RESET,
         BOLD + FG_CYAN + "  5" + RESET + "  Step 2a — Augment with NDVI",
         BOLD + FG_CYAN + "  6" + RESET + "  Step 2b — Augment with AgERA5 climate",
         BOLD + FG_CYAN + "  7" + RESET + "  Step 2c — Download TESSERA embeddings",
-        BOLD + FG_CYAN + "  8" + RESET + "  Step 2d — Merge augmented CSVs             " + DIM + "(optional)" + RESET,
-        BOLD + FG_CYAN + "  9" + RESET + "  Step 2e — Compare all augmentations        " + DIM + "(optional)" + RESET,
+        BOLD
+        + FG_CYAN
+        + "  8"
+        + RESET
+        + "  Step 2d — Merge augmented CSVs             "
+        + DIM
+        + "(optional)"
+        + RESET,
+        BOLD
+        + FG_CYAN
+        + "  9"
+        + RESET
+        + "  Step 2e — Compare all augmentations        "
+        + DIM
+        + "(optional)"
+        + RESET,
         BOLD + FG_CYAN + "  a" + RESET + "  Step 3a — Generate spatial splits",
         BOLD + FG_CYAN + "  b" + RESET + "  Step 3b — Generate LOCO splits",
         BOLD + FG_CYAN + "  c" + RESET + "  Training experiments reference",
         BOLD + FG_CYAN + "  q" + RESET + "  Quit",
     ]
     return _box("Menu", lines, width=w, border=FG_CYAN)
+
 
 def _overview_ansi() -> None:
     w = min(_term_width(), 80)
@@ -991,12 +1106,13 @@ def _overview_ansi() -> None:
 
     col_w = [4, 30, 11, 12]
     header = (
-        FG_CYAN + BOLD +
-        "#".ljust(col_w[0]) +
-        "Step".ljust(col_w[1]) +
-        "Required".ljust(col_w[2]) +
-        "Status".ljust(col_w[3]) +
-        RESET
+        FG_CYAN
+        + BOLD
+        + "#".ljust(col_w[0])
+        + "Step".ljust(col_w[1])
+        + "Required".ljust(col_w[2])
+        + "Status".ljust(col_w[3])
+        + RESET
     )
     print("  " + header)
     print("  " + FG_BLUE + "─" * (sum(col_w)) + RESET)
@@ -1012,10 +1128,14 @@ def _overview_ansi() -> None:
             status = DIM + "○ optional" + RESET
 
         row = (
-            DIM + step.id[:3].ljust(col_w[0]) + RESET +
-            BOLD + step.title.ljust(col_w[1]) + RESET +
-            req.ljust(col_w[2]) +
-            status
+            DIM
+            + step.id[:3].ljust(col_w[0])
+            + RESET
+            + BOLD
+            + step.title.ljust(col_w[1])
+            + RESET
+            + req.ljust(col_w[2])
+            + status
         )
         print("  " + row)
 
@@ -1023,6 +1143,7 @@ def _overview_ansi() -> None:
     print(DIM + "  Step 2a/2b/2c are independent and can run in any order after step 1." + RESET)
     print(DIM + "  Step 2d merges augmented CSVs; run after 2a/2b as needed." + RESET)
     print(DIM + "  Steps 3a/3b need step 1 first; they can run in parallel with step 2." + RESET)
+
 
 def _env_ansi() -> None:
     w = min(_term_width(), 80)
@@ -1043,11 +1164,20 @@ def _env_ansi() -> None:
     print()
     required_missing = [k for k in ("PROJECT_ROOT", "DATA_DIR") if not env.get(k)]
     if required_missing:
-        print(FG_RED + BOLD + "  WARNING: " + RESET + FG_RED +
-              "Required variables not set: " + ", ".join(required_missing) + RESET)
+        print(
+            FG_RED
+            + BOLD
+            + "  WARNING: "
+            + RESET
+            + FG_RED
+            + "Required variables not set: "
+            + ", ".join(required_missing)
+            + RESET
+        )
         print(DIM + "  Edit your .env file — this TUI loads it automatically on startup." + RESET)
     else:
         print(FG_GREEN + "  All required env vars are set." + RESET)
+
 
 def _step_detail_ansi(step: PipelineStep) -> None:
     w = min(_term_width(), 80)
@@ -1091,6 +1221,7 @@ def _step_detail_ansi(step: PipelineStep) -> None:
         print(_thin_box(adv_lines, width=w, border=FG_YELLOW))
         print()
 
+
 def _run_step_ansi(step: PipelineStep) -> None:
     _step_detail_ansi(step)
 
@@ -1109,7 +1240,7 @@ def _run_step_ansi(step: PipelineStep) -> None:
 
     print()
     print(_rule(min(_term_width(), 80)))
-    proc = subprocess.Popen(cmd, shell=True, start_new_session=True)
+    proc = subprocess.Popen(cmd, shell=True, start_new_session=True)  # nosec B602
     try:
         ret = proc.wait()
         print(_rule(min(_term_width(), 80)))
@@ -1131,6 +1262,7 @@ def _run_step_ansi(step: PipelineStep) -> None:
                 pass
             proc.wait()
 
+
 def _experiments_ansi() -> None:
     w = min(_term_width(), 80)
     print(_rule(w))
@@ -1148,6 +1280,7 @@ def _experiments_ansi() -> None:
     print(DIM + "  Tip: override the split file on the command line, e.g.:" + RESET)
     print(DIM + "    python src/train.py experiment=yield_africa_fusion_spatial \\" + RESET)
     print(DIM + "      data.saved_split_file_name=split_spatial_25km.pth" + RESET)
+
 
 def run_plain() -> None:
     colour = _supports_color()
@@ -1177,7 +1310,7 @@ def run_plain() -> None:
     }
 
     while True:
-        os.system("clear" if os.name != "nt" else "cls")
+        os.system("clear" if os.name != "nt" else "cls")  # nosec B605
         _header_ansi()
         print()
         print(_menu_ansi())
@@ -1191,7 +1324,7 @@ def run_plain() -> None:
         if choice not in dispatch:
             continue
 
-        os.system("clear" if os.name != "nt" else "cls")
+        os.system("clear" if os.name != "nt" else "cls")  # nosec B605
         _header_ansi()
         print()
         dispatch[choice]()
@@ -1202,6 +1335,7 @@ def run_plain() -> None:
 # ===========================================================================
 # Entry point
 # ===========================================================================
+
 
 def main() -> None:
     if HAS_RICH:
