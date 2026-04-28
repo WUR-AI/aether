@@ -27,7 +27,7 @@ class BaseGeoEncoder(nn.Module, ABC):
             print("Configs for geo encoder not updated")
 
     @final
-    def setup(self, quiet=False) -> List[str]:
+    def setup(self, verbose=1) -> List[str]:
         """Configures modules.
 
         Gets called in model.setup() method. Returns names of any new module configured to be added
@@ -38,7 +38,7 @@ class BaseGeoEncoder(nn.Module, ABC):
             return []
         else:
             trainable_modules = self._setup()
-            if not quiet:
+            if verbose > 0:
                 print(f"Model set up with {self.__str__()}")
             self.setup_flag = True
             return trainable_modules

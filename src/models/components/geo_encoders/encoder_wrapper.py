@@ -87,7 +87,7 @@ class EncoderWrapper(BaseGeoEncoder):
                     raise ValueError("TabularEncoder requires tabular_dim")
                 encoder.set_tabular_input_dim(self.tabular_dim)
 
-            new_parts = encoder.setup(quiet=True)
+            new_parts = encoder.setup(verbose=0)
             new_modules.extend(
                 [f"encoder_branches.{str(i)}.encoder.{p}" for p in new_parts]
                 if len(new_parts) != 0
@@ -105,7 +105,7 @@ class EncoderWrapper(BaseGeoEncoder):
                 projector = branch["projector"]
 
                 projector.set_input_dim(input_dim=branch_dim)
-                new_parts = projector.setup(quiet=True)
+                new_parts = projector.setup(verbose=0)
                 new_modules.extend(
                     [f"encoder_branches.{str(i)}.projector.{p}" for p in new_parts]
                     if len(new_parts) != 0
@@ -159,9 +159,7 @@ class EncoderWrapper(BaseGeoEncoder):
                 self.tabular_dim = tabular_dim
                 return
 
-    def set_tabular_normalisation_stats(
-        self, mean: torch.Tensor, std: torch.Tensor
-    ) -> None:
+    def set_tabular_normalisation_stats(self, mean: torch.Tensor, std: torch.Tensor) -> None:
         """Propagate normalisation statistics to the TabularEncoder branch, if present."""
         for branch in self.encoder_branches:
             if isinstance(branch["encoder"], TabularEncoder):
@@ -239,8 +237,10 @@ class EncoderWrapper(BaseGeoEncoder):
             # Predict per-sample branch weights from the concatenated branch outputs.
             # [batch, n_branches * dim] -> MLP -> [batch, n_branches] -> softmax
             stacked = torch.stack(branch_feats, dim=1)  # [batch, n_branches, dim]
-            gate_input = stacked.flatten(start_dim=1)   # [batch, n_branches * dim]
-            weights = torch.softmax(self.dynamic_gate_mlp(gate_input), dim=1)  # [batch, n_branches]
+            gate_input = stacked.flatten(start_dim=1)  # [batch, n_branches * dim]
+            weights = torch.softmax(
+                self.dynamic_gate_mlp(gate_input), dim=1
+            )  # [batch, n_branches]
             feats = (stacked * weights.unsqueeze(-1)).sum(dim=1)  # [batch, dim]
 
         elif self.fusion_strategy == "mean":
