@@ -107,7 +107,11 @@ class TextAlignmentModel(BaseModel):
             for c in self.concept_configs
         ]
 
-        dataset_names = ["train", "val", "test"]
+        dataset_names = [
+            "train",
+            "val",
+            "test",
+        ]  # ensure 'train' is first for use_train_threshold logic!
         self.dynamic_k_baselines = {}
         for dataset_name in dataset_names:
             if not hasattr(self.trainer.datamodule, f"data_{dataset_name}"):
@@ -133,11 +137,11 @@ class TextAlignmentModel(BaseModel):
 
                 if use_train_threshold and dataset_name != "train":
                     theta_k = self.concept_configs[i_c]["theta_k"]
+                else:
+                    theta_k = self.find_elbow_point(aux_vals_current_ds)
                     self.concept_configs[i_c][
                         "theta_k"
                     ] = theta_k  # assign new theta_k to concept_configs for later use in validation
-                else:
-                    theta_k = self.find_elbow_point(aux_vals_current_ds)
 
                 if c["is_max"]:
                     n_baseline = sum(aux_val >= theta_k for aux_val in aux_vals_current_ds)
