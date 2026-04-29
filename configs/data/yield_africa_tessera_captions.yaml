@@ -5,22 +5,27 @@ dataset:
   data_dir: ${paths.data_dir}
   modalities:
     tessera:
-      # size must match the tile_size used when running the preprocessing script.
-      # Default: 9 pixels (set by yield_africa_tessera_preprocess.py --tile_size).
       size: 9
       format: npy
-      # year is intentionally omitted: yield_africa fetches per-record year tiles
-      # via the preprocessing script rather than a single bulk-year download.
   csv_name: null
   use_target_data: true
   use_features: true
-  use_aux_data: none
+  use_aux_data:
+    aux:
+      pattern: "^aux_(?!.*top).*"
   seed: ${seed}
   cache_dir: ${paths.cache_dir}
   countries: ["BF", "BUR", "ETH", "KEN", "MAL", "RWA", "TAN", "ZAM"]
   years: [2014, 2016, 2017, 2018, 2019, 2020, 2021, 2023, 2024]
   exclude_countries: null
   exclude_years: null
+
+caption_builder:
+  _target_: src.data.yield_africa_caption_builder.YieldAfricaCaptionBuilder
+  templates_fname: v1.json
+  concepts_fname: v1.json
+  data_dir: ${paths.data_dir}/yield_africa
+  seed: ${seed}
 
 batch_size: 64
 num_workers: 0
