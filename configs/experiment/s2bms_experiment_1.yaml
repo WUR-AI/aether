@@ -14,6 +14,7 @@ defaults:
 tags:
   - prediction
   - aef
+  - aef_128
 
 trainer:
   max_epochs: 100
@@ -26,6 +27,7 @@ data:
     modalities:
       aef:
         format: tif
+        size: 128
     use_target_data: true
     use_aux_data: false
   caption_builder:
@@ -46,6 +48,6 @@ hydra:
   mode: MULTIRUN
   sweeper:
     params:
-      seed: 12345 #, 404, 654
-      model.prediction_head._target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead #, src.models.components.pred_heads.linear_pred_head.LinearPredictionHead
-      +data.dataset.modalities.aef.size: 128 #, 256
+      seed: 12345, 404, 654
+      model.prediction_head._target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead, src.models.components.pred_heads.linear_pred_head.LinearPredictionHead
+#      +data.dataset.modalities.aef.size: 128, 256
