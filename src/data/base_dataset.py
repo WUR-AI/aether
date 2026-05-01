@@ -188,7 +188,9 @@ class BaseDataset(Dataset, ABC):
         self.df = pd.concat(
             [
                 self.df,
-                self.df["name_loc"].apply(lambda loc: path + f"{modality}_{loc}.{extension}").rename(col),
+                self.df["name_loc"]
+                .apply(lambda loc: path + f"{modality}_{loc}.{extension}")
+                .rename(col),
             ],
             axis=1,
         )
@@ -310,7 +312,11 @@ class BaseDataset(Dataset, ABC):
         """Loads."""
         size = self.modalities["tessera"]["size"]
         arr = self.load_npy(filepath)
-        if arr.size()[1] != size:
+        if arr.size()[1] < size:
+            raise ValueError(
+                f"Requested tile size {size} is larger than actual available tile size {arr.size()[1]}"
+            )
+        elif arr.size()[1] != size:
             arr = center_crop_npy(arr, (128, size, size))
         # TODO any normalisation needed
         return arr

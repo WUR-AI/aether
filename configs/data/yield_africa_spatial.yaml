@@ -8,6 +8,7 @@ dataset:
   use_target_data: true
   use_features: true
   use_aux_data: none
+  csv_name: null
   seed: ${seed}
   cache_dir: ${paths.cache_dir}
   # Include all countries and years so the split file determines the partition.
@@ -28,6 +29,6 @@ pin_memory: false
 #   python src/train.py experiment=yield_africa_tabular_spatial \
 #     data.saved_split_file_name=split_spatial_10km.pth
 split_mode: "from_file"
-saved_split_file_name: "split_spatial_25km.pth"
+saved_split_file_name: "split_spatial_50km.pth"
 save_split: false
 seed: ${seed}

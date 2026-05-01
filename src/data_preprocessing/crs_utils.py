@@ -15,7 +15,10 @@ def get_point_utm_crs(lon: float, lat: float) -> str:
     :return: UTM crs code
     """
     utm_zone = int((lon + 180) / 6) + 1
-    is_northern = lat >= 0
+    # Snap points within 0.1° of the equator to the northern zone to avoid
+    # cross-equator UTM reprojection in reproject_dataset(), which can produce
+    # degenerate transforms and stall indefinitely.
+    is_northern = lat >= -0.1
     utm_crs = f"EPSG:{32600 + utm_zone if is_northern else 32700 + utm_zone}"
     return utm_crs
 

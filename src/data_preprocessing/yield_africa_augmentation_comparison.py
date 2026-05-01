@@ -31,17 +31,18 @@ import warnings
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import xgboost as xgb
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import GroupShuffleSplit, cross_val_score
 from sklearn.preprocessing import StandardScaler
-import xgboost as xgb
 
 warnings.filterwarnings("ignore")
 
@@ -55,17 +56,20 @@ YEAR_COL = "year"
 
 NDVI_MONTHLY_COLS = [f"feat_ndvi_month_{m}" for m in range(1, 13)]
 NDVI_SEASONAL_COLS = [
-    "feat_ndvi_mean_djf", "feat_ndvi_mean_mam",
-    "feat_ndvi_mean_jja", "feat_ndvi_mean_son", "feat_ndvi_mean_grow",
+    "feat_ndvi_mean_djf",
+    "feat_ndvi_mean_mam",
+    "feat_ndvi_mean_jja",
+    "feat_ndvi_mean_son",
+    "feat_ndvi_mean_grow",
 ]
 NDVI_COLS = NDVI_MONTHLY_COLS + NDVI_SEASONAL_COLS
 
 _AGERA5_VARS = ["tmax", "tmin", "tavg", "vp", "ws", "prec", "rad", "snow"]
 _AGERA5_SEASONS = ["mam", "jja", "son", "djf", "grow"]
-AGERA5_COLS = (
-    [f"feat_agera5_{v}_{s}" for v in _AGERA5_VARS for s in _AGERA5_SEASONS]
-    + ["feat_agera5_gdd10_grow", "feat_agera5_wetdays_grow"]
-)
+AGERA5_COLS = [f"feat_agera5_{v}_{s}" for v in _AGERA5_VARS for s in _AGERA5_SEASONS] + [
+    "feat_agera5_gdd10_grow",
+    "feat_agera5_wetdays_grow",
+]
 
 # Known augmentation column sets, in display order
 # "key_cols" is the subset used for the --complete_only completeness check:
@@ -78,16 +82,31 @@ AGERA5_COLS = (
 MERGED_COLS = NDVI_COLS + AGERA5_COLS
 
 AUGMENTATION_DEFS = {
-    "NDVI":   {"cols": NDVI_COLS,   "key_cols": NDVI_SEASONAL_COLS, "color": "#6ACC65", "label": "Base+NDVI"},
-    "AgERA5": {"cols": AGERA5_COLS, "key_cols": AGERA5_COLS, "sentinel_col": "agera5_fetched",
-               "color": "#E07B54", "label": "Base+AgERA5"},
-    "Merged": {"cols": MERGED_COLS, "key_cols": NDVI_SEASONAL_COLS + AGERA5_COLS,
-               "sentinel_col": "agera5_fetched", "color": "#9B59B6", "label": "Merged"},
+    "NDVI": {
+        "cols": NDVI_COLS,
+        "key_cols": NDVI_SEASONAL_COLS,
+        "color": "#6ACC65",
+        "label": "Base+NDVI",
+    },
+    "AgERA5": {
+        "cols": AGERA5_COLS,
+        "key_cols": AGERA5_COLS,
+        "sentinel_col": "agera5_fetched",
+        "color": "#E07B54",
+        "label": "Base+AgERA5",
+    },
+    "Merged": {
+        "cols": MERGED_COLS,
+        "key_cols": NDVI_SEASONAL_COLS + AGERA5_COLS,
+        "sentinel_col": "agera5_fetched",
+        "color": "#9B59B6",
+        "label": "Merged",
+    },
 }
 
 PALETTE = {
-    "Base":        "#4878CF",
-    "Base+NDVI":   "#6ACC65",
+    "Base": "#4878CF",
+    "Base+NDVI": "#6ACC65",
     "Base+AgERA5": "#E07B54",
     "Merged": "#9B59B6",
 }
@@ -96,6 +115,7 @@ PALETTE = {
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def sep(title: str = "", width: int = 72) -> None:
     if title:
@@ -133,13 +153,13 @@ def _apply_complete_filter(
     aligned: dict[str, pd.DataFrame],
     complete_only: bool,
 ) -> dict[str, pd.DataFrame]:
-    """When complete_only=True, restrict all datasets to rows where every augmented
-    dataset has non-null values in its key augmentation columns.
+    """When complete_only=True, restrict all datasets to rows where every augmented dataset has
+    non-null values in its key augmentation columns.
 
-    The completeness criterion is evaluated per augmentation using its "key_cols"
-    (seasonal aggregates for NDVI; all columns for AgERA5).  Rows that pass for all
-    augmentations present in *aligned* are kept; the Base dataset is filtered to the
-    same (name_loc, year) pairs so the comparison remains fair.
+    The completeness criterion is evaluated per augmentation using its "key_cols" (seasonal
+    aggregates for NDVI; all columns for AgERA5).  Rows that pass for all augmentations present in
+    *aligned* are kept; the Base dataset is filtered to the same (name_loc, year) pairs so the
+    comparison remains fair.
     """
     if not complete_only:
         return aligned
@@ -171,9 +191,13 @@ def _apply_complete_filter(
                     f"  Re-run yield_africa_augment_{aug_key.lower()}.py to regenerate the CSV\n"
                     f"  with the sentinel column, then retry --complete_only."
                 )
-            key_cols = [c for c in aug_def.get("key_cols", aug_def.get("cols", [])) if c in df.columns]
+            key_cols = [
+                c for c in aug_def.get("key_cols", aug_def.get("cols", [])) if c in df.columns
+            ]
             if not key_cols:
-                print(f"  [{label}] No key augmentation columns or sentinel found — skipping completeness filter.")
+                print(
+                    f"  [{label}] No key augmentation columns or sentinel found — skipping completeness filter."
+                )
                 continue
             complete_mask = df[key_cols].notna().all(axis=1)
             criterion = f"all {len(key_cols)} key {aug_key} columns non-null (NaN-check fallback)"
@@ -212,22 +236,29 @@ def _apply_complete_filter(
 # Loading
 # ---------------------------------------------------------------------------
 
+
 def load_datasets(paths: dict[str, Path]) -> dict[str, pd.DataFrame]:
-    """Load each CSV and return {label: df}. 'Base' must be present."""
+    """Load each CSV and return {label: df}.
+
+    'Base' must be present.
+    """
     sep("Loading CSVs")
     datasets: dict[str, pd.DataFrame] = {}
     for label, path in paths.items():
         df = pd.read_csv(path)
         datasets[label] = df
         feats = len(_feat_cols(df))
-        print(f"  {label:12s}: {df.shape[0]:,} rows × {df.shape[1]} cols  "
-              f"({feats} feat_*)  [{path.name}]")
+        print(
+            f"  {label:12s}: {df.shape[0]:,} rows × {df.shape[1]} cols  "
+            f"({feats} feat_*)  [{path.name}]"
+        )
     return datasets
 
 
 # ---------------------------------------------------------------------------
 # Coverage
 # ---------------------------------------------------------------------------
+
 
 def coverage_report(datasets: dict[str, pd.DataFrame]) -> None:
     sep("Row coverage vs. Base")
@@ -247,7 +278,7 @@ def coverage_report(datasets: dict[str, pd.DataFrame]) -> None:
         print(f"    {label}-only : {len(only_aug):,}")
         if only_base:
             cc = base.loc[base["name_loc"].isin(only_base), COUNTRY_COL].value_counts()
-            print(f"    Base-only by country: " + ", ".join(f"{c}={n}" for c, n in cc.items()))
+            print("    Base-only by country: " + ", ".join(f"{c}={n}" for c, n in cc.items()))
 
     # Country × dataset count table
     sep("Sample counts by country")
@@ -279,6 +310,7 @@ def coverage_report(datasets: dict[str, pd.DataFrame]) -> None:
 # Feature set comparison
 # ---------------------------------------------------------------------------
 
+
 def feature_set_report(datasets: dict[str, pd.DataFrame]) -> None:
     sep("Feature set comparison")
     base_feats = set(_feat_cols(datasets["Base"]))
@@ -290,21 +322,27 @@ def feature_set_report(datasets: dict[str, pd.DataFrame]) -> None:
         aug_feats = set(_feat_cols(df))
         added = sorted(aug_feats - base_feats)
         removed = sorted(base_feats - aug_feats)
-        print(f"\n  [{label}]: {len(aug_feats)} feat_* total  "
-              f"(+{len(added)} added, -{len(removed)} removed vs Base)")
+        print(
+            f"\n  [{label}]: {len(aug_feats)} feat_* total  "
+            f"(+{len(added)} added, -{len(removed)} removed vs Base)"
+        )
 
         if added:
             total = len(df)
-            print(f"  {'Column':40s}  {'Non-null':>10s}  {'NaN':>10s}  "
-                  f"{'Min':>7s}  {'Max':>7s}  {'Mean':>7s}")
+            print(
+                f"  {'Column':40s}  {'Non-null':>10s}  {'NaN':>10s}  "
+                f"{'Min':>7s}  {'Max':>7s}  {'Mean':>7s}"
+            )
             print("  " + "─" * 88)
             for col in added:
                 nn = df[col].notna().sum()
                 mn = df[col].min() if nn > 0 else float("nan")
                 mx = df[col].max() if nn > 0 else float("nan")
                 mu = df[col].mean() if nn > 0 else float("nan")
-                print(f"  {col:40s}  {_pct(nn, total):>10s}  "
-                      f"{_pct(total - nn, total):>10s}  {mn:7.3f}  {mx:7.3f}  {mu:7.3f}")
+                print(
+                    f"  {col:40s}  {_pct(nn, total):>10s}  "
+                    f"{_pct(total - nn, total):>10s}  {mn:7.3f}  {mx:7.3f}  {mu:7.3f}"
+                )
 
         if removed:
             print(f"  Removed vs Base: {removed}")
@@ -338,6 +376,7 @@ def feature_set_report(datasets: dict[str, pd.DataFrame]) -> None:
 # RF: train + evaluate one dataset
 # ---------------------------------------------------------------------------
 
+
 def _run_rf(
     df: pd.DataFrame,
     feat_cols: list[str],
@@ -352,12 +391,12 @@ def _run_rf(
 
     gss = GroupShuffleSplit(n_splits=5, test_size=0.2, random_state=seed)
     rf_cv = RandomForestRegressor(n_estimators=n_trees, n_jobs=-1, random_state=seed)
-    cv_r2   = cross_val_score(rf_cv, X, y, cv=gss, groups=groups, scoring="r2")
-    cv_mae  = cross_val_score(rf_cv, X, y, cv=gss, groups=groups,
-                              scoring="neg_mean_absolute_error")
-    cv_rmse = cross_val_score(rf_cv, X, y, cv=gss, groups=groups,
-                              scoring="neg_root_mean_squared_error")
-    print(f"    CV R²   : {cv_r2.mean():.3f} ± {cv_r2.std():.3f}  (folds: {np.round(cv_r2,3)})")
+    cv_r2 = cross_val_score(rf_cv, X, y, cv=gss, groups=groups, scoring="r2")
+    cv_mae = cross_val_score(rf_cv, X, y, cv=gss, groups=groups, scoring="neg_mean_absolute_error")
+    cv_rmse = cross_val_score(
+        rf_cv, X, y, cv=gss, groups=groups, scoring="neg_root_mean_squared_error"
+    )
+    print(f"    CV R²   : {cv_r2.mean():.3f} ± {cv_r2.std():.3f}  (folds: {np.round(cv_r2, 3)})")
     print(f"    CV MAE  : {-cv_mae.mean():.3f} ± {cv_mae.std():.3f} t/ha")
     print(f"    CV RMSE : {-cv_rmse.mean():.3f} ± {cv_rmse.std():.3f} t/ha")
 
@@ -368,22 +407,32 @@ def _run_rf(
     y_pred = rf.predict(X.iloc[test_idx])
     y_test = y.iloc[test_idx]
 
-    r2   = r2_score(y_test, y_pred)
-    mae  = mean_absolute_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    mae = mean_absolute_error(y_test, y_pred)
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
     base_mae = mean_absolute_error(y_test, np.full(len(y_test), y.iloc[train_idx].mean()))
 
     print(f"    Holdout R²  : {r2:.3f}")
-    print(f"    Holdout MAE : {mae:.3f} t/ha  (baseline: {base_mae:.3f} t/ha, "
-          f"skill: {1 - mae/base_mae:.3f})")
+    print(
+        f"    Holdout MAE : {mae:.3f} t/ha  (baseline: {base_mae:.3f} t/ha, "
+        f"skill: {1 - mae/base_mae:.3f})"
+    )
     print(f"    Holdout RMSE: {rmse:.3f} t/ha")
 
     return {
-        "rf": rf, "model": rf, "X": X, "y": y,
-        "train_idx": train_idx, "test_idx": test_idx,
-        "cv_r2_mean": cv_r2.mean(), "cv_r2_std": cv_r2.std(),
-        "cv_mae_mean": -cv_mae.mean(), "cv_rmse_mean": -cv_rmse.mean(),
-        "holdout_r2": r2, "holdout_mae": mae, "holdout_rmse": rmse,
+        "rf": rf,
+        "model": rf,
+        "X": X,
+        "y": y,
+        "train_idx": train_idx,
+        "test_idx": test_idx,
+        "cv_r2_mean": cv_r2.mean(),
+        "cv_r2_std": cv_r2.std(),
+        "cv_mae_mean": -cv_mae.mean(),
+        "cv_rmse_mean": -cv_rmse.mean(),
+        "holdout_r2": r2,
+        "holdout_mae": mae,
+        "holdout_rmse": rmse,
         "baseline_mae": base_mae,
     }
 
@@ -391,6 +440,7 @@ def _run_rf(
 # ---------------------------------------------------------------------------
 # RF comparison: all datasets on their common location set
 # ---------------------------------------------------------------------------
+
 
 def rf_comparison(
     datasets: dict[str, pd.DataFrame],
@@ -423,16 +473,20 @@ def rf_comparison(
     # Delta table vs Base
     sep("Performance delta vs. Base")
     m_base = results["Base"]
-    print(f"  {'Dataset':14s}  {'CV R²':>8s}  {'ΔCV R²':>8s}  "
-          f"{'HO R²':>8s}  {'ΔHO R²':>8s}  {'HO MAE':>8s}  {'ΔMAE':>8s}")
+    print(
+        f"  {'Dataset':14s}  {'CV R²':>8s}  {'ΔCV R²':>8s}  "
+        f"{'HO R²':>8s}  {'ΔHO R²':>8s}  {'HO MAE':>8s}  {'ΔMAE':>8s}"
+    )
     print("  " + "─" * 76)
     for label, res in results.items():
         dr2_cv = res["cv_r2_mean"] - m_base["cv_r2_mean"]
         dr2_ho = res["holdout_r2"] - m_base["holdout_r2"]
-        dmae   = res["holdout_mae"] - m_base["holdout_mae"]
-        print(f"  {label:14s}  {res['cv_r2_mean']:8.3f}  {dr2_cv:+8.3f}  "
-              f"{res['holdout_r2']:8.3f}  {dr2_ho:+8.3f}  "
-              f"{res['holdout_mae']:8.3f}  {dmae:+8.3f}")
+        dmae = res["holdout_mae"] - m_base["holdout_mae"]
+        print(
+            f"  {label:14s}  {res['cv_r2_mean']:8.3f}  {dr2_cv:+8.3f}  "
+            f"{res['holdout_r2']:8.3f}  {dr2_ho:+8.3f}  "
+            f"{res['holdout_mae']:8.3f}  {dmae:+8.3f}"
+        )
 
     # Bar chart
     labels = list(results.keys())
@@ -440,16 +494,25 @@ def rf_comparison(
     fig, axes = plt.subplots(1, 3, figsize=(5 * len(labels), 4))
     for ax, (metric_key, metric_label) in zip(
         axes,
-        [("cv_r2_mean", "CV R²"), ("holdout_r2", "Holdout R²"), ("holdout_mae", "Holdout MAE (t/ha)")],
+        [
+            ("cv_r2_mean", "CV R²"),
+            ("holdout_r2", "Holdout R²"),
+            ("holdout_mae", "Holdout MAE (t/ha)"),
+        ],
     ):
         vals = [results[lb][metric_key] for lb in labels]
         bars = ax.bar(labels, vals, color=colors, width=0.5)
         ax.set_title(metric_label, fontsize=10)
         ax.set_ylabel(metric_label)
         for bar, v in zip(bars, vals):
-            ax.text(bar.get_x() + bar.get_width() / 2,
-                    bar.get_height() + 0.003 * (1 if metric_key != "holdout_mae" else -1),
-                    f"{v:.3f}", ha="center", va="bottom", fontsize=8)
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 0.003 * (1 if metric_key != "holdout_mae" else -1),
+                f"{v:.3f}",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+            )
         ax.tick_params(axis="x", rotation=15)
     plt.suptitle("Random Forest performance by dataset", fontsize=11)
     plt.tight_layout()
@@ -463,6 +526,7 @@ def rf_comparison(
 # ---------------------------------------------------------------------------
 # XGBoost: train + evaluate one dataset
 # ---------------------------------------------------------------------------
+
 
 def _run_xgb(
     df: pd.DataFrame,
@@ -487,12 +551,14 @@ def _run_xgb(
         verbosity=0,
     )
     gss = GroupShuffleSplit(n_splits=5, test_size=0.2, random_state=seed)
-    cv_r2   = cross_val_score(model_cv, X, y, cv=gss, groups=groups, scoring="r2")
-    cv_mae  = cross_val_score(model_cv, X, y, cv=gss, groups=groups,
-                              scoring="neg_mean_absolute_error")
-    cv_rmse = cross_val_score(model_cv, X, y, cv=gss, groups=groups,
-                              scoring="neg_root_mean_squared_error")
-    print(f"    CV R²   : {cv_r2.mean():.3f} ± {cv_r2.std():.3f}  (folds: {np.round(cv_r2,3)})")
+    cv_r2 = cross_val_score(model_cv, X, y, cv=gss, groups=groups, scoring="r2")
+    cv_mae = cross_val_score(
+        model_cv, X, y, cv=gss, groups=groups, scoring="neg_mean_absolute_error"
+    )
+    cv_rmse = cross_val_score(
+        model_cv, X, y, cv=gss, groups=groups, scoring="neg_root_mean_squared_error"
+    )
+    print(f"    CV R²   : {cv_r2.mean():.3f} ± {cv_r2.std():.3f}  (folds: {np.round(cv_r2, 3)})")
     print(f"    CV MAE  : {-cv_mae.mean():.3f} ± {cv_mae.std():.3f} t/ha")
     print(f"    CV RMSE : {-cv_rmse.mean():.3f} ± {cv_rmse.std():.3f} t/ha")
 
@@ -512,22 +578,31 @@ def _run_xgb(
     y_pred = model.predict(X.iloc[test_idx])
     y_test = y.iloc[test_idx]
 
-    r2   = r2_score(y_test, y_pred)
-    mae  = mean_absolute_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    mae = mean_absolute_error(y_test, y_pred)
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
     base_mae = mean_absolute_error(y_test, np.full(len(y_test), y.iloc[train_idx].mean()))
 
     print(f"    Holdout R²  : {r2:.3f}")
-    print(f"    Holdout MAE : {mae:.3f} t/ha  (baseline: {base_mae:.3f} t/ha, "
-          f"skill: {1 - mae/base_mae:.3f})")
+    print(
+        f"    Holdout MAE : {mae:.3f} t/ha  (baseline: {base_mae:.3f} t/ha, "
+        f"skill: {1 - mae/base_mae:.3f})"
+    )
     print(f"    Holdout RMSE: {rmse:.3f} t/ha")
 
     return {
-        "model": model, "X": X, "y": y,
-        "train_idx": train_idx, "test_idx": test_idx,
-        "cv_r2_mean": cv_r2.mean(), "cv_r2_std": cv_r2.std(),
-        "cv_mae_mean": -cv_mae.mean(), "cv_rmse_mean": -cv_rmse.mean(),
-        "holdout_r2": r2, "holdout_mae": mae, "holdout_rmse": rmse,
+        "model": model,
+        "X": X,
+        "y": y,
+        "train_idx": train_idx,
+        "test_idx": test_idx,
+        "cv_r2_mean": cv_r2.mean(),
+        "cv_r2_std": cv_r2.std(),
+        "cv_mae_mean": -cv_mae.mean(),
+        "cv_rmse_mean": -cv_rmse.mean(),
+        "holdout_r2": r2,
+        "holdout_mae": mae,
+        "holdout_rmse": rmse,
         "baseline_mae": base_mae,
     }
 
@@ -535,6 +610,7 @@ def _run_xgb(
 # ---------------------------------------------------------------------------
 # XGBoost comparison: all datasets on their common location set
 # ---------------------------------------------------------------------------
+
 
 def xgb_comparison(
     datasets: dict[str, pd.DataFrame],
@@ -565,16 +641,20 @@ def xgb_comparison(
     # Delta table vs Base
     sep("XGBoost performance delta vs. Base")
     m_base = results["Base"]
-    print(f"  {'Dataset':14s}  {'CV R²':>8s}  {'ΔCV R²':>8s}  "
-          f"{'HO R²':>8s}  {'ΔHO R²':>8s}  {'HO MAE':>8s}  {'ΔMAE':>8s}")
+    print(
+        f"  {'Dataset':14s}  {'CV R²':>8s}  {'ΔCV R²':>8s}  "
+        f"{'HO R²':>8s}  {'ΔHO R²':>8s}  {'HO MAE':>8s}  {'ΔMAE':>8s}"
+    )
     print("  " + "─" * 76)
     for label, res in results.items():
         dr2_cv = res["cv_r2_mean"] - m_base["cv_r2_mean"]
         dr2_ho = res["holdout_r2"] - m_base["holdout_r2"]
-        dmae   = res["holdout_mae"] - m_base["holdout_mae"]
-        print(f"  {label:14s}  {res['cv_r2_mean']:8.3f}  {dr2_cv:+8.3f}  "
-              f"{res['holdout_r2']:8.3f}  {dr2_ho:+8.3f}  "
-              f"{res['holdout_mae']:8.3f}  {dmae:+8.3f}")
+        dmae = res["holdout_mae"] - m_base["holdout_mae"]
+        print(
+            f"  {label:14s}  {res['cv_r2_mean']:8.3f}  {dr2_cv:+8.3f}  "
+            f"{res['holdout_r2']:8.3f}  {dr2_ho:+8.3f}  "
+            f"{res['holdout_mae']:8.3f}  {dmae:+8.3f}"
+        )
 
     # Bar chart
     labels = list(results.keys())
@@ -582,16 +662,25 @@ def xgb_comparison(
     fig, axes = plt.subplots(1, 3, figsize=(5 * len(labels), 4))
     for ax, (metric_key, metric_label) in zip(
         axes,
-        [("cv_r2_mean", "CV R²"), ("holdout_r2", "Holdout R²"), ("holdout_mae", "Holdout MAE (t/ha)")],
+        [
+            ("cv_r2_mean", "CV R²"),
+            ("holdout_r2", "Holdout R²"),
+            ("holdout_mae", "Holdout MAE (t/ha)"),
+        ],
     ):
         vals = [results[lb][metric_key] for lb in labels]
         bars = ax.bar(labels, vals, color=colors, width=0.5)
         ax.set_title(metric_label, fontsize=10)
         ax.set_ylabel(metric_label)
         for bar, v in zip(bars, vals):
-            ax.text(bar.get_x() + bar.get_width() / 2,
-                    bar.get_height() + 0.003 * (1 if metric_key != "holdout_mae" else -1),
-                    f"{v:.3f}", ha="center", va="bottom", fontsize=8)
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 0.003 * (1 if metric_key != "holdout_mae" else -1),
+                f"{v:.3f}",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+            )
         ax.tick_params(axis="x", rotation=15)
     plt.suptitle("XGBoost performance by dataset", fontsize=11)
     plt.tight_layout()
@@ -605,6 +694,7 @@ def xgb_comparison(
 # ---------------------------------------------------------------------------
 # Feature importance per augmentation
 # ---------------------------------------------------------------------------
+
 
 def augmentation_importance_reports(
     results: dict[str, dict],
@@ -622,7 +712,7 @@ def augmentation_importance_reports(
         if label == "Base":
             continue
         aug_key = _aug_name(label)
-        aug_def  = AUGMENTATION_DEFS.get(aug_key, {})
+        aug_def = AUGMENTATION_DEFS.get(aug_key, {})
         aug_cols = set(aug_def.get("cols", [])) & set(res["X"].columns)
         aug_color = aug_def.get("color", "#888888")
 
@@ -633,16 +723,19 @@ def augmentation_importance_reports(
         perm = permutation_importance(
             res["model"], X_test, y_test, n_repeats=10, random_state=seed, n_jobs=1
         )
-        imp_df = pd.DataFrame({
-            "mdi":       res["model"].feature_importances_,
-            "perm_mean": perm.importances_mean,
-            "perm_std":  perm.importances_std,
-        }, index=res["X"].columns).sort_values("perm_mean", ascending=False)
+        imp_df = pd.DataFrame(
+            {
+                "mdi": res["model"].feature_importances_,
+                "perm_mean": perm.importances_mean,
+                "perm_std": perm.importances_std,
+            },
+            index=res["X"].columns,
+        ).sort_values("perm_mean", ascending=False)
 
-        aug_imp  = imp_df[imp_df.index.isin(aug_cols)]
+        aug_imp = imp_df[imp_df.index.isin(aug_cols)]
         base_imp = imp_df[~imp_df.index.isin(aug_cols)]
-        total    = imp_df["perm_mean"].sum()
-        aug_share  = 100 * aug_imp["perm_mean"].sum() / total if total > 0 else 0.0
+        total = imp_df["perm_mean"].sum()
+        aug_share = 100 * aug_imp["perm_mean"].sum() / total if total > 0 else 0.0
         base_share = 100 * base_imp["perm_mean"].sum() / total if total > 0 else 0.0
 
         group_shares[label] = {"Base features": base_share, aug_key: aug_share}
@@ -655,8 +748,10 @@ def augmentation_importance_reports(
         print("    " + "─" * 72)
         for feat, row in imp_df.head(15).iterrows():
             src = aug_key if feat in aug_cols else "Base"
-            print(f"    {feat:40s}  {row.perm_mean:7.4f}  {row.perm_std:6.4f}  "
-                  f"{row.mdi:7.4f}  {src}")
+            print(
+                f"    {feat:40s}  {row.perm_mean:7.4f}  {row.perm_std:6.4f}  "
+                f"{row.mdi:7.4f}  {src}"
+            )
 
         # Augmented-feature-only ranking
         if not aug_imp.empty:
@@ -666,8 +761,10 @@ def augmentation_importance_reports(
             feat_list = list(imp_df.index)
             for feat, row in aug_imp.iterrows():
                 rank = feat_list.index(feat) + 1
-                print(f"    {feat:40s}  {row.perm_mean:7.4f}  {row.perm_std:6.4f}  "
-                      f"{'#' + str(rank):>12s}")
+                print(
+                    f"    {feat:40s}  {row.perm_mean:7.4f}  {row.perm_std:6.4f}  "
+                    f"{'#' + str(rank):>12s}"
+                )
 
         # Figure: top-20 importance (augmented features highlighted) + pie of group share
         fig, axes = plt.subplots(1, 2, figsize=(14, 5))
@@ -675,25 +772,41 @@ def augmentation_importance_reports(
         top20 = imp_df.head(20)
         bar_colors = [aug_color if f in aug_cols else "#4878CF" for f in top20.index]
         y_pos = range(len(top20))
-        axes[0].barh(list(y_pos), top20["perm_mean"].values[::-1],
-                     xerr=top20["perm_std"].values[::-1],
-                     color=bar_colors[::-1], ecolor="gray", capsize=3)
+        axes[0].barh(
+            list(y_pos),
+            top20["perm_mean"].values[::-1],
+            xerr=top20["perm_std"].values[::-1],
+            color=bar_colors[::-1],
+            ecolor="gray",
+            capsize=3,
+        )
         axes[0].set_yticks(list(y_pos))
         axes[0].set_yticklabels(list(top20.index[::-1]), fontsize=8)
         axes[0].set_xlabel("Mean permutation importance (R² decrease)")
-        axes[0].set_title(f"Top-20 features [{label}]\n"
-                          f"({aug_color} = {aug_key}, blue = base)")
+        axes[0].set_title(f"Top-20 features [{label}]\n" f"({aug_color} = {aug_key}, blue = base)")
 
         pie_labels = ["Base features", f"{aug_key} features"]
-        pie_vals   = np.array([base_share, aug_share])
+        pie_vals = np.array([base_share, aug_share])
         pie_colors = ["#4878CF", aug_color]
         pie_vals_clipped = np.maximum(pie_vals, 0)
         if pie_vals_clipped.sum() > 0:
-            axes[1].pie(pie_vals_clipped, labels=pie_labels, colors=pie_colors,
-                        autopct="%1.1f%%", startangle=90)
+            axes[1].pie(
+                pie_vals_clipped,
+                labels=pie_labels,
+                colors=pie_colors,
+                autopct="%1.1f%%",
+                startangle=90,
+            )
         else:
-            axes[1].text(0.5, 0.5, "Net-negative importance\n(augmentation features hurt model)",
-                         ha="center", va="center", transform=axes[1].transAxes, fontsize=10)
+            axes[1].text(
+                0.5,
+                0.5,
+                "Net-negative importance\n(augmentation features hurt model)",
+                ha="center",
+                va="center",
+                transform=axes[1].transAxes,
+                fontsize=10,
+            )
             axes[1].axis("off")
         axes[1].set_title(f"Permutation importance share\n[{label}]")
 
@@ -710,11 +823,13 @@ def augmentation_importance_reports(
         x = np.arange(len(aug_labels))
         w = 0.35
         base_shares = [group_shares[lb]["Base features"] for lb in aug_labels]
-        aug_sh      = [group_shares[lb].get(_aug_name(lb), 0) for lb in aug_labels]
-        aug_colors  = [AUGMENTATION_DEFS.get(_aug_name(lb), {}).get("color", "#888") for lb in aug_labels]
-        ax.bar(x - w/2, base_shares, w, label="Base features", color="#4878CF")
+        aug_sh = [group_shares[lb].get(_aug_name(lb), 0) for lb in aug_labels]
+        aug_colors = [
+            AUGMENTATION_DEFS.get(_aug_name(lb), {}).get("color", "#888") for lb in aug_labels
+        ]
+        ax.bar(x - w / 2, base_shares, w, label="Base features", color="#4878CF")
         for i, (lb, sh, col) in enumerate(zip(aug_labels, aug_sh, aug_colors)):
-            ax.bar(x[i] + w/2, sh, w, color=col, label=f"{_aug_name(lb)} features")
+            ax.bar(x[i] + w / 2, sh, w, color=col, label=f"{_aug_name(lb)} features")
         ax.set_xticks(x)
         ax.set_xticklabels(aug_labels)
         ax.set_ylabel("% of total permutation importance")
@@ -729,6 +844,7 @@ def augmentation_importance_reports(
 # ---------------------------------------------------------------------------
 # PCA: dimensionality and independent signal
 # ---------------------------------------------------------------------------
+
 
 def pca_comparison(
     datasets: dict[str, pd.DataFrame],
@@ -768,9 +884,10 @@ def pca_comparison(
     for label, df in datasets.items():
         if label == "Base":
             continue
-        aug_key  = _aug_name(label)
-        aug_cols_present = [c for c in AUGMENTATION_DEFS.get(aug_key, {}).get("cols", [])
-                            if c in df.columns]
+        aug_key = _aug_name(label)
+        aug_cols_present = [
+            c for c in AUGMENTATION_DEFS.get(aug_key, {}).get("cols", []) if c in df.columns
+        ]
         aligned = df[df["name_loc"].isin(common_locs)]
         all_feats = _feat_cols(aligned)
         print()
@@ -787,8 +904,10 @@ def pca_comparison(
             for t in (0.80, 0.90):
                 n = int(np.searchsorted(cumvar_aug, t) + 1)
                 redundancy = (1 - n / len(aug_cols_present)) * 100
-                print(f"      {int(t*100)}% variance → {n} / {len(aug_cols_present)} components "
-                      f"(internal redundancy: {redundancy:.0f}%)")
+                print(
+                    f"      {int(t*100)}% variance → {n} / {len(aug_cols_present)} components "
+                    f"(internal redundancy: {redundancy:.0f}%)"
+                )
 
     # Scree plot
     fig, ax = plt.subplots(figsize=(10, 4))
@@ -796,9 +915,14 @@ def pca_comparison(
         color = PALETTE.get(label, "#888888")
         n = min(len(cumvar), 60)
         feats = _feat_cols(datasets[label])
-        ax.plot(range(1, n + 1), cumvar[:n] * 100, label=f"{label} ({len(feats)} feats)",
-                color=color, linewidth=1.8,
-                linestyle="-" if label == "Base" else "--")
+        ax.plot(
+            range(1, n + 1),
+            cumvar[:n] * 100,
+            label=f"{label} ({len(feats)} feats)",
+            color=color,
+            linewidth=1.8,
+            linestyle="-" if label == "Base" else "--",
+        )
     for t in (80, 90, 95):
         ax.axhline(t, color="gray", linestyle=":", linewidth=0.8)
         ax.text(60 * 0.98, t + 0.5, f"{t}%", ha="right", fontsize=8, color="gray")
@@ -815,6 +939,7 @@ def pca_comparison(
 # ---------------------------------------------------------------------------
 # Per-country R²
 # ---------------------------------------------------------------------------
+
 
 def per_country_comparison(
     results: dict[str, dict],
@@ -833,9 +958,16 @@ def per_country_comparison(
                 continue
             y_t = res["y"].iloc[res["test_idx"]].values[mask]
             y_p = res["model"].predict(res["X"].iloc[res["test_idx"]])[mask]
-            r2  = r2_score(y_t, y_p) if len(y_t) > 1 else float("nan")
-            rows.append({"country": country, "model": label, "n": mask.sum(),
-                         "r2": r2, "mae": mean_absolute_error(y_t, y_p)})
+            r2 = r2_score(y_t, y_p) if len(y_t) > 1 else float("nan")
+            rows.append(
+                {
+                    "country": country,
+                    "model": label,
+                    "n": mask.sum(),
+                    "r2": r2,
+                    "mae": mean_absolute_error(y_t, y_p),
+                }
+            )
 
     res_df = pd.DataFrame(rows)
     labels = list(results.keys())
@@ -863,11 +995,12 @@ def per_country_comparison(
     x = np.arange(len(all_countries))
     w = 0.8 / n_models
     for i, lb in enumerate(labels):
-        vals = [pivot.loc[c, lb] if c in pivot.index and lb in pivot.columns
-                else float("nan") for c in all_countries]
+        vals = [
+            pivot.loc[c, lb] if c in pivot.index and lb in pivot.columns else float("nan")
+            for c in all_countries
+        ]
         offset = (i - n_models / 2 + 0.5) * w
-        ax.bar(x + offset, vals, w, label=lb,
-               color=PALETTE.get(lb, "#888888"))
+        ax.bar(x + offset, vals, w, label=lb, color=PALETTE.get(lb, "#888888"))
     ax.axhline(0, color="black", linewidth=0.8, linestyle="--")
     ax.set_xticks(x)
     ax.set_xticklabels(all_countries)
@@ -883,6 +1016,7 @@ def per_country_comparison(
 # ---------------------------------------------------------------------------
 # Hydra config recommendations
 # ---------------------------------------------------------------------------
+
 
 def hydra_recommendations(
     datasets: dict[str, pd.DataFrame],
@@ -907,8 +1041,10 @@ def hydra_recommendations(
     for rank, (lb, res) in enumerate(ranking, 1):
         dr2 = res["cv_r2_mean"] - m_base["cv_r2_mean"]
         delta = f"  (Δ={dr2:+.3f} vs Base)" if lb != "Base" else ""
-        print(f"  #{rank}  {lb:14s}  CV R²={res['cv_r2_mean']:.3f}  "
-              f"HO R²={res['holdout_r2']:.3f}  MAE={res['holdout_mae']:.3f} t/ha{delta}")
+        print(
+            f"  #{rank}  {lb:14s}  CV R²={res['cv_r2_mean']:.3f}  "
+            f"HO R²={res['holdout_r2']:.3f}  MAE={res['holdout_mae']:.3f} t/ha{delta}"
+        )
 
     best_label, best_res = ranking[0]
     best_dr2_cv = best_res["cv_r2_mean"] - m_base["cv_r2_mean"]
@@ -917,16 +1053,19 @@ def hydra_recommendations(
     # Tabular dim for each dataset (injected at runtime: +1 year, +6 Fourier; no country OH)
     print("\nEXPECTED TABULAR DIMENSIONS  (use_country_features=False)")
     print("────────────────────────────────────────────────────────")
-    print(f"  {'Dataset':14s}  {'CSV feat_*':>10s}  {'+ injected':>10s}  {'= total':>8s}  CSV name")
+    print(
+        f"  {'Dataset':14s}  {'CSV feat_*':>10s}  {'+ injected':>10s}  {'= total':>8s}  CSV name"
+    )
     print("  " + "─" * 72)
     for lb, df in datasets.items():
         csv_feats = len(_feat_cols(df))
-        injected = 7   # feat_year + 6 Fourier harmonics (no country one-hots)
+        injected = 7  # feat_year + 6 Fourier harmonics (no country one-hots)
         total = csv_feats + injected
         csv_name = f"model_ready_yield_africa_{'base' if lb == 'Base' else lb.lower().replace('+', '').replace(' ', '')}.csv"
         print(f"  {lb:14s}  {csv_feats:>10d}  {injected:>10d}  {total:>8d}  {csv_name}")
 
-    print(f"""
+    print(
+        """
 HYDRA CONFIG SNIPPETS
 ─────────────────────
   1. Set DATA_DIR in .env:
@@ -951,57 +1090,82 @@ HYDRA CONFIG SNIPPETS
      The tabular_dim is printed at dataset init — confirm from the training log.
 
 RECOMMENDATION
-──────────────""")
+──────────────"""
+    )
 
     if best_label == "Base":
-        print(f"\n  ✦ USE BASE CSV")
-        print(f"  No augmentation improves CV R² by more than 0.01.")
+        print("\n  ✦ USE BASE CSV")
+        print("  No augmentation improves CV R² by more than 0.01.")
     else:
         aug_key = _aug_name(best_label)
         meaningful = best_dr2_cv > 0.01 or best_dr2_ho > 0.01
         if meaningful:
             print(f"\n  ✦ USE {best_label.upper()} CSV")
-            print(f"  Best augmentation: {best_label}  "
-                  f"(ΔCV R²={best_dr2_cv:+.3f}, ΔHO R²={best_dr2_ho:+.3f}).")
+            print(
+                f"  Best augmentation: {best_label}  "
+                f"(ΔCV R²={best_dr2_cv:+.3f}, ΔHO R²={best_dr2_ho:+.3f})."
+            )
             if len(ranking) > 2:
                 second_lb, second_res = ranking[1]
                 if second_lb != "Base":
                     second_dr2 = second_res["cv_r2_mean"] - m_base["cv_r2_mean"]
                     gap = best_res["cv_r2_mean"] - second_res["cv_r2_mean"]
-                    print(f"  Runner-up: {second_lb} (ΔCV R²={second_dr2:+.3f}, "
-                          f"gap to winner: {gap:.3f}).")
+                    print(
+                        f"  Runner-up: {second_lb} (ΔCV R²={second_dr2:+.3f}, "
+                        f"gap to winner: {gap:.3f})."
+                    )
                     if gap < 0.01:
-                        print(f"  Gap < 0.01 — consider combining {best_label} and {second_lb} "
-                              f"if a combined CSV is available.")
+                        print(
+                            f"  Gap < 0.01 — consider combining {best_label} and {second_lb} "
+                            f"if a combined CSV is available."
+                        )
         else:
             print(f"\n  ✦ MARGINAL — differences are small (ΔCV R²={best_dr2_cv:+.3f}).")
-            print(f"  All augmentations perform similarly. Prefer base CSV for simplicity.")
+            print("  All augmentations perform similarly. Prefer base CSV for simplicity.")
 
 
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--base_csv",   required=True,
-                        help="Path to model_ready_yield_africa_base.csv")
-    parser.add_argument("--ndvi_csv",   default=None,
-                        help="Path to model_ready_yield_africa_ndvi.csv (optional)")
-    parser.add_argument("--agera5_csv", default=None,
-                        help="Path to model_ready_yield_africa_agera5.csv (optional)")
-    parser.add_argument("--merged_csv", default=None,
-                        help="Path to model_ready_yield_africa_merged.csv (optional)")
-    parser.add_argument("--out_dir",    default="data/yield_africa/analysis_augmentation",
-                        help="Output directory for figures")
-    parser.add_argument("--n_trees",    type=int, default=300,
-                        help="Number of RF trees (default: 300)")
-    parser.add_argument("--xgb_n_estimators", type=int, default=300,
-                        help="Number of XGBoost estimators (default: 300)")
-    parser.add_argument("--model",      choices=["rf", "xgb", "both"], default="both",
-                        help="Which model(s) to run: rf, xgb, or both (default: both)")
-    parser.add_argument("--seed",       type=int, default=42)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--base_csv", required=True, help="Path to model_ready_yield_africa_base.csv"
+    )
+    parser.add_argument(
+        "--ndvi_csv", default=None, help="Path to model_ready_yield_africa_ndvi.csv (optional)"
+    )
+    parser.add_argument(
+        "--agera5_csv", default=None, help="Path to model_ready_yield_africa_agera5.csv (optional)"
+    )
+    parser.add_argument(
+        "--merged_csv", default=None, help="Path to model_ready_yield_africa_merged.csv (optional)"
+    )
+    parser.add_argument(
+        "--out_dir",
+        default="data/yield_africa/analysis_augmentation",
+        help="Output directory for figures",
+    )
+    parser.add_argument(
+        "--n_trees", type=int, default=300, help="Number of RF trees (default: 300)"
+    )
+    parser.add_argument(
+        "--xgb_n_estimators",
+        type=int,
+        default=300,
+        help="Number of XGBoost estimators (default: 300)",
+    )
+    parser.add_argument(
+        "--model",
+        choices=["rf", "xgb", "both"],
+        default="both",
+        help="Which model(s) to run: rf, xgb, or both (default: both)",
+    )
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
         "--complete_only",
         action="store_true",

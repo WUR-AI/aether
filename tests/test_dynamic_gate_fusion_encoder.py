@@ -1,9 +1,11 @@
-"""Tests for the gated fusion strategy in EncoderWrapper.
+"""Tests for the dynamic_gate fusion strategy in EncoderWrapper.
 
-Static gated fusion learns one scalar logit per branch (nn.Parameter, shape [n_branches]). At
-inference time the logits are passed through softmax to produce branch weights that are identical
-for every sample in every batch — the model learns which modality to trust more, but that
-preference is fixed after training.  All branches must share the same output dim.
+Dynamic gate fusion uses a small MLP to predict per-sample branch weights from the concatenated
+branch outputs.  Unlike static gated fusion (one global scalar per branch), the weights vary with
+each input — samples can rely more heavily on one modality depending on the data.  The MLP takes a
+vector of shape [n_branches * dim] and outputs [n_branches] logits, which are passed through
+softmax to form a convex combination of branch embeddings. All branches must share the same output
+dim.
 """
 
 from typing import Dict, List, override
@@ -27,7 +29,7 @@ class _StubEncoder(BaseGeoEncoder):
         super().__init__()
         self._out_dim = output_dim
         self._key = key
-        self._linear = torch.nn.Linear(output_dim, output_dim)  # gives it parameters
+        self._linear = torch.nn.Linear(output_dim, output_dim)
 
     @override
     def _setup(self) -> List[str]:
@@ -44,7 +46,7 @@ def _make_wrapper(branch_dims=(32, 32), keys=None) -> EncoderWrapper:
     if keys is None:
         keys = [f"b{i}" for i in range(len(branch_dims))]
     branches = [{"encoder": _StubEncoder(dim, key=key)} for dim, key in zip(branch_dims, keys)]
-    wrapper = EncoderWrapper(encoder_branches=branches, fusion_strategy="gated")
+    wrapper = EncoderWrapper(encoder_branches=branches, fusion_strategy="dynamic_gate")
     wrapper.set_tabular_input_dim(None)
     wrapper.setup()
     return wrapper
@@ -75,40 +77,70 @@ def test_forward_shape():
     assert out.shape == (4, 32)
 
 
-def test_gate_logits_learnable():
-    # gate_logits must be an nn.Parameter so the optimiser picks it up.
+def test_mlp_is_module():
+    # dynamic_gate_mlp must be a proper nn.Module, not a plain callable.
     wrapper = _make_wrapper()
-    assert wrapper.gate_logits is not None
-    assert isinstance(wrapper.gate_logits, torch.nn.Parameter)
-    assert wrapper.gate_logits.requires_grad
+    assert wrapper.dynamic_gate_mlp is not None
+    assert isinstance(wrapper.dynamic_gate_mlp, torch.nn.Module)
 
 
-def test_gate_logits_in_parameters():
-    # gate_logits must appear in wrapper.parameters() so it is saved in checkpoints.
+def test_mlp_in_parameters():
+    # MLP parameters must be reachable via wrapper.parameters() so they are
+    # picked up by the optimiser and saved in checkpoints.
     wrapper = _make_wrapper()
-    param_ids = {id(p) for p in wrapper.parameters()}
-    assert id(wrapper.gate_logits) in param_ids
+    wrapper_param_ids = {id(p) for p in wrapper.parameters()}
+    mlp_param_ids = {id(p) for p in wrapper.dynamic_gate_mlp.parameters()}
+    assert mlp_param_ids.issubset(wrapper_param_ids)
 
 
-def test_uniform_init_weights():
-    # Logits are initialised to zero, so softmax gives equal weight to every branch.
-    wrapper = _make_wrapper(branch_dims=(32, 32))
-    weights = torch.softmax(wrapper.gate_logits, dim=0)
-    expected = 1.0 / len(wrapper.encoder_branches)
-    assert weights.allclose(torch.full_like(weights, expected))
+def test_mlp_parameters_require_grad():
+    wrapper = _make_wrapper()
+    assert all(p.requires_grad for p in wrapper.dynamic_gate_mlp.parameters())
 
 
-def test_gate_weights_sum_to_one():
-    # Softmax is applied over the branch axis, so weights must always sum to 1.
+def test_weights_sum_to_one_per_sample():
+    """Softmax over branches must produce weights that sum to 1.0 for every sample."""
     wrapper = _make_wrapper(branch_dims=(32, 32, 32))
+    batch = _make_batch(branch_dims=(32, 32, 32), batch_size=8)
+
+    # Replicate the gating arithmetic from forward() to inspect the raw weights.
+    branch_feats = []
     with torch.no_grad():
-        wrapper.gate_logits.copy_(torch.tensor([1.0, -0.5, 2.0]))
-    weights = torch.softmax(wrapper.gate_logits, dim=0)
-    assert weights.sum().item() == pytest.approx(1.0, abs=1e-6)
+        for i, branch in enumerate(wrapper.encoder_branches):
+            feats = branch["encoder"](batch)
+            feats = wrapper.branch_norms[i](feats)
+            branch_feats.append(feats)
+
+        stacked = torch.stack(branch_feats, dim=1)
+        gate_input = stacked.flatten(start_dim=1)
+        weights = torch.softmax(wrapper.dynamic_gate_mlp(gate_input), dim=1)
+
+    row_sums = weights.sum(dim=1)
+    assert row_sums.allclose(torch.ones(8), atol=1e-6)
+
+
+def test_weights_vary_per_sample():
+    """Weights must differ across samples — this is the key property that distinguishes
+    dynamic_gate from static gated fusion, where weights are the same for every sample."""
+    wrapper = _make_wrapper(branch_dims=(32, 32))
+    batch = _make_batch(branch_dims=(32, 32), batch_size=8)
+
+    with torch.no_grad():
+        branch_feats = []
+        for i, branch in enumerate(wrapper.encoder_branches):
+            feats = branch["encoder"](batch)
+            feats = wrapper.branch_norms[i](feats)
+            branch_feats.append(feats)
+
+        stacked = torch.stack(branch_feats, dim=1)
+        gate_input = stacked.flatten(start_dim=1)
+        weights = torch.softmax(wrapper.dynamic_gate_mlp(gate_input), dim=1)
+
+    assert not weights[0].allclose(weights[1], atol=1e-6)
 
 
 def test_single_branch():
-    """With one branch, the output must equal the branch embedding (weight is 1.0)."""
+    """With one branch, output must equal the branch embedding (weight collapses to 1.0)."""
     wrapper = _make_wrapper(branch_dims=(32,), keys=["b0"])
     batch = _make_batch(branch_dims=(32,), keys=["b0"])
 
@@ -126,7 +158,7 @@ def test_mismatched_dims_raises():
     Use per-branch projectors to align dims before fusion.
     """
     branches = [{"encoder": _StubEncoder(16, "b0")}, {"encoder": _StubEncoder(32, "b1")}]
-    wrapper = EncoderWrapper(encoder_branches=branches, fusion_strategy="gated")
+    wrapper = EncoderWrapper(encoder_branches=branches, fusion_strategy="dynamic_gate")
     wrapper.set_tabular_input_dim(None)
     with pytest.raises(ValueError, match="same output dimension"):
         wrapper.setup()
@@ -148,7 +180,7 @@ def test_with_tabular_encoder():
             {"encoder": tab_enc},
             {"encoder": stub_enc, "projector": MLPProjector(output_dim=32)},
         ],
-        fusion_strategy="gated",
+        fusion_strategy="dynamic_gate",
     )
     wrapper.set_tabular_input_dim(tabular_dim)
     wrapper.setup()
@@ -163,12 +195,17 @@ def test_with_tabular_encoder():
     assert out.shape == (4, 32)
 
 
-def test_existing_concat_unaffected():
-    """Ensure concat strategy still works after the gated additions."""
-    branches = [{"encoder": _StubEncoder(16, "b0")}, {"encoder": _StubEncoder(32, "b1")}]
-    wrapper = EncoderWrapper(encoder_branches=branches, fusion_strategy="concat")
+def test_existing_gated_unaffected():
+    """Ensure static gated strategy still works after the dynamic_gate additions."""
+    wrapper = EncoderWrapper(
+        encoder_branches=[
+            {"encoder": _StubEncoder(32, "b0")},
+            {"encoder": _StubEncoder(32, "b1")},
+        ],
+        fusion_strategy="gated",
+    )
     wrapper.set_tabular_input_dim(None)
     wrapper.setup()
-    batch = _make_batch(branch_dims=(16, 32))
+    batch = _make_batch(branch_dims=(32, 32))
     out = wrapper(batch)
-    assert out.shape == (4, 48)  # 16 + 32
+    assert out.shape == (4, 32)
