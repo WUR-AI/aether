@@ -243,29 +243,29 @@ class BaseDataset(Dataset, ABC):
             gt = None
             for i, rec in enumerate(self.records):
                 fname = os.path.basename(rec["tessera_path"])
-                if fname not in avail_files:
-                    #     print(f"Retrieving missing Tessera data: {fname}")
-                    #     gt = gt or GeoTessera(cache_dir=self.cache_dir)
-                    #     row = self.df[self.df["name_loc"] == rec["name_loc"]]
-                    #     lon, lat = row.lon.item(), row.lat.item()
-                    #     try:
-                    #         get_tessera_embeds(
-                    #             lon,
-                    #             lat,
-                    #             rec["name_loc"],
-                    #             year=year,
-                    #             save_dir=dst_dir,
-                    #             tile_size=size,
-                    #             tessera_con=gt,
-                    #         )
-                    #     except:
-                    if self.mode == "train":
-                        self.records.pop(i)
-                        print(f"{fname} will not be used in training")
-                    else:
-                        raise MissingDataError(
-                            f"Missing data for: {fname} in {self.mode} datasplit"
-                        )
+            if fname not in avail_files:
+                print(f"Retrieving missing Tessera data: {fname}")
+                # gt = gt or GeoTessera(cache_dir=self.cache_dir)
+                row = self.df[self.df["name_loc"] == rec["name_loc"]]
+                lon, lat = row.lon.item(), row.lat.item()
+                # try:
+                #     get_tessera_embeds(
+                #         lon,
+                #         lat,
+                #         rec["name_loc"],
+                #         year=year,
+                #         save_dir=dst_dir,
+                #         tile_size=size,
+                #         tessera_con=gt,
+                #     )
+                # except:
+                #     # if self.mode == "train":
+                #     #     self.records.pop(i)
+                #     #     print(f"{fname} will not be used in training")
+                #     # else:
+                #         raise MissingDataError(
+                #             f"Missing data for: {fname} in {self.mode} datasplit"
+                #         )
 
     @final
     def setup_aef(self) -> None:
