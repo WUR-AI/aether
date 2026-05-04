@@ -5,10 +5,12 @@ import lightning as L
 import rootutils
 from dotenv import load_dotenv
 from lightning import Callback, LightningModule, Trainer
+from lightning.pytorch.callbacks.model_checkpoint import ModelCheckpoint
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig, OmegaConf
 
 from src.data.base_datamodule import BaseDataModule
+from src.utils.experiment_tracking import experiment_check, update_experiment_log
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 load_dotenv()
@@ -30,6 +32,8 @@ from src.utils import (
 )
 
 log = RankedLogger(__name__, rank_zero_only=True)
+
+OmegaConf.register_new_resolver("str", str, replace=True)
 
 
 @task_wrapper
@@ -85,6 +89,32 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
             model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"), weights_only=False
         )  # using weights_only=False here because torch lightning also saves optimizer and scheduler states etc which otherwise leads to an error when loading with weights_only=True
 
+        # If checkpointing was used log the best model path and metric
+        ckpt_callback = next(
+            (cb for cb in callbacks if isinstance(cb, ModelCheckpoint)),
+            None,
+        )
+        if logger and ckpt_callback:
+            best_path = ckpt_callback.best_model_path
+            best_metric = ckpt_callback.best_model_score.item()
+            group = cfg.tags[-1]
+            run_id = logger[0].experiment.id
+
+            # Log details to wandb
+            logger[0].log_metrics(
+                {"best_model_path": best_path, "best_val_loss": best_metric, "group": group}
+            )
+
+            # Log to csv tracked experiments
+            df = update_experiment_log(
+                run_id,
+                best_metric,
+                best_path,
+                group,
+                seed=cfg["seed"],
+                task=cfg.logger.wandb.project,
+                cfg=cfg,
+            )
     train_metrics = trainer.callback_metrics
 
     if cfg.get("test"):
@@ -119,6 +149,9 @@ def main(cfg: DictConfig) -> Optional[float]:
     # apply extra utilities
     # (e.g. ask for tags if none are provided in cfg, print cfg tree, etc.)
     extras(cfg)
+
+    # For experimental multi runs, check if any experiments are already executed
+    experiment_check(cfg)
 
     # train the model
     metric_dict, _ = train(cfg)
