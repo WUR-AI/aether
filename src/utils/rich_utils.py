@@ -62,7 +62,7 @@ def print_config_tree(
         branch = tree.add(field, style=style, guide_style=style)
 
         config_group = cfg[field]
-        if isinstance(config_group, DictConfig):
+        if OmegaConf.is_config(config_group):
             branch_content = OmegaConf.to_yaml(config_group, resolve=resolve)
         else:
             branch_content = str(config_group)
