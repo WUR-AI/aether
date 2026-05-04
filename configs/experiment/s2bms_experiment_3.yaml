@@ -10,10 +10,10 @@ defaults:
 
 tags:
   - prediction
-  - aef
-  - aef_${str:${data.dataset.modalities.aef.size}}
+  - tessera
+  - tessera_${str:${data.dataset.modalities.tessera.size}}
   - ${str:${seed}}
-  - avr_aef_${str:${data.dataset.modalities.aef.size}}_mlp
+  - avr_tessera_${str:${data.dataset.modalities.tessera.size}}_mlp
 
 trainer:
   max_epochs: 100
@@ -22,19 +22,21 @@ model:
   trainable_modules: [prediction_head]
   prediction_head:
     _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
+  geo_encoder:
+    geo_data_name: tessera
 
 data:
   dataset:
     modalities:
-      aef:
-        format: tif
+      tessera:
+        format: npy
     use_target_data: true
     use_aux_data: false
   caption_builder:
   pin_memory: true
   num_workers: 14
   batch_size: 256
-  saved_split_file_name: "split_indices_s2bms_2024-08-14-1459_union_aef_tsr_val_test.pth"
+  saved_split_file_name: "split_indices_s2bms_2024-08-14-1459_union_aef_tsr_val_test_train.pth"
 
 logger:
   wandb:
@@ -49,4 +51,4 @@ hydra:
   sweeper:
     params:
       seed: 12345, 404, 654
-      +data.dataset.modalities.aef.size: 128, 256
+      +data.dataset.modalities.tessera.size: 128, 256
