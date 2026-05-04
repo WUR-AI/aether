@@ -13,7 +13,7 @@ tags:
   - aef
   - aef_${str:${data.dataset.modalities.aef.size}}
   - ${str:${seed}}
-  - avr_aef_${str:${data.dataset.modalities.aef.size}}_mlp
+  - avr_aef_${str:${data.dataset.modalities.aef.size}}_linear
 
 trainer:
   max_epochs: 100
@@ -21,7 +21,7 @@ trainer:
 model:
   trainable_modules: [prediction_head]
   prediction_head:
-    _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
+    _target_: src.models.components.pred_heads.linear_pred_head.LinearPredictionHead
 
 data:
   dataset:
