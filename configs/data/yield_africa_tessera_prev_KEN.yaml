@@ -1,0 +1,23 @@
+defaults:
+  - yield_africa_tessera_KEN # inherit KEN country/year filter and split settings
+  - _self_
+
+# Ablation variant B data: tessera_prev (year Y−1) only, Kenya.
+# Paired with yield_africa_tessera_dual_KEN for comparability: the same
+# require_prev_year_tessera filter ensures records without a year-1 tile are
+# excluded from both configs, keeping the record count identical.
+#
+# Prerequisites (same as yield_africa_tessera_dual_KEN.yaml):
+#   1. Rename tiles:
+#        python src/data_preprocessing/yield_africa_tessera_rename.py \
+#            --data_dir <data_dir> --no-dry-run
+#   2. Fetch year Y−1 tiles for KEN:
+#        python src/data_preprocessing/yield_africa_tessera_preprocess.py \
+#            --data_dir <data_dir> --countries KEN --include-prev-year
+
+dataset:
+  require_prev_year_tessera: true
+  modalities:
+    tessera_prev:
+      size: 9
+      format: npy
