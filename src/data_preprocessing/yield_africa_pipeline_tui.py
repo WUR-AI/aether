@@ -281,27 +281,62 @@ STEPS: list[PipelineStep] = [
         ),
     ),
     PipelineStep(
+        id="tessera_rename",
+        title="2c-migrate. Rename TESSERA tiles (one-time)",
+        description=(
+            "One-time migration: renames existing tessera_{name_loc}.npy files\n"
+            "to tessera_{name_loc}_{year}.npy by looking up each record's year\n"
+            "from the model-ready CSV. Must be run once on an existing tile\n"
+            "directory before using the year-suffixed naming convention introduced\n"
+            "by the dual-year tessera feature.\n\n"
+            "Dry-run is the default — no files are touched until --no-dry-run is\n"
+            "passed. Safe to re-run: already-renamed files are skipped."
+        ),
+        script="src/data_preprocessing/yield_africa_tessera_rename.py",
+        required=False,
+        depends_on=["make_ready"],
+        args_hint=(
+            "--data_dir  data/\n"
+            "[--no-dry-run]   # omit to preview only; review output before applying"
+        ),
+        output_hint=(
+            "data/yield_africa/eo/tessera/tessera_{name_loc}_{year}.npy\n"
+            "(files renamed in place — no copies written, instant on most filesystems)"
+        ),
+        advice=(
+            "Run this ONCE before the tessera download step (2c) if you already\n"
+            "have tiles on disk in the old tessera_{name_loc}.npy format.\n"
+            "New installations that have no tiles yet can skip this step.\n\n"
+            "Always run without --no-dry-run first to review what would change.\n"
+            "Then re-run with --no-dry-run to apply the renames.\n"
+            "Files not found in the model-ready CSV are left untouched with a warning."
+        ),
+    ),
+    PipelineStep(
         id="tessera",
         title="2c. Download TESSERA embeddings",
         description=(
             "Downloads per-record, year-specific satellite embeddings from the\n"
             "GeoTessera service. Each record gets a small EO tile (default 9 px)\n"
-            "that captures local land-cover and phenology at the plot location."
+            "that captures local land-cover and phenology at the plot location.\n"
+            "With --include-prev-year, also fetches year-1 tiles needed for\n"
+            "dual-year tessera fusion (configs/data/yield_africa_tessera_dual.yaml)."
         ),
         script="src/data_preprocessing/yield_africa_tessera_preprocess.py",
         required=False,
         depends_on=["make_ready"],
         args_hint=(
             "--data_dir  data/\n"
-            "[--countries KEN RWA]   # subset of countries\n"
-            "[--years 2019 2020]     # subset of years\n"
-            "[--tile_size 9]         # pixels around plot centre\n"
-            "[--workers 1]           # parallel download threads\n"
-            "[--retry-stuck]         # retry records that stalled previously"
+            "[--countries KEN RWA]      # subset of countries\n"
+            "[--years 2019 2020]        # subset of years\n"
+            "[--tile_size 9]            # pixels around plot centre\n"
+            "[--workers 1]              # parallel download threads\n"
+            "[--retry-stuck]            # retry records that stalled previously\n"
+            "[--include-prev-year]      # also fetch year-1 tiles for dual-year fusion"
         ),
         output_hint=(
-            "data/yield_africa/eo/tessera/tessera_{name_loc}.npy\n"
-            "(one NumPy array per plot)\n"
+            "data/yield_africa/eo/tessera/tessera_{name_loc}_{year}.npy\n"
+            "(one NumPy array per plot, year-suffixed)\n"
             "data/yield_africa/eo/tessera/stuck.txt  (records that stalled)"
         ),
         extra_deps=["geotessera  (install with: uv sync --extra geotessera)"],
@@ -312,7 +347,14 @@ STEPS: list[PipelineStep] = [
             "enough disk space (can be on an external drive).\n"
             "This step is resumable — existing .npy files are skipped on rerun.\n"
             "Records whose download stalls are written to stuck.txt and skipped\n"
-            "on subsequent runs. Use --retry-stuck to attempt them again."
+            "on subsequent runs. Use --retry-stuck to attempt them again.\n\n"
+            "If upgrading from an earlier version that used tessera_{name_loc}.npy\n"
+            "naming, run step 2c-migrate (tessera_rename) first to rename existing\n"
+            "tiles before downloading new ones.\n\n"
+            "Use --include-prev-year to also fetch year-1 tiles. These are needed\n"
+            "for the dual-year tessera experiment configs (yield_africa_tessera_dual).\n"
+            "Locations whose year-1 tile was already fetched (multi-year survey sites)\n"
+            "are skipped automatically."
         ),
     ),
     PipelineStep(
@@ -458,17 +500,38 @@ STEPS: list[PipelineStep] = [
 STEP_INDEX = {s.id: s for s in STEPS}
 
 EXPERIMENTS = [
-    ("yield_africa_coords_reg", "Coordinates only (baseline)"),
-    ("yield_africa_tabular_reg", "Tabular soil/climate features"),
-    ("yield_africa_fusion_reg", "Tabular + coordinate fusion"),
-    ("yield_africa_tabular_spatial", "Tabular + spatial split"),
-    ("yield_africa_fusion_spatial", "Fusion + spatial split"),
-    ("yield_africa_tabular_loco", "Tabular + LOCO split"),
-    ("yield_africa_fusion_loco", "Fusion + LOCO split"),
-    ("yield_africa_tessera_reg", "TESSERA embeddings"),
-    ("yield_africa_tessera_fusion_reg", "TESSERA + tabular fusion"),
-    ("yield_africa_tessera_fusion_spatial", "TESSERA fusion + spatial split"),
-    ("yield_africa_tessera_fusion_loco", "TESSERA fusion + LOCO split"),
+    # Tabular-only baselines (no EO data)
+    ("yield_africa_tabular_reg", "Tabular features only (all countries)"),
+    ("yield_africa_tabular_spatial", "Tabular only + spatial-cluster split"),
+    ("yield_africa_tabular_loco", "Tabular only + leave-one-country-out split"),
+    # TESSERA spatial embeddings — current year
+    ("yield_africa_tessera_reg", "TESSERA embeddings only (no tabular)"),
+    ("yield_africa_tessera_fusion_reg", "TESSERA + tabular fusion (all countries)"),
+    ("yield_africa_tessera_fusion_spatial", "TESSERA + tabular + spatial-cluster split"),
+    ("yield_africa_tessera_fusion_loco", "TESSERA + tabular + leave-one-country-out split"),
+    # Dual-year TESSERA (year Y + year Y−1) — requires prev-year tiles
+    (
+        "yield_africa_tessera_dual_fusion_reg",
+        "Dual-year TESSERA + tabular, dynamic gate (all countries)",
+    ),
+    # Ablation study — fusion strategies for dual-year TESSERA (Kenya only)
+    ("yield_africa_ablation_dual_A_tessera_KEN", "Ablation A: tessera year-Y + tabular [KEN]"),
+    ("yield_africa_ablation_dual_B_prev_KEN", "Ablation B: tessera year-Y−1 + tabular [KEN]"),
+    (
+        "yield_africa_ablation_dual_C_concat_KEN",
+        "Ablation C: dual-year TESSERA + tabular, concat [KEN]",
+    ),
+    (
+        "yield_africa_ablation_dual_D_gated_KEN",
+        "Ablation D: dual-year TESSERA + tabular, gated [KEN]",
+    ),
+    (
+        "yield_africa_ablation_dual_E_dynamic_KEN",
+        "Ablation E: dual-year TESSERA + tabular, dynamic gate [KEN]",
+    ),
+    # Hyperparameter validation — anchor configs for HP search (Kenya only)
+    ("yield_africa_val_TO_1_baseline_KEN", "Val TO-1: tessera-only baseline [KEN]"),
+    ("yield_africa_val_FM_1_baseline_KEN", "Val FM-1: full model baseline [KEN]"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -820,7 +883,7 @@ def run_rich() -> None:
         console.print()
         console.print(
             "[dim]Tip: override the split file on the command line, e.g.:\n"
-            "  python src/train.py experiment=yield_africa_fusion_spatial \\\n"
+            "  python src/train.py experiment=yield_africa_tessera_fusion_spatial \\\n"
             "    data.saved_split_file_name=split_spatial_25km.pth[/]"
         )
 
@@ -920,12 +983,13 @@ def run_rich() -> None:
                 "  [bold cyan]4[/]  Step 1  — Build model-ready CSV  [bold yellow](required)[/]\n"
                 "  [bold cyan]5[/]  Step 2a — Augment with NDVI\n"
                 "  [bold cyan]6[/]  Step 2b — Augment with AgERA5 climate\n"
-                "  [bold cyan]7[/]  Step 2c — Download TESSERA embeddings\n"
-                "  [bold cyan]8[/]  Step 2d — Merge augmented CSVs             [dim](optional)[/]\n"
-                "  [bold cyan]9[/]  Step 2e — Compare all augmentations        [dim](optional)[/]\n"
-                "  [bold cyan]a[/]  Step 3a — Generate spatial splits\n"
-                "  [bold cyan]b[/]  Step 3b — Generate LOCO splits\n"
-                "  [bold cyan]c[/]  Training experiments reference\n"
+                "  [bold cyan]7[/]  Step 2c-migrate — Rename TESSERA tiles    [dim](one-time migration)[/]\n"
+                "  [bold cyan]8[/]  Step 2c — Download TESSERA embeddings\n"
+                "  [bold cyan]9[/]  Step 2d — Merge augmented CSVs             [dim](optional)[/]\n"
+                "  [bold cyan]a[/]  Step 2e — Compare all augmentations        [dim](optional)[/]\n"
+                "  [bold cyan]b[/]  Step 3a — Generate spatial splits\n"
+                "  [bold cyan]c[/]  Step 3b — Generate LOCO splits\n"
+                "  [bold cyan]d[/]  Training experiments reference\n"
                 "  [bold cyan]q[/]  Quit",
                 title="[bold cyan]Menu[/]",
                 border_style="cyan",
@@ -936,7 +1000,7 @@ def run_rich() -> None:
 
         choice = Prompt.ask(
             "[bold]Choice[/]",
-            choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "q"],
+            choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "q"],
             show_choices=False,
         )
 
@@ -959,16 +1023,18 @@ def run_rich() -> None:
         elif choice == "6":
             run_step_prompt(STEP_INDEX["augment_agera5"])
         elif choice == "7":
-            run_step_prompt(STEP_INDEX["tessera"])
+            run_step_prompt(STEP_INDEX["tessera_rename"])
         elif choice == "8":
-            run_step_prompt(STEP_INDEX["merge_augmentations"])
+            run_step_prompt(STEP_INDEX["tessera"])
         elif choice == "9":
-            run_step_prompt(STEP_INDEX["check_augmentations"])
+            run_step_prompt(STEP_INDEX["merge_augmentations"])
         elif choice == "a":
-            run_step_prompt(STEP_INDEX["spatial_splits"])
+            run_step_prompt(STEP_INDEX["check_augmentations"])
         elif choice == "b":
-            run_step_prompt(STEP_INDEX["loco_splits"])
+            run_step_prompt(STEP_INDEX["spatial_splits"])
         elif choice == "c":
+            run_step_prompt(STEP_INDEX["loco_splits"])
+        elif choice == "d":
             show_experiments()
 
         console.print()
@@ -1072,10 +1138,18 @@ def _menu_ansi() -> str:
         + RESET,
         BOLD + FG_CYAN + "  5" + RESET + "  Step 2a — Augment with NDVI",
         BOLD + FG_CYAN + "  6" + RESET + "  Step 2b — Augment with AgERA5 climate",
-        BOLD + FG_CYAN + "  7" + RESET + "  Step 2c — Download TESSERA embeddings",
         BOLD
         + FG_CYAN
-        + "  8"
+        + "  7"
+        + RESET
+        + "  Step 2c-migrate — Rename TESSERA tiles     "
+        + DIM
+        + "(one-time migration)"
+        + RESET,
+        BOLD + FG_CYAN + "  8" + RESET + "  Step 2c — Download TESSERA embeddings",
+        BOLD
+        + FG_CYAN
+        + "  9"
         + RESET
         + "  Step 2d — Merge augmented CSVs             "
         + DIM
@@ -1083,15 +1157,15 @@ def _menu_ansi() -> str:
         + RESET,
         BOLD
         + FG_CYAN
-        + "  9"
+        + "  a"
         + RESET
         + "  Step 2e — Compare all augmentations        "
         + DIM
         + "(optional)"
         + RESET,
-        BOLD + FG_CYAN + "  a" + RESET + "  Step 3a — Generate spatial splits",
-        BOLD + FG_CYAN + "  b" + RESET + "  Step 3b — Generate LOCO splits",
-        BOLD + FG_CYAN + "  c" + RESET + "  Training experiments reference",
+        BOLD + FG_CYAN + "  b" + RESET + "  Step 3a — Generate spatial splits",
+        BOLD + FG_CYAN + "  c" + RESET + "  Step 3b — Generate LOCO splits",
+        BOLD + FG_CYAN + "  d" + RESET + "  Training experiments reference",
         BOLD + FG_CYAN + "  q" + RESET + "  Quit",
     ]
     return _box("Menu", lines, width=w, border=FG_CYAN)
@@ -1278,7 +1352,9 @@ def _experiments_ansi() -> None:
 
     print()
     print(DIM + "  Tip: override the split file on the command line, e.g.:" + RESET)
-    print(DIM + "    python src/train.py experiment=yield_africa_fusion_spatial \\" + RESET)
+    print(
+        DIM + "    python src/train.py experiment=yield_africa_tessera_fusion_spatial \\" + RESET
+    )
     print(DIM + "      data.saved_split_file_name=split_spatial_25km.pth" + RESET)
 
 
@@ -1301,12 +1377,13 @@ def run_plain() -> None:
         "4": lambda: _run_step_ansi(STEP_INDEX["make_ready"]),
         "5": lambda: _run_step_ansi(STEP_INDEX["augment_ndvi"]),
         "6": lambda: _run_step_ansi(STEP_INDEX["augment_agera5"]),
-        "7": lambda: _run_step_ansi(STEP_INDEX["tessera"]),
-        "8": lambda: _run_step_ansi(STEP_INDEX["merge_augmentations"]),
-        "9": lambda: _run_step_ansi(STEP_INDEX["check_augmentations"]),
-        "a": lambda: _run_step_ansi(STEP_INDEX["spatial_splits"]),
-        "b": lambda: _run_step_ansi(STEP_INDEX["loco_splits"]),
-        "c": _experiments_ansi,
+        "7": lambda: _run_step_ansi(STEP_INDEX["tessera_rename"]),
+        "8": lambda: _run_step_ansi(STEP_INDEX["tessera"]),
+        "9": lambda: _run_step_ansi(STEP_INDEX["merge_augmentations"]),
+        "a": lambda: _run_step_ansi(STEP_INDEX["check_augmentations"]),
+        "b": lambda: _run_step_ansi(STEP_INDEX["spatial_splits"]),
+        "c": lambda: _run_step_ansi(STEP_INDEX["loco_splits"]),
+        "d": _experiments_ansi,
     }
 
     while True:

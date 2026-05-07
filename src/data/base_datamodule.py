@@ -1,6 +1,4 @@
-import copy
 import os
-import time
 from functools import partial
 from typing import Any, Dict, List, Tuple
 
@@ -8,7 +6,6 @@ import numpy as np
 import pandas as pd
 import torch
 from lightning import LightningDataModule
-from sklearn.cluster import DBSCAN
 from sklearn.model_selection import GroupShuffleSplit
 from torch.utils.data import DataLoader, random_split
 
@@ -48,8 +45,9 @@ class BaseDataModule(LightningDataModule):
         :param save_split: if to save split file
         :param saved_split_file_name: file name to save split file
         :param caption_builder: instance of BaseCaptionBuilder for generating textual captions
-        :param spatial_split_distance_m: minimum distance in metres between clusters when
-            split_mode is 'spatial_clusters'. Default 1000 m.
+        :param spatial_split_distance_m: grid cell size in metres when split_mode is
+            'spatial_clusters'. Samples within the same cell are kept together and assigned to the
+            same split. Default 1000 m.
         """
         super().__init__()
         self.save_hyperparameters(logger=False)
@@ -122,33 +120,43 @@ class BaseDataModule(LightningDataModule):
 
         elif self.hparams.split_mode == "spatial_clusters":
             min_dist = self.hparams.spatial_split_distance_m
-            coords = np.array([self.dataset.df.lat, self.dataset.df.lon]).T
-            n = len(coords)
-            print(
-                f"Splitting {n} samples into spatial clusters "
-                f"(eps={min_dist / 1000:.1f} km, haversine, n_jobs=-1)..."
+            # Use records (not df): records is already filtered (e.g. missing tiles
+            # dropped), so len(records) <= len(df). Indices must be into records
+            # because __getitem__ and __len__ both operate on self.records.
+            # lat/lon come from df (always present) keyed by name_loc so the
+            # coordinate array stays aligned with records regardless of modalities.
+            records = self.dataset.records
+            _nl_to_coords = dict(
+                zip(
+                    self.dataset.df["name_loc"],
+                    zip(self.dataset.df["lat"], self.dataset.df["lon"]),
+                )
             )
-            # Convert (lat, lon) degrees to radians for sklearn's haversine metric.
-            # haversine returns arc length on the unit sphere, so eps must be in radians.
-            _EARTH_RADIUS_M = 6_371_000
-            coords_rad = np.radians(coords)
-            eps_rad = min_dist / _EARTH_RADIUS_M
-            t0 = time.time()
-            clustering = DBSCAN(
-                eps=eps_rad,
-                metric="haversine",
-                algorithm="ball_tree",
-                min_samples=2,
-                n_jobs=-1,
-            ).fit(coords_rad)
-            print(f"DBSCAN done in {time.time() - t0:.1f}s. Creating splits...")
-            # Non-clustered points are labeled -1. Change to new cluster label.
-            clusters = copy.deepcopy(clustering.labels_)
-            new_cl = np.max(clusters) + 1
-            for i, cl in enumerate(clusters):
-                if cl == -1:
-                    clusters[i] = new_cl
-                    new_cl += 1
+            coords = np.array(
+                [
+                    [_nl_to_coords[r["name_loc"]][0] for r in records],
+                    [_nl_to_coords[r["name_loc"]][1] for r in records],
+                ]
+            ).T
+            n = len(coords)
+            # Grid-based spatial grouping: assign each sample to a geographic
+            # cell of size spatial_split_distance_m × spatial_split_distance_m.
+            # GroupShuffleSplit then distributes whole cells across splits, so
+            # geographically close samples stay together while split proportions
+            # remain balanced (unlike DBSCAN, which chain-links dense data into
+            # a few giant clusters and produces wildly uneven splits).
+            _METERS_PER_DEG_LAT = 111_000.0
+            lat_step = min_dist / _METERS_PER_DEG_LAT
+            lon_step = min_dist / (_METERS_PER_DEG_LAT * np.cos(np.radians(np.mean(coords[:, 0]))))
+            grid_ids = np.floor(coords[:, 0] / lat_step).astype(np.int64) * 1_000_000 + np.floor(
+                coords[:, 1] / lon_step
+            ).astype(np.int64)
+            _, clusters = np.unique(grid_ids, return_inverse=True)
+            n_clusters = int(clusters.max()) + 1
+            print(
+                f"Splitting {n} samples into {n_clusters} spatial grid cells "
+                f"(cell size ≈ {min_dist / 1000:.0f} km). Creating splits..."
+            )
 
             gss = GroupShuffleSplit(
                 n_splits=1,
@@ -197,13 +205,15 @@ class BaseDataModule(LightningDataModule):
             )
 
             print(
-                f"Created {len(train_indices)} train, {len(val_indices)} val, {len(test_indices)} test indices using DBSCAN spatial clustering with {min_dist} m minimum distance between clusters."
+                f"Created {len(train_indices)} train, {len(val_indices)} val, "
+                f"{len(test_indices)} test indices across {n_clusters} spatial grid cells "
+                f"(cell size ≈ {min_dist / 1000:.0f} km)."
             )
             if self.hparams.save_split:
                 split_indices = {
-                    "train_indices": self.dataset.df.name_loc[train_indices],
-                    "val_indices": self.dataset.df.name_loc[val_indices],
-                    "test_indices": self.dataset.df.name_loc[test_indices],
+                    "train_indices": pd.Series([records[i]["name_loc"] for i in train_indices]),
+                    "val_indices": pd.Series([records[i]["name_loc"] for i in val_indices]),
+                    "test_indices": pd.Series([records[i]["name_loc"] for i in test_indices]),
                     "clusters": clusters,
                 }
 
@@ -231,10 +241,21 @@ class BaseDataModule(LightningDataModule):
             if test_indices is not None and not isinstance(test_indices, pd.Series):
                 raise NotImplementedError("Expected a pd series of name_locs for data splits.")
 
-            train_indices = np.where(self.dataset.df["name_loc"].isin(train_indices))[0]
-            val_indices = np.where(self.dataset.df["name_loc"].isin(val_indices))[0]
+            # Map name_locs → records-level indices (not df row indices).
+            # self.records may be shorter than self.df when records are
+            # dropped (e.g. missing tessera_prev tiles in config B), so
+            # df row indices would be out of range in __getitem__.
+            _name_loc_to_rec_idx = {r["name_loc"]: i for i, r in enumerate(self.dataset.records)}
+            train_indices = np.array(
+                [_name_loc_to_rec_idx[nl] for nl in train_indices if nl in _name_loc_to_rec_idx]
+            )
+            val_indices = np.array(
+                [_name_loc_to_rec_idx[nl] for nl in val_indices if nl in _name_loc_to_rec_idx]
+            )
             if test_indices is not None:
-                test_indices = np.where(self.dataset.df["name_loc"].isin(test_indices))[0]
+                test_indices = np.array(
+                    [_name_loc_to_rec_idx[nl] for nl in test_indices if nl in _name_loc_to_rec_idx]
+                )
 
             print(f"Dataset was split using indices from file: {self.saved_split_file_path}")
         else:
@@ -277,11 +298,14 @@ class BaseDataModule(LightningDataModule):
             return
 
         train_indices = self.data_train.indices
-        train_df = self.dataset.df.iloc[train_indices][feat_names]
+        train_df = pd.DataFrame(
+            [[self.dataset.records[i][k] for k in feat_names] for i in train_indices],
+            columns=feat_names,
+        )
 
         mean = train_df.mean(axis=0).values
         std = train_df.std(axis=0).values
-        std = np.where(std == 0, 1.0, std)  # avoid division by zero for constant features
+        std = np.where((std == 0) | np.isnan(std), 1.0, std)
 
         self.tabular_normalisation_stats = (
             torch.tensor(mean, dtype=torch.float32),
@@ -304,11 +328,14 @@ class BaseDataModule(LightningDataModule):
             return
 
         train_indices = self.data_train.indices
-        train_df = self.dataset.df.iloc[train_indices][target_names]
+        train_df = pd.DataFrame(
+            [[self.dataset.records[i][k] for k in target_names] for i in train_indices],
+            columns=target_names,
+        )
 
         mean = train_df.mean(axis=0).values
         std = train_df.std(axis=0).values
-        std = np.where(std == 0, 1.0, std)  # avoid division by zero for constant targets
+        std = np.where((std == 0) | np.isnan(std), 1.0, std)
 
         self.target_normalisation_stats = (
             torch.tensor(mean, dtype=torch.float32),

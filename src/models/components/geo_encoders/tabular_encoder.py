@@ -79,6 +79,9 @@ class TabularEncoder(BaseGeoEncoder):
 
         if self.feat_mean is not None:
             tab_data = (tab_data - self.feat_mean) / self.feat_std
+        # Replace NaN (e.g. missing feat_ndvi_month_* values) with 0, which is
+        # the training mean in z-score space — equivalent to mean imputation.
+        tab_data = torch.nan_to_num(tab_data, nan=0.0)
 
         feats = self.geo_encoder(tab_data)
 

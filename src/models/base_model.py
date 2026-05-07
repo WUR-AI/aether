@@ -249,6 +249,14 @@ class BaseModel(LightningModule, ABC):
             if any(k.startswith(part) for part in self.trainable_modules)
         }
 
+        # Also save all non-None buffers (normalisation stats such as target_mean,
+        # target_std, feat_mean, feat_std are not trainable parameters so they
+        # never match the trainable_modules filter above, but they must survive
+        # checkpointing so resumed runs and standalone inference stay correct).
+        for name, buf in self.named_buffers():
+            if buf is not None:
+                checkpoint["state_dict"][name] = buf
+
         # Update model configurations
         checkpoint["hyper_parameters"].update(
             {
