@@ -1,0 +1,22 @@
+# @package _global_
+
+# specify here default configuration
+# order of defaults determines the order in which configs override each other
+defaults:
+  - logger: wandb
+  - paths: ${oc.env:STORAGE_MODE,local}
+  - hydra: default
+  - extras: default
+  - _self_
+
+task_name: wandb
+
+logger:
+  wandb:
+    group: predictive
+    project: s2bms_prediction
+  aim:
+    experiment: predictive
+
+tags: "null"
+exceptions:

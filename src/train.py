@@ -6,11 +6,11 @@ import rootutils
 from dotenv import load_dotenv
 from lightning import Callback, LightningModule, Trainer
 from lightning.pytorch.callbacks.model_checkpoint import ModelCheckpoint
-from lightning.pytorch.loggers import Logger
+from lightning.pytorch.loggers import Logger, WandbLogger
 from omegaconf import DictConfig, OmegaConf
 
 from src.data.base_datamodule import BaseDataModule
-from src.utils.experiment_tracking import experiment_check, update_experiment_log
+from src.utils.experiment_tracking import experiment_check
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 load_dotenv()
@@ -37,7 +37,7 @@ OmegaConf.register_new_resolver("str", str, replace=True)
 
 
 @task_wrapper
-def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+def train(cfg: DictConfig) -> Dict[str, Any]:
     """Trains the model. Can additionally evaluate on a testset, using best weights obtained during
     training.
 
@@ -61,27 +61,34 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     raw_model_cfg = OmegaConf.to_container(cfg.model, resolve=True)
     model.update_configs(raw_model_cfg)
 
-    log.info("Instantiating callbacks...")
-    callbacks: List[Callback] = instantiate_callbacks(cfg.get("callbacks"))
-
     log.info("Instantiating loggers...")
     logger: List[Logger] = instantiate_loggers(cfg.get("logger"))
+    wandb_logger = next((log for log in logger if isinstance(log, WandbLogger)), None)
+    run_id = wandb_logger.experiment.id if wandb_logger else None
+
+    log.info("Instantiating callbacks...")
+    callbacks: List[Callback] = instantiate_callbacks(cfg.get("callbacks"))
+    early_stop_cb = next((cb for cb in callbacks if isinstance(cb, ModelCheckpoint)), None)
+    if run_id:
+        early_stop_cb.filename = f"{run_id}_epoch_{{epoch:03d}}"
 
     log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
     trainer: Trainer = hydra.utils.instantiate(cfg.trainer, callbacks=callbacks, logger=logger)
 
-    object_dict = {
-        "cfg": cfg,
-        "datamodule": datamodule,
-        "model": model,
-        "callbacks": callbacks,
-        "logger": logger,
-        "trainer": trainer,
-    }
-
-    if logger:
+    if wandb_logger:
         log.info("Logging hyperparameters!")
-        log_hyperparameters(object_dict)
+        log_hyperparameters(
+            {
+                "cfg": cfg,
+                "datamodule": datamodule,
+                "model": model,
+                "callbacks": callbacks,
+                "logger": logger,
+                "trainer": trainer,
+            }
+        )
+        group = cfg.get("experiment_name", "null")
+        wandb_logger.log_metrics({"experiment": group})
 
     if cfg.get("train"):
         log.info("Starting training!")
@@ -90,31 +97,19 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         )  # using weights_only=False here because torch lightning also saves optimizer and scheduler states etc which otherwise leads to an error when loading with weights_only=True
 
         # If checkpointing was used log the best model path and metric
-        ckpt_callback = next(
-            (cb for cb in callbacks if isinstance(cb, ModelCheckpoint)),
-            None,
-        )
-        if logger and ckpt_callback:
-            best_path = ckpt_callback.best_model_path
-            best_metric = ckpt_callback.best_model_score.item()
-            group = cfg.tags[-1]
-            run_id = logger[0].experiment.id
+        if wandb_logger and early_stop_cb:
+            best_metric = early_stop_cb.best_model_score.item()
+            best_path = early_stop_cb.best_model_path
 
             # Log details to wandb
-            logger[0].log_metrics(
-                {"best_model_path": best_path, "best_val_loss": best_metric, "group": group}
+            wandb_logger.log_metrics(
+                {
+                    "best_model_path": os.path.basename(best_path),
+                    "source_dir": os.path.dirname(best_path),
+                    "best_val_loss": best_metric,
+                }
             )
 
-            # Log to csv tracked experiments
-            df = update_experiment_log(
-                run_id,
-                best_metric,
-                best_path,
-                group,
-                seed=cfg["seed"],
-                task=cfg.logger.wandb.project,
-                cfg=cfg,
-            )
     train_metrics = trainer.callback_metrics
 
     if cfg.get("test"):
@@ -136,7 +131,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     # merge train and test metrics
     metric_dict = {**train_metrics, **test_metrics}
 
-    return metric_dict, object_dict
+    return metric_dict
 
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
@@ -151,10 +146,12 @@ def main(cfg: DictConfig) -> Optional[float]:
     extras(cfg)
 
     # For experimental multi runs, check if any experiments are already executed
-    experiment_check(cfg)
+    if cfg.get("check_experiments", False):
+        if experiment_check(cfg):
+            return None
 
     # train the model
-    metric_dict, _ = train(cfg)
+    metric_dict = train(cfg)
 
     # safely retrieve metric value for hydra-based hyperparameter optimization
     metric_value = get_metric_value(
