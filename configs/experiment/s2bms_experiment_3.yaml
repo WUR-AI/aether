@@ -13,10 +13,8 @@ tags:
   - tessera
   - tessera_${str:${data.dataset.modalities.tessera.size}}
   - ${str:${seed}}
-  - avr_tessera_${str:${data.dataset.modalities.tessera.size}}_mlp
 
-trainer:
-  max_epochs: 100
+experiment_name: avr_tessera_${str:${data.dataset.modalities.tessera.size}}_mlp
 
 model:
   trainable_modules: [prediction_head]
@@ -33,9 +31,10 @@ data:
     use_target_data: true
     use_aux_data: false
   caption_builder:
-  pin_memory: true
+  pin_memory: false
   num_workers: 14
   batch_size: 256
+  persistent_workers: false
   saved_split_file_name: "split_indices_s2bms_2024-08-14-1459_union_aef_tsr_val_test_train.pth"
 
 logger:
