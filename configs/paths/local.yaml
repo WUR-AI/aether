@@ -7,6 +7,8 @@ root_dir: ${oc.env:PROJECT_ROOT,./}
 # path to data directory
 data_dir: ${oc.env:DATA_DIR,${paths.root_dir}/data/}
 cache_dir: ${oc.env:CACHE_DIR,${paths.data_dir}/cache}
+checkpoint_root: ${paths.data_dir}/checkpoints/
+checkpoint_dir: ${paths.checkpoint_root}/${oc.select:logger.wandb.project,other}_ckpt
 
 # path to logging directory
 log_dir: ${paths.root_dir}/logs/
