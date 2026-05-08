@@ -13,10 +13,8 @@ tags:
   - aef
   - aef_${str:${data.dataset.modalities.aef.size}}
   - ${str:${seed}}
-  - avr_aef_${str:${data.dataset.modalities.aef.size}}_mlp
 
-trainer:
-  max_epochs: 100
+experiment_name: avr_aef_${str:${data.dataset.modalities.aef.size}}_mlp
 
 model:
   trainable_modules: [prediction_head]
