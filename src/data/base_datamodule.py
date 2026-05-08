@@ -27,6 +27,7 @@ class BaseDataModule(LightningDataModule):
         train_val_test_split: Tuple[float, float, float] = (0.7, 0.15, 0.15),
         num_workers: int = 0,
         pin_memory: bool = False,
+        persistent_workers: bool = False,
         dataset_name: str = "base",
         split_mode: str = "random",
         save_split: bool = False,
@@ -43,6 +44,7 @@ class BaseDataModule(LightningDataModule):
             testing
         :param num_workers: number of workers for dataloader
         :param pin_memory: pin memory for dataloader
+        :param persistent_workers: keep DataLoader workers alive between epochs
         :param dataset_name: dataset name
         :param split_mode: data split mode: random/from_file
         :param save_split: if to save split file
@@ -355,7 +357,9 @@ class BaseDataModule(LightningDataModule):
         return DataLoader(
             dataset=self.data_train,
             batch_size=self.batch_size_per_device,
-            persistent_workers=True if self.hparams.num_workers > 0 else False,
+            persistent_workers=(
+                bool(self.hparams.persistent_workers) if self.hparams.num_workers > 0 else False
+            ),
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=True,
@@ -380,7 +384,9 @@ class BaseDataModule(LightningDataModule):
             batch_size=self.batch_size_per_device,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
-            persistent_workers=True if self.hparams.num_workers > 0 else False,
+            persistent_workers=(
+                bool(self.hparams.persistent_workers) if self.hparams.num_workers > 0 else False
+            ),
             shuffle=False,
             collate_fn=(
                 partial(
@@ -403,6 +409,9 @@ class BaseDataModule(LightningDataModule):
             batch_size=self.batch_size_per_device,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
+            persistent_workers=(
+                bool(self.hparams.persistent_workers) if self.hparams.num_workers > 0 else False
+            ),
             shuffle=False,
             collate_fn=(
                 partial(
