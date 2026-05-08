@@ -37,7 +37,7 @@ OmegaConf.register_new_resolver("str", str, replace=True)
 
 
 @task_wrapper
-def train(cfg: DictConfig) -> Dict[str, Any]:
+def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Trains the model. Can additionally evaluate on a testset, using best weights obtained during
     training.
 
@@ -75,18 +75,18 @@ def train(cfg: DictConfig) -> Dict[str, Any]:
     log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
     trainer: Trainer = hydra.utils.instantiate(cfg.trainer, callbacks=callbacks, logger=logger)
 
+    object_dict = {
+        "cfg": cfg,
+        "datamodule": datamodule,
+        "model": model,
+        "callbacks": callbacks,
+        "logger": logger,
+        "trainer": trainer,
+    }
+
     if wandb_logger:
         log.info("Logging hyperparameters!")
-        log_hyperparameters(
-            {
-                "cfg": cfg,
-                "datamodule": datamodule,
-                "model": model,
-                "callbacks": callbacks,
-                "logger": logger,
-                "trainer": trainer,
-            }
-        )
+        log_hyperparameters(object_dict)
         group = cfg.get("experiment_name", "null")
         wandb_logger.log_metrics({"experiment": group})
 
@@ -131,7 +131,7 @@ def train(cfg: DictConfig) -> Dict[str, Any]:
     # merge train and test metrics
     metric_dict = {**train_metrics, **test_metrics}
 
-    return metric_dict
+    return metric_dict, object_dict
 
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
@@ -151,7 +151,7 @@ def main(cfg: DictConfig) -> Optional[float]:
             return None
 
     # train the model
-    metric_dict = train(cfg)
+    metric_dict, _ = train(cfg)
 
     # safely retrieve metric value for hydra-based hyperparameter optimization
     metric_value = get_metric_value(
