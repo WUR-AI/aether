@@ -1,0 +1,42 @@
+# @package _global_
+# Ablation config D — tessera + tessera_prev + tabular, gated fusion.
+#
+# A single learned scalar weight per branch (shared across all samples).
+# The gate logits are trained alongside the model weights; after training,
+# torch.softmax(model.geo_encoder.gate_logits, dim=0) gives the global
+# branch importance. This tests whether a global suppression of tessera_prev
+# is sufficient, or whether per-sample adaptation (config E) adds further value.
+#
+# Requires: ABLATION_SPLIT — set saved_split_file_name to the file saved by config A.
+
+defaults:
+  - override /model: yield_tessera_dual_fusion_reg
+  - override /data: yield_africa_tessera_dual_KEN
+  - override /metrics: yield_africa_regression
+
+tags: ["yield_africa", "tessera_ablation", "KEN", "config_D"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 150
+  gradient_clip_val: 1.0
+
+data:
+  batch_size: 64
+  split_mode: from_file
+  saved_split_file_name: split_indices_2026-04-27-1644.pth
+  dataset:
+    use_features: true
+
+model:
+  geo_encoder:
+    fusion_strategy: "gated"
+
+logger:
+  wandb:
+    name: "ablation_D_gated"
+    tags: ${tags}
+    group: "ablation_dual_tessera_KEN"
+  aim:
+    experiment: "yield_africa_ablation"

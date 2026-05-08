@@ -1,0 +1,43 @@
+# @package _global_
+# configs/experiment/yield_africa_tessera_dual_fusion_reg.yaml
+# Dual-year TESSERA fusion: year-Y + year-Y-1 embeddings + tabular features.
+# The dynamic gate learns per-sample branch weights, allowing it to amplify
+# tessera_prev for cross-year growing seasons (e.g. Oct-Mar in RWA, TAN, KEN)
+# and suppress it for single-year seasons (e.g. Apr-Sep in BF, ZAM, MAL).
+#
+# Requires:
+#   1. Rename existing tiles to year-suffixed naming (once):
+#        python src/data_preprocessing/yield_africa_tessera_rename.py \
+#            --data_dir <data_dir> --no-dry-run
+#   2. TESSERA tiles pre-fetched (year Y and year Y-1):
+#        python src/data_preprocessing/yield_africa_tessera_preprocess.py \
+#            --data_dir <data_dir> --include-prev-year
+
+defaults:
+  - override /model: yield_tessera_dual_fusion_reg
+  - override /data: yield_africa_tessera_dual
+  - override /metrics: yield_africa_regression
+
+tags: ["yield_africa", "tessera_dual_fusion", "regression"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 150
+
+data:
+  batch_size: 64
+  dataset:
+    modalities:
+      tessera:
+        size: 3
+      tessera_prev:
+        size: 3
+    use_features: true
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "yield_africa"
+  aim:
+    experiment: "yield_africa"

@@ -1,0 +1,37 @@
+# @package _global_
+# Validation Track A, run TO-1: tessera-only baseline on Kenya.
+#
+# AverageEncoder + MLPProjector(256d, 1 layer), no tabular features.
+# This is the anchor configuration for the tessera-only hyperparameter search.
+# All TO variants are launched by applying Hydra overrides on top of this config.
+#
+# Run this first: it saves the shared train/val/test split used by all TO and FM
+# variants. Note the split filename from the console output (message:
+# "Saved split indices to split_indices_*.pth") and update VAL_SPLIT in the
+# notebook before launching other runs.
+
+defaults:
+  - override /model: yield_tessera_only_proj_reg
+  - override /data: yield_africa_tessera_KEN
+  - override /metrics: yield_africa_regression
+
+tags: ["yield_africa", "val_tessera_only", "KEN", "TO_1"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 150
+
+data:
+  batch_size: 64
+  save_split: true
+  dataset:
+    use_features: false
+
+logger:
+  wandb:
+    name: "val_TO_1_baseline"
+    tags: ${tags}
+    group: "val_tessera_only_KEN"
+  aim:
+    experiment: "yield_africa_val"
