@@ -195,6 +195,67 @@ def test_with_tabular_encoder():
     assert out.shape == (4, 32)
 
 
+def test_three_branch_dual_tessera():
+    """Three-branch EncoderWrapper matching the dual-tessera model config.
+
+    Branches: tessera (year Y), tessera_prev (year Y-1), tabular — all projected to dim=256.
+    Verifies: output shape [batch, 256], gate weights sum to 1.0 per sample, all weights > 0.
+    """
+    from src.models.components.geo_encoders.mlp_projector import MLPProjector
+
+    tabular_dim = 20
+    stub_dim = 128  # TESSERA embedding width
+
+    wrapper = EncoderWrapper(
+        encoder_branches=[
+            {
+                "encoder": _StubEncoder(stub_dim, key="tessera"),
+                "projector": MLPProjector(nn_layers=1, output_dim=256),
+            },
+            {
+                "encoder": _StubEncoder(stub_dim, key="tessera_prev"),
+                "projector": MLPProjector(nn_layers=1, output_dim=256),
+            },
+            {"encoder": TabularEncoder(output_dim=256, dropout_prob=0.2)},
+        ],
+        fusion_strategy="dynamic_gate",
+    )
+    wrapper.set_tabular_input_dim(tabular_dim)
+    wrapper.setup()
+
+    batch_size = 4
+    batch = {
+        "eo": {
+            "tessera": torch.randn(batch_size, stub_dim),
+            "tessera_prev": torch.randn(batch_size, stub_dim),
+            "tabular": torch.randn(batch_size, tabular_dim),
+        }
+    }
+
+    out = wrapper(batch)
+    assert out.shape == (batch_size, 256)
+
+    # Replicate the gating arithmetic to inspect branch weights.
+    with torch.no_grad():
+        branch_feats = []
+        for i, branch in enumerate(wrapper.encoder_branches):
+            feats = branch["encoder"](batch)
+            if "projector" in branch:
+                feats = branch["projector"](feats)
+            feats = wrapper.branch_norms[i](feats)
+            branch_feats.append(feats)
+
+        stacked = torch.stack(branch_feats, dim=1)
+        gate_input = stacked.flatten(start_dim=1)
+        weights = torch.softmax(wrapper.dynamic_gate_mlp(gate_input), dim=1)
+
+    # Weights must sum to 1.0 per sample across all 3 branches.
+    assert weights.shape == (batch_size, 3)
+    assert weights.sum(dim=1).allclose(torch.ones(batch_size), atol=1e-6)
+    # Softmax is strictly positive — all branches have non-zero weight.
+    assert (weights > 0).all()
+
+
 def test_existing_gated_unaffected():
     """Ensure static gated strategy still works after the dynamic_gate additions."""
     wrapper = EncoderWrapper(
