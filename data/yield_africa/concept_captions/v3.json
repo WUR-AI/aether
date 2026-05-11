@@ -1,0 +1,170 @@
+[
+  {
+    "concept_caption": "Very high growing-season vegetation vigor (NDVI >0.64)",
+    "col": "feat_ndvi_mean_grow",
+    "is_max": true,
+    "theta_k": 0.64
+  },
+  {
+    "concept_caption": "Very low growing-season vegetation vigor (NDVI <0.42)",
+    "col": "feat_ndvi_mean_grow",
+    "is_max": false,
+    "theta_k": 0.42
+  },
+  {
+    "concept_caption": "Very high vegetation greenness during long rains (Mar-May NDVI >0.65)",
+    "col": "feat_ndvi_mean_mam",
+    "is_max": true,
+    "theta_k": 0.65
+  },
+  {
+    "concept_caption": "Very low vegetation greenness during long rains (Mar-May NDVI <0.46)",
+    "col": "feat_ndvi_mean_mam",
+    "is_max": false,
+    "theta_k": 0.46
+  },
+  {
+    "concept_caption": "Very high vegetation greenness during short rains (Sep-Nov NDVI >0.65)",
+    "col": "feat_ndvi_mean_son",
+    "is_max": true,
+    "theta_k": 0.65
+  },
+  {
+    "concept_caption": "Very low vegetation greenness during short rains (Sep-Nov NDVI <0.36)",
+    "col": "feat_ndvi_mean_son",
+    "is_max": false,
+    "theta_k": 0.36
+  },
+
+  {
+    "concept_caption": "Strong long-rains green-up response (NDVI MAM minus JJA >0.15)",
+    "col": "feat_ndvi_contrast_mam_jja",
+    "is_max": true,
+    "theta_k": 0.15
+  },
+  {
+    "concept_caption": "Weak or absent long-rains green-up (NDVI MAM minus JJA <-0.10)",
+    "col": "feat_ndvi_contrast_mam_jja",
+    "is_max": false,
+    "theta_k": -0.10
+  },
+  {
+    "concept_caption": "Strong short-rains green-up response (NDVI SON minus DJF >0.12)",
+    "col": "feat_ndvi_contrast_son_djf",
+    "is_max": true,
+    "theta_k": 0.12
+  },
+  {
+    "concept_caption": "Weak or absent short-rains green-up (NDVI SON minus DJF <-0.16)",
+    "col": "feat_ndvi_contrast_son_djf",
+    "is_max": false,
+    "theta_k": -0.16
+  },
+
+  {
+    "concept_caption": "Very high dry-season greenness (Dec-Feb NDVI >0.63, evergreen/perennial cover)",
+    "col": "feat_ndvi_mean_djf",
+    "is_max": true,
+    "theta_k": 0.63
+  },
+  {
+    "concept_caption": "Very low dry-season greenness (Dec-Feb NDVI <0.45, bare/deciduous surface)",
+    "col": "feat_ndvi_mean_djf",
+    "is_max": false,
+    "theta_k": 0.45
+  },
+
+  {
+    "concept_caption": "Very high tree or agroforestry canopy cover (>9%)",
+    "col": "feat_tree_c",
+    "is_max": true,
+    "theta_k": 9.0
+  },
+  {
+    "concept_caption": "Very low tree canopy cover (<1%, open cropland)",
+    "col": "feat_tree_c",
+    "is_max": false,
+    "theta_k": 0.7
+  },
+
+  {
+    "concept_caption": "Very high total precipitation in growing season (>1780 mm), associated with moist vegetation conditions",
+    "col": "feat_agera5_prec_grow",
+    "is_max": true,
+    "theta_k": 1780.0
+  },
+  {
+    "concept_caption": "Very low total precipitation in growing season (<735 mm), associated with water-limited vegetation",
+    "col": "feat_agera5_prec_grow",
+    "is_max": false,
+    "theta_k": 735.0
+  },
+  {
+    "concept_caption": "Very high number of wet days in growing season (>201 days), persistent moisture conditions",
+    "col": "feat_agera5_wetdays_grow",
+    "is_max": true,
+    "theta_k": 201.0
+  },
+  {
+    "concept_caption": "Very low number of wet days in growing season (<104 days), intermittent rainfall conditions",
+    "col": "feat_agera5_wetdays_grow",
+    "is_max": false,
+    "theta_k": 104.0
+  },
+  {
+    "concept_caption": "Very high climatic moisture deficit (>775 mm), drought-stress-prone vegetation",
+    "col": "feat_cmd",
+    "is_max": true,
+    "theta_k": 775.0
+  },
+  {
+    "concept_caption": "Very low climatic moisture deficit (<410 mm), low drought stress",
+    "col": "feat_cmd",
+    "is_max": false,
+    "theta_k": 410.0
+  },
+
+  {
+    "concept_caption": "Very high growing-season maximum temperature (>27.0°C), heat-stress-prone vegetation",
+    "col": "feat_agera5_tmax_grow",
+    "is_max": true,
+    "theta_k": 27.0
+  },
+  {
+    "concept_caption": "Very low growing-season maximum temperature (<23.7°C), cool growing conditions",
+    "col": "feat_agera5_tmax_grow",
+    "is_max": false,
+    "theta_k": 23.7
+  },
+  {
+    "concept_caption": "Very high growing degree days (>2750), high thermal accumulation",
+    "col": "feat_agera5_gdd10_grow",
+    "is_max": true,
+    "theta_k": 2750.0
+  },
+  {
+    "concept_caption": "Very low growing degree days (<2025), limited thermal accumulation",
+    "col": "feat_agera5_gdd10_grow",
+    "is_max": false,
+    "theta_k": 2025.0
+  },
+
+  {
+    "concept_caption": "Very high elevation (>1795 m), highland agricultural landscape",
+    "col": "feat_dem",
+    "is_max": true,
+    "theta_k": 1795.0
+  },
+  {
+    "concept_caption": "Very low elevation (<1275 m), lowland agricultural landscape",
+    "col": "feat_dem",
+    "is_max": false,
+    "theta_k": 1275.0
+  },
+  {
+    "concept_caption": "Very high topographic diversity, complex terrain landscape",
+    "col": "feat_top_div",
+    "is_max": true,
+    "theta_k": 0.37
+  }
+]
