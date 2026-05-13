@@ -44,3 +44,7 @@ class AverageEncoder(BaseGeoEncoder):
     @property
     def device(self):
         return
+
+    @property
+    def dtype(self):
+        return
