@@ -47,4 +47,4 @@ class AverageEncoder(BaseGeoEncoder):
 
     @property
     def dtype(self):
-        return
+        return torch.float32
