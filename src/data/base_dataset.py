@@ -5,36 +5,37 @@ from typing import Any, Dict, List, final
 
 import numpy as np
 import pandas as pd
+import rasterio
 import torch
 from torch.utils.data import Dataset
 
 from src.utils.data_utils import center_crop_npy
 
 TORCH_DTYPES = {
-    'float32': torch.float32,
-    'float64': torch.float64,
-    'int32': torch.int32,
-    'int64': torch.int64,
-    'bfloat16': torch.bfloat16,
+    "float32": torch.float32,
+    "float64": torch.float64,
+    "int32": torch.int32,
+    "int64": torch.int64,
+    "bfloat16": torch.bfloat16,
 }
 
 
 class BaseDataset(Dataset, ABC):
     def __init__(
-            self,
-            data_dir: str,
-            modalities: dict,
-            use_target_data: bool = True,
-            use_aux_data: Dict[str, List[str] | str] | str | None = None,
-            dataset_name: str = "BaseDataset",
-            seed: int = 12345,
-            mode: str = "train",
-            cache_dir: str = None,
-            implemented_mod: set[str] = None,
-            mock: bool = False,
-            use_features: bool = True,
-            csv_name: str = None,
-            dtype: str = "float32",
+        self,
+        data_dir: str,
+        modalities: dict,
+        use_target_data: bool = True,
+        use_aux_data: Dict[str, List[str] | str] | str | None = None,
+        dataset_name: str = "BaseDataset",
+        seed: int = 12345,
+        mode: str = "train",
+        cache_dir: str = None,
+        implemented_mod: set[str] = None,
+        mock: bool = False,
+        use_features: bool = True,
+        csv_name: str = None,
+        dtype: str = "float32",
     ) -> None:
         """Interface for any use case dataset.
 
@@ -77,10 +78,13 @@ class BaseDataset(Dataset, ABC):
             if mod not in self.implemented_mod:
                 raise ValueError(f"{mod} not in implemented modalities.")
 
-            if 'dtype' in configs:
-                m_dtype = configs.get('dtype', dtype)
-                self.modalities[mod]['dtype'] = m_dtype
-                print(f'Dtype of {mod} set to {m_dtype}')
+            if configs is not None:
+                m_dtype = configs.get("dtype", dtype)
+                self.modalities[mod]["dtype"] = m_dtype
+                print(f"Dtype of {mod} set to {m_dtype}")
+            else:
+                m_dtype = dtype
+                self.modalities[mod] = {"dtype": m_dtype}
 
         # More precise dataset name (with modalities)
         self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
@@ -319,7 +323,7 @@ class BaseDataset(Dataset, ABC):
 
     @final
     def load_tiff(self, tiff_file_path: str, dtype: np.dtype) -> np.ndarray:
-        """Load tiff file as np array of a specified dtype"""
+        """Load tiff file as np array of a specified dtype."""
 
         with rasterio.open(tiff_file_path) as f:
             im = f.read()
@@ -375,7 +379,8 @@ class BaseDataset(Dataset, ABC):
 
     @staticmethod
     def resolve_dtype(dtype_str: str):
-        """Resolve dtype from string into numpy dtype and return flag for mixed precision dtype in tensors"""
+        """Resolve dtype from string into numpy dtype and return flag for mixed precision dtype in
+        tensors."""
         is_bfloat16 = dtype_str == "bfloat16"
         np_dtype = np.float32 if is_bfloat16 else np.dtype(dtype_str)
 
