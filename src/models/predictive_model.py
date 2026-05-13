@@ -112,7 +112,7 @@ class PredictiveModel(BaseModel):
         self.trainable_modules.extend(new_modules)
 
         if self.normalize_features:
-            self.normalizer = nn.LayerNorm(self.geo_encoder.output_dim)
+            self.normalizer = nn.LayerNorm(self.geo_encoder.output_dim, dtype=self.geo_encoder.dtype)
             self.trainable_modules.append("normalizer")
             print("Model set up to normalise geo_encoder features.")
 
