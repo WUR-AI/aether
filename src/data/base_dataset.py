@@ -8,25 +8,33 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-import src.data_preprocessing.data_utils as du
 from src.utils.data_utils import center_crop_npy
+
+TORCH_DTYPES = {
+    'float32': torch.float32,
+    'float64': torch.float64,
+    'int32': torch.int32,
+    'int64': torch.int64,
+    'bfloat16': torch.bfloat16,
+}
 
 
 class BaseDataset(Dataset, ABC):
     def __init__(
-        self,
-        data_dir: str,
-        modalities: dict,
-        use_target_data: bool = True,
-        use_aux_data: Dict[str, List[str] | str] | str | None = None,
-        dataset_name: str = "BaseDataset",
-        seed: int = 12345,
-        mode: str = "train",
-        cache_dir: str = None,
-        implemented_mod: set[str] = None,
-        mock: bool = False,
-        use_features: bool = True,
-        csv_name: str = None,
+            self,
+            data_dir: str,
+            modalities: dict,
+            use_target_data: bool = True,
+            use_aux_data: Dict[str, List[str] | str] | str | None = None,
+            dataset_name: str = "BaseDataset",
+            seed: int = 12345,
+            mode: str = "train",
+            cache_dir: str = None,
+            implemented_mod: set[str] = None,
+            mock: bool = False,
+            use_features: bool = True,
+            csv_name: str = None,
+            dtype: str = "float32",
     ) -> None:
         """Interface for any use case dataset.
 
@@ -50,18 +58,31 @@ class BaseDataset(Dataset, ABC):
         :param implemented_mod: implemented modalities for each dataset
         :param mock: whether to mock csv file
         :param use_features: if tabular feat_* columns should be included. Default True.
+        :param dtype: global dtype (used if not specified for each modality individually), also used for aux, target
         """
 
         if mock:
             dataset_name = "mock"
 
+        # Dtype
+        assert dtype in TORCH_DTYPES.keys()
+        self.dtype: str = TORCH_DTYPES[dtype]
+
         # Modalities
         self.implemented_mod = implemented_mod
         self.modalities: dict = modalities
-        for mod in self.modalities.keys():
+
+        # Check modalities and set dtypes
+        for mod, configs in self.modalities.items():
             if mod not in self.implemented_mod:
                 raise ValueError(f"{mod} not in implemented modalities.")
-        # more precise dataset name (with modalities)
+
+            if 'dtype' in configs:
+                m_dtype = configs.get('dtype', dtype)
+                self.modalities[mod]['dtype'] = m_dtype
+                print(f'Dtype of {mod} set to {m_dtype}')
+
+        # More precise dataset name (with modalities)
         self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
 
         # Set data attributes
@@ -288,35 +309,74 @@ class BaseDataset(Dataset, ABC):
         self.pooch_cli.load_registry(self.registry_path)
 
     @final
-    def load_npy(self, filepath: str) -> torch.Tensor:
+    def load_npy(self, filepath: str, dtype: np.dtype) -> np.ndarray:
         """Loads numpy array from file as a tensor."""
-        im = np.load(filepath).transpose(2, 0, 1)
-        return torch.from_numpy(im).float()
+        arr = np.load(filepath).transpose(2, 0, 1)
+        if arr.dtype != np.dtype(dtype):
+            arr = arr.astype(dtype=dtype, copy=False)
+
+        return arr
+
+    @final
+    def load_tiff(self, tiff_file_path: str, dtype: np.dtype) -> np.ndarray:
+        """Load tiff file as np array of a specified dtype"""
+
+        with rasterio.open(tiff_file_path) as f:
+            im = f.read()
+            assert isinstance(im, np.ndarray)
+            if im.dtype != np.dtype(dtype):
+                im = im.astype(dtype=dtype, copy=False)
+        return im
 
     @final
     def load_aef(self, filepath: str):
         """Loads AEF data from file as a tensor."""
 
-        im = du.load_tiff(filepath, datatype="np")
+        # Modality settings
         size = self.modalities["aef"]["size"]
-        if im.shape[1] != size:
-            im = center_crop_npy(im, (64, size, size))
-        if np.isinf(im).any():
-            im = np.clip(im, a_min=-0.5, a_max=0.5)
-        # TODO any normalisation needed
+        dtype = self.modalities["aef"].get("dtype")
+        dtype, is_bfloat16 = self.resolve_dtype(dtype)
 
-        return torch.tensor(im).float()
+        im = self.load_tiff(filepath, np.dtype(dtype))
+
+        if im.shape[-2:] != (size, size):
+            im = center_crop_npy(im, (64, size, size))
+
+        # Scan for inf values and clip them (in memory)
+        np.clip(im, -0.5, 0.5, out=im)
+        # TODO any other normalisation needed
+
+        tensor = torch.from_numpy(im)
+        if is_bfloat16:
+            tensor = tensor.to(torch.bfloat16)
+        return tensor
 
     @final
     def load_tessera(self, filepath: str) -> torch.Tensor:
         """Loads."""
         size = self.modalities["tessera"]["size"]
-        arr = self.load_npy(filepath)
-        if arr.size()[1] < size:
-            raise ValueError(
-                f"Requested tile size {size} is larger than actual available tile size {arr.size()[1]}"
-            )
-        elif arr.size()[1] != size:
+        dtype = self.modalities["tessera"]["dtype"]
+        dtype, is_bfloat16 = self.resolve_dtype(dtype)
+
+        arr = self.load_npy(filepath, np.dtype(dtype))
+
+        if arr.shape[-2:] != (size, size):
             arr = center_crop_npy(arr, (128, size, size))
+
+        # Nans are 0 across all 128 channels
+        # mask = np.all(arr == 0, axis=0)
+        # arr[mask] = torch.nan
         # TODO any normalisation needed
-        return arr
+
+        tensor = torch.from_numpy(arr)
+        if is_bfloat16:
+            tensor = tensor.to(torch.bfloat16)
+        return tensor
+
+    @staticmethod
+    def resolve_dtype(dtype_str: str):
+        """Resolve dtype from string into numpy dtype and return flag for mixed precision dtype in tensors"""
+        is_bfloat16 = dtype_str == "bfloat16"
+        np_dtype = np.float32 if is_bfloat16 else np.dtype(dtype_str)
+
+        return np_dtype, is_bfloat16
