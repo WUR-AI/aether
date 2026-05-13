@@ -121,6 +121,9 @@ class PredictiveModel(BaseModel):
             input_dim=self.geo_encoder.output_dim, output_dim=self.num_classes
         )
         self.prediction_head.setup()
+        if self.prediction_head.dtype != self.geo_encoder.dtype:
+            self.prediction_head = self.prediction_head.to(dtype=self.geo_encoder.dtype)
+
         if "prediction_head" not in self.trainable_modules:
             self.trainable_modules.append("prediction_head")
 
