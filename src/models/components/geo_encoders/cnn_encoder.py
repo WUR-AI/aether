@@ -23,17 +23,19 @@ class CNNEncoder(BaseGeoEncoder):
         backbone="resnet",
         pretrained_cnn="imagenet",
         resnet_version=18,
-        freezing_strategy="all",
         geo_data_name="s2",
         input_n_bands: int | None = None,
-        output_dim=512,
     ) -> None:
         super().__init__()
 
+        # Backbone configurations
         self.backbone = backbone
-        self.pretrained_cnn = pretrained_cnn
-        self.resnet_version = resnet_version
-        self.freezing_strategy = freezing_strategy
+        if self.backbone == "resnet":
+            assert resnet_version in [18, 34, 50], f"Unsupported resnet version: {resnet_version}"
+            self.resnet_version = resnet_version
+
+            assert pretrained_cnn in ["imagenet", "IMAGENET1K_V1", 'SSL4EO_RGB_MOCO', None], f"Unsupported pretrained_cnn: {pretrained_cnn}"
+            self.pretrained_cnn = pretrained_cnn
 
         self.allowed_geo_data_names = ["s2", "aef", "tessera"]
         assert geo_data_name in self.allowed_geo_data_names
