@@ -3,8 +3,10 @@
 # to execute this experiment run:
 # python train.py experiment=example
 
+# Tessera with average encoder and MLP prediction head, for tile sizes 128 and 256, each with 3 random seeds
+
 defaults:
-  - override /model: s2bms_average_prediction
+  - override /model: s2bms_prediction
   - override /data: s2bms_prediction
   - override /metrics: s2bms_predictive
 

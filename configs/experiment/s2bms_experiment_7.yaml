@@ -3,7 +3,7 @@
 # to execute this experiment run:
 # python train.py experiment=example
 
-# AEF with average encoder and linear prediction head, for tile sizes 128 and 256, each with 3 random seeds
+# Geoclip with MLP prediction head, with 3 random seeds
 
 defaults:
   - override /model: s2bms_prediction
@@ -12,30 +12,26 @@ defaults:
 
 tags:
   - prediction
-  - aef
-  - aef_${str:${data.dataset.modalities.aef.size}}
+  - geoclip
   - ${str:${seed}}
 
-experiment_name: avr_aef_${str:${data.dataset.modalities.aef.size}}_linear
+experiment_name: geoclip_mlp
 
 model:
   geo_encoder:
-    _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
-    geo_data_name: aef
+    _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
+    geo_data_name: coords
   trainable_modules: [prediction_head]
   prediction_head:
-    _target_: src.models.components.pred_heads.linear_pred_head.LinearPredictionHead
+    _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
 
 data:
   dataset:
     modalities:
-      aef:
-        format: tif
-        enable_nans: true
+      coords:
     use_target_data: true
     use_aux_data: false
   caption_builder:
-  pin_memory: true
   num_workers: 14
   batch_size: 128
   saved_split_file_name: "split_indices_s2bms_2024-08-14-1459_union_aef_tsr_val_test.pth"
@@ -53,4 +49,3 @@ hydra:
   sweeper:
     params:
       seed: 12345, 404, 654
-      +data.dataset.modalities.aef.size: 128, 256
