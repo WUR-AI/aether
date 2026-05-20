@@ -347,8 +347,12 @@ class BaseDataset(Dataset, ABC):
             im = center_crop_npy(im, (64, size, size))
 
         # Scan for inf values and clip them (in memory)
-        np.clip(im, -0.5, 0.5, out=im)
-        # TODO any other normalisation needed
+        if self.modalities["aef"].get("enable_nans", False):
+            if np.isinf(im).any():
+                im[np.isinf(im)] = np.nan
+        else:
+            np.clip(im, -0.5, 0.5, out=im)
+            # TODO any other normalisation needed
 
         tensor = torch.from_numpy(im)
         if is_bfloat16:
