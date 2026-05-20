@@ -135,7 +135,7 @@ class ButterflyDataset(BaseDataset):
         im = self.load_tiff(filepath, dtype=np.dtype('uint16'))
         if self.modalities["s2"].get("channels", '') == "4c":
             c = 4
-        elif self.modalities["s2"].egt("channels", '') == "rgb":
+        elif self.modalities["s2"].get("channels", "") == "rgb":
             im = im[:3, :, :]
             c = 3
         else:
