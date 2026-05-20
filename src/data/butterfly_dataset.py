@@ -33,8 +33,8 @@ class ButterflyDataset(BaseDataset):
         :param seed: random seed
         :param cache_dir: path to cache dir
         :param mock: whether to mock csv file
-        :param dtype: global dtype (used if not specified for each modality individually), also used for aux, target
-
+        :param dtype: global dtype (used if not specified for each modality individually), also
+            used for aux, target
         """
 
         super().__init__(
