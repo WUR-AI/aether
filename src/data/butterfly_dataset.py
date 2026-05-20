@@ -5,7 +5,7 @@ import numpy as np
 import pooch
 import torch
 
-from src.data.base_dataset import BaseDataset, TORCH_DTYPES
+from src.data.base_dataset import TORCH_DTYPES, BaseDataset
 from src.data_preprocessing.renaming_utils import rename_s2bms
 from src.utils.data_utils import center_crop_npy
 from src.utils.errors import IllegalArgumentCombination
@@ -47,7 +47,7 @@ class ButterflyDataset(BaseDataset):
             cache_dir=cache_dir,
             implemented_mod={"s2", "tessera", "coords", "aef"},
             mock=mock,
-            dtype=dtype
+            dtype=dtype,
         )
 
     def setup(self):
@@ -132,8 +132,8 @@ class ButterflyDataset(BaseDataset):
         size = self.modalities["s2"]["size"]
         np_dtype, is_bfloat16 = self.resolve_dtype(self.modalities["s2"]["dtype"])
 
-        im = self.load_tiff(filepath, dtype=np.dtype('uint16'))
-        if self.modalities["s2"].get("channels", '') == "4c":
+        im = self.load_tiff(filepath, dtype=np.dtype("uint16"))
+        if self.modalities["s2"].get("channels", "") == "4c":
             c = 4
         elif self.modalities["s2"].get("channels", "") == "rgb":
             im = im[:3, :, :]
@@ -146,6 +146,9 @@ class ButterflyDataset(BaseDataset):
         if self.modalities["s2"].get("preprocessing") == "zscored":
             im = im.astype(np.int32)
             im = self.zscore_image(im)
+        elif self.modalities["s2"].get("preprocessing") == "div_10000":
+            im = im / 10000.0
+            im = im.clip(0, 1)
         else:
             im = np.clip(im, 0, 2000)
             im = im / 2000.0
@@ -169,7 +172,10 @@ class ButterflyDataset(BaseDataset):
 
         for modality in self.modalities:
             if modality in ["coords"]:
-                formatted_row["eo"][modality] = torch.tensor([row["lat"], row["lon"]], dtype=TORCH_DTYPES[self.modalities[modality]['dtype']])
+                formatted_row["eo"][modality] = torch.tensor(
+                    [row["lat"], row["lon"]],
+                    dtype=TORCH_DTYPES[self.modalities[modality]["dtype"]],
+                )
             elif modality == "s2":
                 formatted_row["eo"][modality] = self.load_s2(row["s2_path"])
                 # TODO: augmentations
