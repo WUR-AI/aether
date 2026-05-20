@@ -38,6 +38,11 @@ dependencies = [
     "xgboost>=3.2.0",
 ]
 
+satclip = [
+    "albumentations",
+    "satclip @ git+https://github.com/gabrieletijunaityte/satclip",
+]
+
 [project.optional-dependencies]
 create-data = [
     "geemap>=0.36.6",
