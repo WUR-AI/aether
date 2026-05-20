@@ -36,9 +36,6 @@ dependencies = [
     "geotessera>=0.8.0",
     "ipykernel>=7.2.0",
     "xgboost>=3.2.0",
-]
-
-satclip = [
     "albumentations",
     "satclip @ git+https://github.com/gabrieletijunaityte/satclip",
 ]
