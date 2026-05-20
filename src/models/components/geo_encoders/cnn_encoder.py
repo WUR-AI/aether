@@ -3,9 +3,16 @@ from typing import Dict, List, override
 import torch
 import torchvision.models as models
 from torch import nn
+from torchgeo.models import resnet50, ResNet50_Weights, ResNet18_Weights, resnet18
 
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
+from src.utils.errors import IllegalArgumentCombination
 
+RN_DIM = {
+    18 : 512,
+    34: 512,
+    50: 2048
+}
 
 class CNNEncoder(BaseGeoEncoder):
     """Convolutional neural network EO encoder. Adapted from PECL.
@@ -37,15 +44,15 @@ class CNNEncoder(BaseGeoEncoder):
             assert pretrained_cnn in ["imagenet", "IMAGENET1K_V1", 'SSL4EO_RGB_MOCO', None], f"Unsupported pretrained_cnn: {pretrained_cnn}"
             self.pretrained_cnn = pretrained_cnn
 
+            self.output_dim = RN_DIM[resnet_version]
+
+        #  Input modality configurations
         self.allowed_geo_data_names = ["s2", "aef", "tessera"]
         assert geo_data_name in self.allowed_geo_data_names
         self.geo_data_name = geo_data_name
 
         self.set_n_input_bands(input_n_bands)
-        assert (
-            self.input_n_bands >= 3 and type(self.input_n_bands) is int
-        ), f"input_n_bands must be int >=3, got {self.input_n_bands}"
-        self.output_dim = output_dim
+        assert (self.input_n_bands >= 3 and type(self.input_n_bands) is int), f"input_n_bands must be int >=3, got {self.input_n_bands}"
 
     def set_n_input_bands(self, n_bands: int | None = None) -> None:
         """Sets number of input bands based on geo_data_name if n_bands is None.
@@ -67,75 +74,66 @@ class CNNEncoder(BaseGeoEncoder):
             self.input_n_bands = n_bands
         return None
 
-    def get_backbone(self):
-        """Gets backbone model given configuration stored in self.
-
-        :return: backbone model
-        """
-        if self.backbone == "resnet":
-            assert self.resnet_version in [
-                18,
-                34,
-                50,
-            ], f"Unsupported resnet version: {self.resnet_version}"
-            assert self.pretrained_cnn in [
-                "imagenet",
-                "IMAGENET1K_V1",
-                None,
-            ], f"Unsupported pretrained_cnn: {self.pretrained_cnn}"
-            if self.pretrained_cnn == "imagenet":
-                self.pretrained_cnn = "IMAGENET1K_V1"
-            if self.resnet_version == 18:
-                model = models.resnet18(weights=self.pretrained_cnn)
-            elif self.resnet_version == 34:
-                model = models.resnet34(weights=self.pretrained_cnn)
-            elif self.resnet_version == 50:
-                model = models.resnet50(weights=self.pretrained_cnn)
-            else:
-                raise ValueError(f"Unsupported resnet version: {self.resnet_version}")
-
-            # Modify the first conv layer to accept input_n_bands channels
-            if self.pretrained_cnn is not None and self.input_n_bands != 3:
-                weight = model.conv1.weight.clone()
-            if self.input_n_bands != 3:
-                model.conv1 = torch.nn.Conv2d(
-                    self.input_n_bands, 64, kernel_size=7, stride=2, padding=3, bias=False
-                )
-                if self.pretrained_cnn is not None:  # copy pre-trained RGB bands
-                    for i in range(self.input_n_bands):
-                        model.conv1.weight.data[:, i, :, :] = weight[
-                            :, i % 3, :, :
-                        ]  # ensure this is not frozen
-            model.fc = nn.Linear(model.fc.in_features, self.output_dim)
-
-            assert self.freezing_strategy in [
-                "all",
-                "none",
-            ], f"Unsupported freezing_strategy: {self.freezing_strategy}"
-            layers_resnet = list(model.children())
-            n_layers = len(layers_resnet)
-            for i_c, child in enumerate(layers_resnet):
-                if i_c == 0:  # train first layer if not 3 bands (or no freezing)
-                    train_if = self.freezing_strategy == "none" or self.input_n_bands != 3
-                    for param in child.parameters():
-                        param.requires_grad = train_if
-                elif i_c == n_layers - 1:  # always train last layer
-                    for param in child.parameters():
-                        param.requires_grad = True
-                else:  # train other layers if no freezing
-                    train_if = self.freezing_strategy == "none"
-                    for param in child.parameters():
-                        param.requires_grad = train_if
-
-            return model
-        else:
-            raise ValueError(f"Unsupported backbone: {self.backbone}")
-
     @override
     def _setup(self) -> List[str]:
-        # TODO: could you make sure new layers are returned here to be added to trainable parts?
-        self.geo_encoder = self.get_backbone()
-        return []
+        """Gets backbone model given configuration stored in self.
+        :return: backbone model
+        """
+        trainable_modules = []
+        if self.backbone == "resnet":
+            # Weights
+            # SSL4EO
+            if self.pretrained_cnn == "SSL4EO_RGB_MOCO":
+                if self.resnet_version == 18:
+                    self.geo_encoder = resnet18(weights=ResNet18_Weights.SENTINEL2_RGB_MOCO)
+                elif self.resnet_version == 34:
+                    raise IllegalArgumentCombination('SSL4EO_RGB_MOCO weights are not available for RN-34')
+                else:
+                    self.geo_encoder = resnet50(weights=ResNet50_Weights.SENTINEL2_RGB_MOCO)
+            # Imagenet
+            else:
+                if self.pretrained_cnn == "imagenet":
+                    self.pretrained_cnn = "IMAGENET1K_V1"
+                elif self.pretrained_cnn == "imagenet_v2":
+                    self.pretrained_cnn = "IMAGENET1K_V2"
+
+                if self.resnet_version == 18:
+                    self.geo_encoder = models.resnet18(weights=self.pretrained_cnn)
+                elif self.resnet_version == 34:
+                    self.geo_encoder = models.resnet34(weights=self.pretrained_cnn)
+                else:
+                    self.geo_encoder = models.resnet50(weights=self.pretrained_cnn)
+
+            # Modify the first conv layer to accept input_n_bands channels
+            if self.input_n_bands != 3:
+
+                # Copy pre-trained weights
+                if self.pretrained_cnn is not None:
+                    weight = self.geo_encoder.conv1.weight.clone()
+
+                # Replace 1st conv layer
+                self.geo_encoder.conv1 = torch.nn.Conv2d(
+                    self.input_n_bands, 64, kernel_size=7, stride=2, padding=3, bias=False
+                )
+
+                # Copy pre-trained RGB bands
+                if self.pretrained_cnn is not None:
+                    with torch.no_grad():
+                        for i in range(self.input_n_bands):
+                            self.geo_encoder.conv1.weight[:, i, :, :] = weight[:, i % 3, :, :]
+
+                # Ensure replaced layer is not frozen
+                trainable_modules.append('geo_encoder.conv1')
+
+            # I think for features fc often is replaced with identity?
+            self.geo_encoder.fc = nn.Identity()
+
+            # self.geo_encoder.fc = nn.Linear(self.geo_encoder.fc.in_features, self.output_dim)
+            # trainable_modules.append('geo_encoder.fc')
+
+            return trainable_modules
+        else:
+            raise ValueError(f"Unsupported backbone: {self.backbone}")
 
     @override
     def forward(
@@ -147,18 +145,15 @@ class CNNEncoder(BaseGeoEncoder):
         :param batch: input batch
         :return: extracted features
         """
-        eo_data = batch.get("eo", {})
-
+        eo_data = batch.get("eo", KeyError(f"Batch must contain batch['eo']"))
+        eo_data = eo_data.get(self.geo_data_name,  KeyError(f"Batch must contain batch['eo']['{self.geo_data_name}']"))
         dtype = self.dtype
+
         if eo_data.dtype != dtype:
             eo_data = eo_data.to(dtype)
-        feats = self.geo_encoder(eo_data[self.geo_data_name])
-        # n_nans = torch.sum(torch.isnan(feats)).item()
-        # assert (
-        #     n_nans == 0
-        # ), f"CNNEncoder output contains {n_nans}/{feats.numel()} NaNs PRIOR to normalization with data min {eo_data[self.geo_data_name].min()} and max {eo_data[self.geo_data_name].max()}."
+        feats = self.geo_encoder(eo_data)
 
         if self.extra_projector:
             feats = self.extra_projector(feats)
 
-        return feats.to(dtype)
+        return feats
