@@ -371,9 +371,11 @@ class BaseDataset(Dataset, ABC):
         if arr.shape[-2:] != (size, size):
             arr = center_crop_npy(arr, (128, size, size))
 
-        # Nans are 0 across all 128 channels
-        # mask = np.all(arr == 0, axis=0)
-        # arr[mask] = torch.nan
+        if  self.modalities["tessera"].get("enable_nans", False):
+            # Nans are 0 across all 128 channels
+            mask = np.all(arr == 0, axis=0)
+            arr[mask] = torch.nan
+        # TODO any normalisation needed
         # TODO any normalisation needed
 
         tensor = torch.from_numpy(arr)
