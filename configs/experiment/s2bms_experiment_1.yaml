@@ -17,6 +17,9 @@ tags:
 experiment_name: avr_aef_${str:${data.dataset.modalities.aef.size}}_mlp
 
 model:
+  geo_encoder:
+    _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
+    geo_data_name: aef
   trainable_modules: [prediction_head]
   prediction_head:
     _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
@@ -26,12 +29,13 @@ data:
     modalities:
       aef:
         format: tif
+        enable_nans: true
     use_target_data: true
     use_aux_data: false
   caption_builder:
   pin_memory: true
   num_workers: 14
-  batch_size: 256
+  batch_size: 16
   saved_split_file_name: "split_indices_s2bms_2024-08-14-1459_union_aef_tsr_val_test.pth"
 
 logger:
