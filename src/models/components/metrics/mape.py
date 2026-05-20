@@ -29,18 +29,20 @@ class MAPE(BaseMetrics):
     def forward(
         self,
         pred: torch.Tensor,
+        mode: str | None = None,
         labels: torch.Tensor | None = None,
         batch: Dict[str, torch.Tensor] | None = None,
         **kwargs,
     ) -> Dict[str, torch.Tensor]:
+        if mode not in _MODES:
+            raise ValueError(f"MAPE.forward: mode must be one of {_MODES}, got '{mode}'")
         if labels is None:
             labels = batch.get("target") if batch is not None else None
         if labels is None:
             raise ValueError(
                 "MAPE.forward: labels must be provided via `labels` or `batch['target']`"
             )
-        mode = kwargs.get("mode", "train")
 
         metric = self._mape[f"mode_{mode}"]
         metric.update(pred.squeeze(-1), labels.squeeze(-1))
-        return {self.name: metric}
+        return {f"{mode}_{self.name}": metric}

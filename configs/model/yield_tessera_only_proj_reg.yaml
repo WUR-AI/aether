@@ -1,0 +1,31 @@
+defaults:
+  - yield_tessera_fusion_reg # inherit prediction_head, optimizer, scheduler, loss_fn
+  - _self_
+
+# Tessera-only model with explicit MLP projector.
+# Wraps AverageEncoder in a single-branch EncoderWrapper so the projector
+# output_dim and nn_layers can be swept via Hydra overrides in the same way
+# as the multi-branch FM configs — enabling a fair comparison.
+#
+# AverageEncoder(tessera): 9×9 spatial average → 128-dim native TESSERA vector.
+# MLPProjector: 128 → output_dim (default 256), nn_layers=1 (linear projection).
+#
+# The single-branch "none" fusion strategy passes the tessera branch output
+# directly to the prediction head with no aggregation.
+#
+# Combine with data configs that set `use_features: false`.
+
+geo_encoder:
+  _target_: src.models.components.geo_encoders.encoder_wrapper.EncoderWrapper
+
+  encoder_branches:
+    - encoder:
+        _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
+        geo_data_name: tessera
+      projector:
+        _target_: src.models.components.geo_encoders.mlp_projector.MLPProjector
+        nn_layers: 1
+        output_dim: 256
+
+  # Single branch — "none" passes the tessera output through unchanged.
+  fusion_strategy: "none"

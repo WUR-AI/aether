@@ -1,0 +1,42 @@
+# @package _global_
+# Ablation config H — tessera + tessera_prev, concat fusion, no tabular features.
+#
+# Mirrors config C but removes all tabular features. Both year-Y and year-Y−1
+# embeddings are concatenated into a single 512-d vector (2 × 256) before the
+# prediction head. The RMSE gap (H − C) quantifies how much tabular features
+# contribute on top of a fixed-weight dual-year spatial signal.
+# Comparing G (dynamic_gate, no tab) against H (concat, no tab) shows whether
+# adaptive gating adds value when predicting from embeddings alone.
+#
+# Requires: ABLATION_SPLIT — set saved_split_file_name to the file saved by config A.
+
+defaults:
+  - override /model: yield_tessera_dual_no_tab_fusion_reg
+  - override /data: yield_africa_tessera_dual_KEN
+  - override /metrics: yield_africa_regression
+
+tags: ["yield_africa", "tessera_ablation", "KEN", "config_H"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 150
+
+data:
+  batch_size: 64
+  split_mode: from_file
+  saved_split_file_name: split_indices_2026-04-27-1644.pth
+  dataset:
+    use_features: false
+
+model:
+  geo_encoder:
+    fusion_strategy: "concat"
+
+logger:
+  wandb:
+    name: "ablation_H_concat_no_tab"
+    tags: ${tags}
+    group: "ablation_dual_tessera_KEN"
+  aim:
+    experiment: "yield_africa_ablation"

@@ -1,7 +1,7 @@
 from typing import Dict, override
 
 import torch
-import torch.nn.functional as F
+import torch.nn as nn
 
 from src.models.base_model import BaseModel
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
@@ -85,9 +85,6 @@ class PredictiveModel(BaseModel):
         self._setup_encoders_adapters()
         print("------------------------")
 
-        # freeze requested parts
-        self.freezer()
-
     def _setup_encoders_adapters(self):
         """Set up encoders and missing adapters/projectors."""
         # If tabular encoder used, we need to specify tabular dim and normalisation stats
@@ -111,8 +108,13 @@ class PredictiveModel(BaseModel):
                 self.target_mean, self.target_std = stats
 
         # Setup encoders that need data-depended configurations
-        new_modules = [f"geo_encoder.{i}]" for i in self.geo_encoder.setup()]
+        new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup()]
         self.trainable_modules.extend(new_modules)
+
+        if self.normalize_features:
+            self.normalizer = nn.LayerNorm(self.geo_encoder.output_dim)
+            self.trainable_modules.append("normalizer")
+            print("Model set up to normalise geo_encoder features.")
 
         # Configure prediction head based on geo-encoder output_dim
         self.prediction_head.set_dim(
@@ -127,7 +129,7 @@ class PredictiveModel(BaseModel):
         """Forward pass of a batch through the model."""
         feats = self.geo_encoder(batch)
         if self.normalize_features:
-            feats = F.normalize(feats, dim=-1)
+            feats = self.normalizer(feats)
         return self.prediction_head(feats)
 
     @override
