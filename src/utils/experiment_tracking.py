@@ -80,6 +80,18 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
                     experiment = run.config["experiment_name"]
                     run.summary.update({"experiment": experiment})
 
+                data_dict = run.config["data"]["dataset"]["modalities"]
+                if len(data_dict) == 1:
+                    k = list(data_dict.keys())[0]
+                    if k == "coords":
+                        if "GeoClip" in run.config["model"]["geo_encoder"]["_target_"]:
+                            data_name = "geoclip"
+                        else:
+                            data_name = "satclip"
+                    else:
+                        data_name = f"{k}_{data_dict[k]['size']}"
+                    run.summary.update({"data_used": data_name})
+
                 # Add missing experiments to the table
                 df = update_experiment_df(
                     run_id=run_id,

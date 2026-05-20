@@ -101,12 +101,27 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
             best_metric = early_stop_cb.best_model_score.item()
             best_path = early_stop_cb.best_model_path
 
+            data_dict = cfg["data"]["dataset"]["modalities"]
+            if len(data_dict) == 1:
+                k = list(data_dict.keys())[0]
+                if k == "coords":
+                    if "GeoClip" in cfg["model"]["geo_encoder"]["_target_"]:
+                        data_name = "geoclip"
+                    else:
+                        data_name = "satclip"
+                else:
+                    data_name = f"{k}_{data_dict[k]['size']}"
+            else:
+                ks = list(data_dict.keys())
+                data_name = str("".join([f'{k}_{data_dict[k].get("size", "")}' for k in ks]))
+
             # Log details to wandb
             wandb_logger.log_metrics(
                 {
                     "best_model_path": os.path.basename(best_path),
                     "source_dir": os.path.dirname(best_path),
                     "best_val_loss": best_metric,
+                    "data_used": data_name,
                 }
             )
 
