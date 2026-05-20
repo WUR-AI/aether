@@ -17,9 +17,17 @@ load_dotenv()
 
 # Disable tokenizers parallelism to avoid warnings when using multiprocessing
 import os
+import time
+
+import torch
+
+# Optimize Tensor Core usage (L40S / A100 / H100 all benefit from this)
+torch.set_float32_matmul_precision("high")
 
 if os.environ.get("TOKENIZERS_PARALLELISM") is None:
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+print(f"[train.py] Script started at {time.strftime('%Y-%m-%d %H:%M:%S')}", flush=True)
 
 from src.utils import (
     RankedLogger,
