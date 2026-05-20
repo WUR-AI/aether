@@ -36,7 +36,9 @@ class AverageEncoder(BaseGeoEncoder):
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Data forward pass through the encoder."""
         tile = batch.get("eo", {}).get(self.geo_data_name)
-        feats = self.geo_encoder(tile.mean(dim=(-2, -1)))
+        
+        # NaNs vs 0s are specified in dataset configs and returned from BaseDataset class
+        feats = self.geo_encoder(tile.nanmean(dim=(-2, -1)))
         if self.extra_projector:
             feats = self.extra_projector(feats)
         return feats
