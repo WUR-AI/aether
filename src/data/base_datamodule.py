@@ -28,6 +28,7 @@ class BaseDataModule(LightningDataModule):
         num_workers: int = 0,
         pin_memory: bool = False,
         persistent_workers: bool = False,
+        prefetch_factor: int | None = None,
         dataset_name: str = "base",
         split_mode: str = "random",
         save_split: bool = False,
@@ -45,6 +46,7 @@ class BaseDataModule(LightningDataModule):
         :param num_workers: number of workers for dataloader
         :param pin_memory: pin memory for dataloader
         :param persistent_workers: keep DataLoader workers alive between epochs
+        :param persistent_workers:
         :param dataset_name: dataset name
         :param split_mode: data split mode: random/from_file
         :param save_split: if to save split file
@@ -57,7 +59,6 @@ class BaseDataModule(LightningDataModule):
         self.save_hyperparameters(logger=False)
 
         self.dataset: BaseDataset = dataset
-        self.batch_size_per_device: int = batch_size
 
         # Caption generation
         self.use_collate_fn: bool = self.dataset.use_aux_data
@@ -86,16 +87,19 @@ class BaseDataModule(LightningDataModule):
 
         # Set up the dataset (download requested modalities)
         self.dataset.setup()
-        self.setup_batch_size_per_device()
 
-    def setup_batch_size_per_device(self) -> None:
+    @property
+    def batch_size_per_device(self) -> None:
         """Divide batch size by the number of devices."""
-        if self.trainer is not None:
-            if self.hparams.batch_size % self.trainer.world_size != 0:
-                raise RuntimeError(
-                    f"Batch size ({self.hparams.batch_size}) is not divisible by the number of devices ({self.trainer.world_size})."
-                )
-            self.batch_size_per_device = self.hparams.batch_size // self.trainer.world_size
+        if self.trainer is None:
+            return self.hparams.batch_size
+
+        if self.hparams.batch_size % self.trainer.world_size != 0:
+            raise RuntimeError(
+                f"Batch size ({self.hparams.batch_size}) is not divisible by the number of devices ({self.trainer.world_size})."
+            )
+
+        return self.hparams.batch_size // self.trainer.world_size
 
     def split_data(self) -> None:
         """Split data into train, val and test.
@@ -362,6 +366,9 @@ class BaseDataModule(LightningDataModule):
             ),
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
+            prefetch_factor=(
+                self.hparams.prefetch_factor if self.hparams.num_workers > 0 else None
+            ),
             shuffle=True,
             collate_fn=(
                 partial(
@@ -387,6 +394,9 @@ class BaseDataModule(LightningDataModule):
             persistent_workers=(
                 bool(self.hparams.persistent_workers) if self.hparams.num_workers > 0 else False
             ),
+            prefetch_factor=(
+                self.hparams.prefetch_factor if self.hparams.num_workers > 0 else None
+            ),
             shuffle=False,
             collate_fn=(
                 partial(
@@ -411,6 +421,9 @@ class BaseDataModule(LightningDataModule):
             pin_memory=self.hparams.pin_memory,
             persistent_workers=(
                 bool(self.hparams.persistent_workers) if self.hparams.num_workers > 0 else False
+            ),
+            prefetch_factor=(
+                self.hparams.prefetch_factor if self.hparams.num_workers > 0 else None
             ),
             shuffle=False,
             collate_fn=(
