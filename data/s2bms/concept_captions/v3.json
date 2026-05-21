@@ -1,0 +1,172 @@
+[
+    {
+        "concept_caption": "Densely populated area with many houses",
+        "is_max": true,
+        "theta_k": 0.3,
+        "col": "aux_corine_frac_11",
+        "id": 20,
+        "n_baseline_train": 151,
+        "n_baseline_val": 35,
+        "n_baseline_test": 33
+    },
+    {
+        "concept_caption": "Very sparsely populated area with few houses",
+        "is_max": false,
+        "theta_k": 0.05,
+        "col": "aux_corine_frac_11",
+        "id": 20,
+        "n_baseline_train": 503,
+        "n_baseline_val": 114,
+        "n_baseline_test": 91
+    },
+    {
+        "concept_caption": "Area with infrastructure such as roads, railways, airport, ports and heavy industry.",
+        "is_max": true,
+        "theta_k": 0.1,
+        "col": "aux_corine_frac_12",
+        "id": 23,
+        "n_baseline_train": 70,
+        "n_baseline_val": 17,
+        "n_baseline_test": 18
+    },
+    {
+        "concept_caption": "Arable land with crops for agriculture",
+        "is_max": true,
+        "theta_k": 0.65,
+        "col": "aux_corine_frac_21",
+        "id": 36,
+        "n_baseline_train": 103,
+        "n_baseline_val": 19,
+        "n_baseline_test": 20
+    },
+    {
+        "concept_caption": "Pasture fields with grass for grazing animals",
+        "is_max": true,
+        "theta_k": 0.6,
+        "col": "aux_corine_frac_231",
+        "id": 45,
+        "n_baseline_train": 74,
+        "n_baseline_val": 27,
+        "n_baseline_test": 20
+    },
+    {
+        "concept_caption": "Agricultural land used for crops, pasture or mixed farming",
+        "is_max": true,
+        "theta_k": 0.05,
+        "col": "aux_corine_frac_24",
+        "id": 46,
+        "n_baseline_train": 64,
+        "n_baseline_val": 13,
+        "n_baseline_test": 9
+    },
+    {
+        "concept_caption": "Forested area with many trees",
+        "is_max": true,
+        "theta_k": 0.25,
+        "col": "aux_corine_frac_31",
+        "id": 52,
+        "n_baseline_train": 199,
+        "n_baseline_val": 34,
+        "n_baseline_test": 38
+    },
+    {
+        "concept_caption": "Scrub area with trees, shrub, moors.",
+        "is_max": true,
+        "theta_k": 0.2,
+        "col": "aux_corine_frac_32",
+        "id": 56,
+        "n_baseline_train": 98,
+        "n_baseline_val": 18,
+        "n_baseline_test": 11
+    },
+    {
+        "concept_caption": "Moorlands and heathlands with low vegetation",
+        "is_max": true,
+        "theta_k": 0.2,
+        "col": "aux_corine_frac_322",
+        "id": 58,
+        "n_baseline_train": 52,
+        "n_baseline_val": 11,
+        "n_baseline_test": 8
+    },
+    {
+        "concept_caption": "Wetlands such as marshes, swamps, mudflats and bogs.",
+        "is_max": true,
+        "theta_k": 0.2,
+        "col": "aux_corine_frac_4",
+        "id": 67,
+        "n_baseline_train": 33,
+        "n_baseline_val": 8,
+        "n_baseline_test": 5
+    },
+    {
+        "concept_caption": "Peat bogs",
+        "is_max": true,
+        "theta_k": 0.2,
+        "col": "aux_corine_frac_412",
+        "id": 70,
+        "n_baseline_train": 9,
+        "n_baseline_val": 0,
+        "n_baseline_test": 3
+    },
+    {
+        "concept_caption": "Water bodies such as lakes, rivers and sea",
+        "is_max": true,
+        "theta_k": 0.2,
+        "col": "aux_corine_frac_5",
+        "id": 75,
+        "n_baseline_train": 69,
+        "n_baseline_val": 9,
+        "n_baseline_test": 15
+    },
+    {
+        "concept_caption": "Warm area with high summer temperatures",
+        "is_max": true,
+        "theta_k": 22.0,
+        "col": "aux_bioclim_05",
+        "id": 4,
+        "n_baseline_train": 85,
+        "n_baseline_val": 16,
+        "n_baseline_test": 33
+    },
+    {
+        "concept_caption": "Cold area with low winter temperatures",
+        "is_max": false,
+        "theta_k": -0.6000000238418579,
+        "col": "aux_bioclim_06",
+        "id": 5,
+        "n_baseline_train": 52,
+        "n_baseline_val": 13,
+        "n_baseline_test": 11
+    },
+    {
+        "concept_caption": "Wet area with a lot of rainfall",
+        "is_max": true,
+        "theta_k": 950.0,
+        "col": "aux_bioclim_12",
+        "id": 11,
+        "n_baseline_train": 144,
+        "n_baseline_val": 35,
+        "n_baseline_test": 10
+    },
+    {
+        "concept_caption": "Remote area far from roads and infrastructure",
+        "is_max": true,
+        "theta_k": 1500.0,
+        "col": "aux_meandist_road",
+        "id": 84,
+        "n_baseline_train": 47,
+        "n_baseline_val": 8,
+        "n_baseline_test": 13
+    },
+    {
+        "concept_caption": "Densely populated area with many houses",
+        "is_max": true,
+        "theta_k": 1500.0,
+        "col": "aux_pop_density",
+        "id": 85,
+        "n_baseline_train": 99,
+        "n_baseline_val": 22,
+        "n_baseline_test": 22
+    }
+]
