@@ -212,6 +212,7 @@ class TextAlignmentModel(BaseModel):
                             if i_c not in list_concept_ids_drop:
                                 list_concept_ids_drop.append(i_c)
                         n_baseline = n_baseline_max
+                        self.concept_configs[i_c]["is_max"] = True
                     else:
                         if c.get("is_max", False):
                             print(
@@ -220,6 +221,7 @@ class TextAlignmentModel(BaseModel):
                             if i_c not in list_concept_ids_drop:
                                 list_concept_ids_drop.append(i_c)
                         n_baseline = n_baseline_min
+                        self.concept_configs[i_c]["is_max"] = False
 
                     if n_baseline == n_ds:
                         n_baseline = (
