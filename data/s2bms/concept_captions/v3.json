@@ -10,16 +10,6 @@
         "n_baseline_test": 33
     },
     {
-        "concept_caption": "Very sparsely populated area with few houses",
-        "is_max": false,
-        "theta_k": 0.05,
-        "col": "aux_corine_frac_11",
-        "id": 20,
-        "n_baseline_train": 503,
-        "n_baseline_val": 114,
-        "n_baseline_test": 91
-    },
-    {
         "concept_caption": "Area with infrastructure such as roads, railways, airport, ports and heavy industry.",
         "is_max": true,
         "theta_k": 0.1,

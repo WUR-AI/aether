@@ -124,6 +124,7 @@ class TextAlignmentModel(BaseModel):
             f"{c['col'].replace('aux_', '')}_{'max' if c['is_max'] else 'min'}"
             for c in self.concept_configs
         ]
+        list_concept_ids_drop = []
 
         self.dynamic_k_baselines = {}
         for dataset_name in [
@@ -200,10 +201,25 @@ class TextAlignmentModel(BaseModel):
                     else:
                         theta_k = self.concept_configs[i_c]["theta_k"]
 
-                    if c["is_max"]:
-                        n_baseline = sum(aux_val >= theta_k for aux_val in aux_vals_current_ds)
+                    n_baseline_max = sum(aux_val >= theta_k for aux_val in aux_vals_current_ds)
+                    n_baseline_min = sum(aux_val <= theta_k for aux_val in aux_vals_current_ds)
+
+                    if n_baseline_max < n_baseline_min:
+                        if not c.get("is_max", True):
+                            print(
+                                f"Concept {c_name} has n_baseline_max < n_baseline_min but is_max is False. Therefore it will NOT be used/stored. Please check the concept configs or the computed theta_k for this concept."
+                            )
+                            if i_c not in list_concept_ids_drop:
+                                list_concept_ids_drop.append(i_c)
+                        n_baseline = n_baseline_max
                     else:
-                        n_baseline = sum(aux_val <= theta_k for aux_val in aux_vals_current_ds)
+                        if c.get("is_max", False):
+                            print(
+                                f"Concept {c_name} has n_baseline_max >= n_baseline_min but is_max is True. Therefore it will NOT be used/stored. Please check the concept configs or the computed theta_k for this concept."
+                            )
+                            if i_c not in list_concept_ids_drop:
+                                list_concept_ids_drop.append(i_c)
+                        n_baseline = n_baseline_min
 
                     if n_baseline == n_ds:
                         n_baseline = (
@@ -222,6 +238,28 @@ class TextAlignmentModel(BaseModel):
                             f"Concept '{self.concept_names[i_c]}' in {dataset_name} set: is_max={c['is_max']}, original theta_k={self.concept_configs[i_c]['theta_k']:.6f}, new theta_k={theta_k:.6f}, baseline={n_baseline}/{n_ds} ({n_baseline / n_ds * 100:.1f}%)"
                         )
                     self.dynamic_k_baselines[dataset_name][c_name] = n_baseline / n_ds * 100
+
+                if len(list_concept_ids_drop) > 0 and dataset_name == "test":
+                    print(
+                        f"Dropping concepts with ids {list_concept_ids_drop} and names {[self.concept_names[i] for i in list_concept_ids_drop]} from evaluation due to mismatch between is_max and whether n_baseline_max or n_baseline_min is smaller."
+                    )
+                    self.concept_configs = [
+                        c
+                        for i, c in enumerate(self.concept_configs)
+                        if i not in list_concept_ids_drop
+                    ]
+                    self.concepts = [c["concept_caption"] for c in self.concept_configs]
+                    self.concept_names = [
+                        f"{c['col'].replace('aux_', '')}_{'max' if c['is_max'] else 'min'}"
+                        for c in self.concept_configs
+                    ]
+                    self.dynamic_k_baselines[dataset_name] = {
+                        c_name: baseline
+                        for i, (c_name, baseline) in enumerate(
+                            self.dynamic_k_baselines[dataset_name].items()
+                        )
+                        if i not in list_concept_ids_drop
+                    }
 
                 if (
                     save_newly_computed_threshold and dataset_name == "test"

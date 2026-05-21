@@ -10,16 +10,6 @@
         "n_baseline_test": 37
     },
     {
-        "concept_caption": "Very sparsely populated area with few houses",
-        "is_max": false,
-        "theta_k": 0.27061447501182556,
-        "col": "aux_corine_frac_11",
-        "id": 20,
-        "n_baseline_train": 775,
-        "n_baseline_val": 157,
-        "n_baseline_test": 149
-    },
-    {
         "concept_caption": "Area with infrastructure such as roads, railways, airport, ports and heavy industry.",
         "is_max": true,
         "theta_k": 0.16265717148780823,
@@ -118,16 +108,6 @@
         "n_baseline_train": 55,
         "n_baseline_val": 6,
         "n_baseline_test": 11
-    },
-    {
-        "concept_caption": "Warm area with high summer temperatures",
-        "is_max": true,
-        "theta_k": 19.299999237060547,
-        "col": "aux_bioclim_05",
-        "id": 4,
-        "n_baseline_train": 808,
-        "n_baseline_val": 167,
-        "n_baseline_test": 171
     },
     {
         "concept_caption": "Cold area with low winter temperatures",
