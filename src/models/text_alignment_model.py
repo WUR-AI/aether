@@ -121,11 +121,11 @@ class TextAlignmentModel(BaseModel):
         self.concept_configs = self.trainer.datamodule.concept_configs
         self.concepts = [c["concept_caption"] for c in self.concept_configs]
         self.concept_names = [
-            f"{c['col'].replace('aux_', '')}_{'max' if c['is_max'] else 'min'}"
+            f"{c['col'].replace('aux_', '')}_{'max' if c.get('is_max') else 'min'}"
             for c in self.concept_configs
         ]
         list_concept_ids_drop = []
-
+        new_thresholds_computed = False
         self.dynamic_k_baselines = {}
         for dataset_name in [
             "train",
@@ -133,10 +133,6 @@ class TextAlignmentModel(BaseModel):
             "test",
         ]:  # ensure 'train' is first for use_train_threshold logic!
             if not hasattr(self.trainer.datamodule, f"data_{dataset_name}"):
-                if dataset_name == "test":
-                    assert (
-                        save_newly_computed_threshold is False
-                    ), "No test dataloader found, but save_newly_computed_threshold is True. However, the current implementation saves thresholds only after they have been calculated for the test set. Please provide a test dataloader or set save_newly_computed_threshold to False."
                 continue
 
             tmp_ds = getattr(self.trainer.datamodule, f"data_{dataset_name}")
@@ -144,7 +140,11 @@ class TextAlignmentModel(BaseModel):
             self.dynamic_k_baselines[dataset_name] = {}
 
             if use_saved_threshold_if_available and all(
-                (c.get("theta_k") is not None and c.get(f"n_baseline_{dataset_name}") is not None)
+                (
+                    c.get("theta_k") is not None
+                    and c.get(f"n_baseline_{dataset_name}") is not None
+                    and c.get("is_max") is not None
+                )
                 for c in self.concept_configs
             ):  # no need to compute if all concepts have saved thresholds and baselines
                 for i_c, c in enumerate(self.concept_configs):
@@ -165,6 +165,7 @@ class TextAlignmentModel(BaseModel):
                 print(
                     "To speed up this computation, make sure to run this method with a dataloader that has only the coordinates and aux data (no other EO data)."
                 )
+                new_thresholds_computed = True
                 if save_newly_computed_threshold:
                     print(
                         "The threshold values will be written to a new concept configs file if they are computed anew."
@@ -212,7 +213,7 @@ class TextAlignmentModel(BaseModel):
                             if i_c not in list_concept_ids_drop:
                                 list_concept_ids_drop.append(i_c)
                         n_baseline = n_baseline_max
-                        self.concept_configs[i_c]["is_max"] = True
+                        _is_max = True
                     else:
                         if c.get("is_max", False):
                             print(
@@ -221,7 +222,15 @@ class TextAlignmentModel(BaseModel):
                             if i_c not in list_concept_ids_drop:
                                 list_concept_ids_drop.append(i_c)
                         n_baseline = n_baseline_min
-                        self.concept_configs[i_c]["is_max"] = False
+                        _is_max = False
+                    if "is_max" not in c:
+                        print(
+                            f"Concept {c_name} does not have 'is_max' specified. Setting is_max to {_is_max} based on whether n_baseline_max ({n_baseline_max}) is smaller than n_baseline_min ({n_baseline_min})."
+                        )
+                        self.concept_configs[i_c]["is_max"] = _is_max
+                        self.concept_names[i_c] = (
+                            f"{c['col'].replace('aux_', '')}_{'max' if _is_max else 'min'}"
+                        )
 
                     if n_baseline == n_ds:
                         n_baseline = (
@@ -263,16 +272,14 @@ class TextAlignmentModel(BaseModel):
                         if i not in list_concept_ids_drop
                     }
 
-                if (
-                    save_newly_computed_threshold and dataset_name == "test"
-                ):  # only save after computing on train set, and only if we are computing new thresholds (not just using saved ones), to avoid overwriting with the same values or with values computed on val/test set
-                    self.trainer.datamodule.caption_builder.store_concept_thresholds(
-                        self.concept_configs, update_self=True
-                    )
-                else:
-                    self.trainer.datamodule.caption_builder.update_concept_thresholds(
-                        self.concept_configs
-                    )
+        if (
+            save_newly_computed_threshold and new_thresholds_computed
+        ):  # only save after computing on train set, and only if we are computing new thresholds (not just using saved ones), to avoid overwriting with the same values or with values computed on val/test set
+            self.trainer.datamodule.caption_builder.store_concept_thresholds(
+                self.concept_configs, update_self=True
+            )
+        elif new_thresholds_computed:
+            self.trainer.datamodule.caption_builder.update_concept_thresholds(self.concept_configs)
 
         self.contrastive_val = RetrievalContrastiveValidation(self.ks, self.concept_configs)
         self.outputs_epoch_memory = []
