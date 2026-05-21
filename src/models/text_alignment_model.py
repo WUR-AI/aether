@@ -92,14 +92,32 @@ class TextAlignmentModel(BaseModel):
         self.setup_retrieval_evaluation(verbose=0)
         print("------------------------")
 
-    def setup_retrieval_evaluation(self, use_train_threshold=True, verbose=0):
+    def setup_retrieval_evaluation(
+        self,
+        use_saved_threshold_if_available=True,
+        overwrite_existing_thresholds=False,
+        save_newly_computed_threshold=True,
+        compute_train_threshold=True,
+        verbose=1,
+    ):
         """Set up the contrastive retrieval evaluation by computing dynamic k baselines and
         initializing the validation object.
 
         Parameters:
-        - use_train_threshold: whether to use the train set to compute the dynamic k baselines (if False, will calculate one for each set)
+        - use_saved_threshold_if_available: whether to use saved thresholds if available
+        - overwrite_existing_thresholds: whether to overwrite existing thresholds with newly computed ones
+        - save_newly_computed_threshold: whether to save newly computed thresholds to a new concept configs file
+        - compute_train_threshold: whether to compute thresholds only using the train set
+        - verbose: whether to print the dynamic ks and their baselines
         - verbose: whether to print the dynamic ks and their baselines
         """
+        assert (
+            compute_train_threshold
+        ), "Currently the only implementation of computing thresholds is by computing them on the train set only, and then using these for the validation and test set too."
+        if overwrite_existing_thresholds:
+            use_saved_threshold_if_available = False
+            save_newly_computed_threshold = True  # for reproducibility.
+
         self.concept_configs = self.trainer.datamodule.concept_configs
         self.concepts = [c["concept_caption"] for c in self.concept_configs]
         self.concept_names = [
@@ -107,63 +125,114 @@ class TextAlignmentModel(BaseModel):
             for c in self.concept_configs
         ]
 
-        dataset_names = [
+        self.dynamic_k_baselines = {}
+        for dataset_name in [
             "train",
             "val",
             "test",
-        ]  # ensure 'train' is first for use_train_threshold logic!
-        self.dynamic_k_baselines = {}
-        for dataset_name in dataset_names:
+        ]:  # ensure 'train' is first for use_train_threshold logic!
             if not hasattr(self.trainer.datamodule, f"data_{dataset_name}"):
+                if dataset_name == "test":
+                    assert (
+                        save_newly_computed_threshold is False
+                    ), "No test dataloader found, but save_newly_computed_threshold is True. However, the current implementation saves thresholds only after they have been calculated for the test set. Please provide a test dataloader or set save_newly_computed_threshold to False."
                 continue
 
             tmp_ds = getattr(self.trainer.datamodule, f"data_{dataset_name}")
             n_ds = len(tmp_ds)
             self.dynamic_k_baselines[dataset_name] = {}
 
-            # Placeholder for all concepts
-            aux_vals_per_concept = {i: [] for i in range(len(self.concept_configs))}
-
-            for item in tmp_ds:
-                aux_data = item["aux"]["aux"]
+            if use_saved_threshold_if_available and all(
+                (c.get("theta_k") is not None and c.get(f"n_baseline_{dataset_name}") is not None)
+                for c in self.concept_configs
+            ):  # no need to compute if all concepts have saved thresholds and baselines
                 for i_c, c in enumerate(self.concept_configs):
-                    aux_col_id = c["id"]
-                    aux_vals_per_concept[i_c].append(aux_data[aux_col_id])
+                    c_name = self.concept_names[i_c]
+                    theta_k = c["theta_k"]
+                    n_baseline = c[f"n_baseline_{dataset_name}"]
 
-            # Compute per concept
-            for i_c, c in enumerate(self.concept_configs):
-                c_name = self.concept_names[i_c]
-                aux_vals_current_ds = aux_vals_per_concept[i_c]
-
-                if use_train_threshold and dataset_name != "train":
-                    theta_k = self.concept_configs[i_c]["theta_k"]
-                else:
-                    theta_k = self.find_elbow_point(aux_vals_current_ds)
-                    self.concept_configs[i_c][
-                        "theta_k"
-                    ] = theta_k  # assign new theta_k to concept_configs for later use in validation
-
-                if c["is_max"]:
-                    n_baseline = sum(aux_val >= theta_k for aux_val in aux_vals_current_ds)
-                else:
-                    n_baseline = sum(aux_val <= theta_k for aux_val in aux_vals_current_ds)
-
-                if n_baseline == n_ds:
-                    n_baseline = (
-                        n_ds - 1
-                    )  # to avoid having a baseline of 100% (will still yield index score of 1)
-                    if dataset_name == "train":
-                        theta_k = (
-                            min(aux_vals_current_ds) + 1e-6
-                            if c["is_max"]
-                            else max(aux_vals_current_ds) - 1e-6
+                    if verbose:
+                        print(
+                            f"Concept '{self.concept_names[i_c]}' in {dataset_name} set: is_max={c['is_max']}, saved theta_k={theta_k:.6f}, saved baseline={n_baseline}/{n_ds} ({n_baseline / n_ds * 100:.1f}%)"
                         )
+                    self.dynamic_k_baselines[dataset_name][c_name] = n_baseline / n_ds * 100
 
-                if verbose:
+            else:
+                print(
+                    f"WARNING: No saved thresholds and baselines found for some or all concepts for {dataset_name}, computing new ones. This may take a while..."
+                )
+                print(
+                    "To speed up this computation, make sure to run this method with a dataloader that has only the coordinates and aux data (no other EO data)."
+                )
+                if save_newly_computed_threshold:
                     print(
-                        f"Concept '{self.concept_names[i_c]}' in {dataset_name} set: is_max={c['is_max']}, original theta_k={self.concept_configs[i_c]['theta_k']:.6f}, new theta_k={theta_k:.6f}, baseline={n_baseline}/{n_ds} ({n_baseline / n_ds * 100:.1f}%)"
+                        "The threshold values will be written to a new concept configs file if they are computed anew."
                     )
-                self.dynamic_k_baselines[dataset_name][c_name] = n_baseline / n_ds * 100
+                else:
+                    print(
+                        "Consider setting save_newly_computed_threshold=True to store the computed thresholds and avoid recomputation in the future."
+                    )
+                # Iterate through dataset once to get aux values for all concepts (to avoid multiple iterations if multiple concepts). Best done with coords only dataset for speed!
+                aux_vals_per_concept = {i: [] for i in range(len(self.concept_configs))}
+                for item in tmp_ds:
+                    aux_data = item["aux"]["aux"]
+                    for i_c, c in enumerate(self.concept_configs):
+                        aux_col_id = c["id"]
+                        aux_vals_per_concept[i_c].append(aux_data[aux_col_id])
+
+                # Compute per concept
+                for i_c, c in enumerate(self.concept_configs):
+                    c_name = self.concept_names[i_c]
+                    aux_vals_current_ds = aux_vals_per_concept[i_c]
+
+                    if dataset_name == "train":
+                        if overwrite_existing_thresholds:
+                            theta_k = self.find_elbow_point(
+                                aux_vals_current_ds
+                            )  # only compute if not present
+                        else:
+                            theta_k = c.get("theta_k") or self.find_elbow_point(
+                                aux_vals_current_ds
+                            )  # only compute if not present
+                        self.concept_configs[i_c]["theta_k"] = float(
+                            theta_k
+                        )  # assign new theta_k to concept_configs for later use in validation
+                    else:
+                        theta_k = self.concept_configs[i_c]["theta_k"]
+
+                    if c["is_max"]:
+                        n_baseline = sum(aux_val >= theta_k for aux_val in aux_vals_current_ds)
+                    else:
+                        n_baseline = sum(aux_val <= theta_k for aux_val in aux_vals_current_ds)
+
+                    if n_baseline == n_ds:
+                        n_baseline = (
+                            n_ds - 1
+                        )  # to avoid having a baseline of 100% (will still yield index score of 1)
+                        if dataset_name == "train":
+                            theta_k = (
+                                min(aux_vals_current_ds) + 1e-6
+                                if c["is_max"]
+                                else max(aux_vals_current_ds) - 1e-6
+                            )
+                    self.concept_configs[i_c][f"n_baseline_{dataset_name}"] = int(n_baseline)
+
+                    if verbose:
+                        print(
+                            f"Concept '{self.concept_names[i_c]}' in {dataset_name} set: is_max={c['is_max']}, original theta_k={self.concept_configs[i_c]['theta_k']:.6f}, new theta_k={theta_k:.6f}, baseline={n_baseline}/{n_ds} ({n_baseline / n_ds * 100:.1f}%)"
+                        )
+                    self.dynamic_k_baselines[dataset_name][c_name] = n_baseline / n_ds * 100
+
+                if (
+                    save_newly_computed_threshold and dataset_name == "test"
+                ):  # only save after computing on train set, and only if we are computing new thresholds (not just using saved ones), to avoid overwriting with the same values or with values computed on val/test set
+                    self.trainer.datamodule.caption_builder.store_concept_thresholds(
+                        self.concept_configs, update_self=True
+                    )
+                else:
+                    self.trainer.datamodule.caption_builder.update_concept_thresholds(
+                        self.concept_configs
+                    )
 
         self.contrastive_val = RetrievalContrastiveValidation(self.ks, self.concept_configs)
         self.outputs_epoch_memory = []
