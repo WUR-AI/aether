@@ -1,4 +1,10 @@
-"""Tests for the gated fusion strategy in EncoderWrapper."""
+"""Tests for the gated fusion strategy in EncoderWrapper.
+
+Static gated fusion learns one scalar logit per branch (nn.Parameter, shape [n_branches]). At
+inference time the logits are passed through softmax to produce branch weights that are identical
+for every sample in every batch — the model learns which modality to trust more, but that
+preference is fixed after training.  All branches must share the same output dim.
+"""
 
 from typing import Dict, List, override
 
@@ -8,7 +14,6 @@ import torch
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
 from src.models.components.geo_encoders.encoder_wrapper import EncoderWrapper
 from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
-
 
 # ---------------------------------------------------------------------------
 # Minimal stub encoder for testing — outputs a fixed-size embedding.
@@ -38,10 +43,7 @@ class _StubEncoder(BaseGeoEncoder):
 def _make_wrapper(branch_dims=(32, 32), keys=None) -> EncoderWrapper:
     if keys is None:
         keys = [f"b{i}" for i in range(len(branch_dims))]
-    branches = [
-        {"encoder": _StubEncoder(dim, key=key)}
-        for dim, key in zip(branch_dims, keys)
-    ]
+    branches = [{"encoder": _StubEncoder(dim, key=key)} for dim, key in zip(branch_dims, keys)]
     wrapper = EncoderWrapper(encoder_branches=branches, fusion_strategy="gated")
     wrapper.set_tabular_input_dim(None)
     wrapper.setup()
@@ -61,6 +63,7 @@ def _make_batch(branch_dims=(32, 32), batch_size=4, keys=None) -> Dict:
 
 
 def test_output_dim():
+    # Output dim equals the shared branch dim (not summed, as with concat).
     wrapper = _make_wrapper(branch_dims=(32, 32))
     assert wrapper.output_dim == 32
 
@@ -73,6 +76,7 @@ def test_forward_shape():
 
 
 def test_gate_logits_learnable():
+    # gate_logits must be an nn.Parameter so the optimiser picks it up.
     wrapper = _make_wrapper()
     assert wrapper.gate_logits is not None
     assert isinstance(wrapper.gate_logits, torch.nn.Parameter)
@@ -80,12 +84,14 @@ def test_gate_logits_learnable():
 
 
 def test_gate_logits_in_parameters():
+    # gate_logits must appear in wrapper.parameters() so it is saved in checkpoints.
     wrapper = _make_wrapper()
     param_ids = {id(p) for p in wrapper.parameters()}
     assert id(wrapper.gate_logits) in param_ids
 
 
 def test_uniform_init_weights():
+    # Logits are initialised to zero, so softmax gives equal weight to every branch.
     wrapper = _make_wrapper(branch_dims=(32, 32))
     weights = torch.softmax(wrapper.gate_logits, dim=0)
     expected = 1.0 / len(wrapper.encoder_branches)
@@ -93,6 +99,7 @@ def test_uniform_init_weights():
 
 
 def test_gate_weights_sum_to_one():
+    # Softmax is applied over the branch axis, so weights must always sum to 1.
     wrapper = _make_wrapper(branch_dims=(32, 32, 32))
     with torch.no_grad():
         wrapper.gate_logits.copy_(torch.tensor([1.0, -0.5, 2.0]))
@@ -114,7 +121,10 @@ def test_single_branch():
 
 
 def test_mismatched_dims_raises():
-    """Branches with different output dims must raise at setup time."""
+    """Branches with different output dims must raise at setup time.
+
+    Use per-branch projectors to align dims before fusion.
+    """
     branches = [{"encoder": _StubEncoder(16, "b0")}, {"encoder": _StubEncoder(32, "b1")}]
     wrapper = EncoderWrapper(encoder_branches=branches, fusion_strategy="gated")
     wrapper.set_tabular_input_dim(None)
@@ -124,7 +134,9 @@ def test_mismatched_dims_raises():
 
 def test_with_tabular_encoder():
     """TabularEncoder as one branch; set_tabular_input_dim must flow through.
-    Both branches projected to the same output_dim (32) via per-branch projectors."""
+
+    Both branches projected to the same output_dim (32) via per-branch projectors.
+    """
     from src.models.components.geo_encoders.mlp_projector import MLPProjector
 
     tabular_dim = 23

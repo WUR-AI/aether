@@ -3,7 +3,7 @@ name = "aether"
 version = '1.0'
 requires-python = ">=3.12"
 dependencies = [
-    "lightning>=2.6.0",
+    "lightning==2.6.1",
     "torch>=2.9.1",
     "hydra-core==1.3.2",
     "hydra-colorlog==1.2.0",
@@ -33,13 +33,19 @@ dependencies = [
     "peft>=0.18.1",
     "llm2vec",
     "setuptools<81",
-    "geotessera>=0.7.3",
+    "geotessera>=0.8.0",
+    "ipykernel>=7.2.0",
+    "xgboost>=3.2.0",
+    "albumentations",
+    "satclip @ git+https://github.com/gabrieletijunaityte/satclip",
 ]
 
 [project.optional-dependencies]
 create-data = [
     "geemap>=0.36.6",
     "pipreqs>=0.5.0",
+    "earthaccess>=0.11.0",
+    "pyhdf>=0.11.4",
 ]
 
 [tool.pytest.ini_options]

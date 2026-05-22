@@ -1,0 +1,40 @@
+# @package _global_
+# Ablation config E — tessera + tessera_prev + tabular, dynamic_gate fusion (proposed model).
+#
+# A small MLP predicts per-sample branch weights from the concatenated branch outputs.
+# This allows the model to amplify tessera_prev for cross-year growing seasons
+# (Oct–Mar in KEN highland zones) and suppress it for single-year seasons.
+#
+# The gate weight distribution per country is the primary secondary analysis:
+# if the hypothesis holds, cross-year-season records should show a higher
+# tessera_prev weight than single-year records.
+#
+# Requires: ABLATION_SPLIT — set saved_split_file_name to the file saved by config A.
+
+defaults:
+  - override /model: yield_tessera_dual_fusion_reg
+  - override /data: yield_africa_tessera_dual_KEN
+  - override /metrics: yield_africa_regression
+
+tags: ["yield_africa", "tessera_ablation", "KEN", "config_E"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 150
+  gradient_clip_val: 1.0
+
+data:
+  batch_size: 64
+  split_mode: from_file
+  saved_split_file_name: split_indices_2026-04-27-1644.pth
+  dataset:
+    use_features: true
+
+logger:
+  wandb:
+    name: "ablation_E_dynamic_gate"
+    tags: ${tags}
+    group: "ablation_dual_tessera_KEN"
+  aim:
+    experiment: "yield_africa_ablation"

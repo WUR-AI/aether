@@ -1,0 +1,34 @@
+defaults:
+  - yield_tessera_fusion_reg # inherit prediction_head, optimizer, scheduler, loss_fn
+  - _self_
+
+# Two-branch encoder: tessera (year Y) + tessera_prev (year Y-1), no tabular branch.
+# Dynamic gate learns per-sample weights between the two temporal embeddings only,
+# without access to tabular (soil/climate) features.
+#
+# Used for no-tabular ablation (config G) to measure how much tabular features
+# contribute on top of the dual-year spatial signal, by comparing directly with
+# yield_tessera_dual_fusion_reg (config E = same architecture + tabular branch).
+#
+# Use with: data configs that set `use_features: false`.
+
+geo_encoder:
+  _target_: src.models.components.geo_encoders.encoder_wrapper.EncoderWrapper
+
+  encoder_branches:
+    - encoder:
+        _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
+        geo_data_name: tessera
+      projector:
+        _target_: src.models.components.geo_encoders.mlp_projector.MLPProjector
+        nn_layers: 1
+        output_dim: 256
+    - encoder:
+        _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
+        geo_data_name: tessera_prev
+      projector:
+        _target_: src.models.components.geo_encoders.mlp_projector.MLPProjector
+        nn_layers: 1
+        output_dim: 256
+
+  fusion_strategy: "dynamic_gate"

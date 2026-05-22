@@ -38,7 +38,7 @@ script downloads all granules that cover the bounding box of the input CSV, then
 aggregates them into monthly means, producing the same NDVI_100m_{year}.csv layout
 that the lookup step expects.
 
-New columns added (feat_ndvi_ prefix):
+New columns added (``feat_ndvi_`` prefix):
     feat_ndvi_month_{1..12}   — monthly mean NDVI for the matched location/year
     feat_ndvi_mean_{season}   where season ∈ {mam, jja, son, djf, grow}
 
@@ -104,10 +104,10 @@ MODIS_PRODUCTS = {
     "MOD13Q1": {
         "short_name": "MOD13Q1",
         "version": "061",
-        "ndvi_sds_hint": "ndvi",        # substring match against SDS names
+        "ndvi_sds_hint": "ndvi",  # substring match against SDS names
         "scale": 0.0001,
         "fill": -3000,
-        "is_monthly": False,            # 16-day composite; month derived from DoY
+        "is_monthly": False,  # 16-day composite; month derived from DoY
     },
     "MOD13A3": {
         "short_name": "MOD13A3",
@@ -115,7 +115,7 @@ MODIS_PRODUCTS = {
         "ndvi_sds_hint": "ndvi",
         "scale": 0.0001,
         "fill": -3000,
-        "is_monthly": True,             # monthly composite; month derived from DoY
+        "is_monthly": True,  # monthly composite; month derived from DoY
     },
 }
 # Default product.
@@ -128,9 +128,9 @@ MODIS_NDVI_SCALE = 0.0001
 # Fill / no-data value in raw int16.
 MODIS_NDVI_FILL = -3000
 # MODIS sinusoidal grid parameters (used to map lat/lon → tile h/v).
-MODIS_TILE_SIZE_DEG = 10.0      # each tile spans ~10° in both h and v
-MODIS_N_HORIZONTAL = 36         # tiles across full longitude range
-MODIS_N_VERTICAL   = 18         # tiles across full latitude range
+MODIS_TILE_SIZE_DEG = 10.0  # each tile spans ~10° in both h and v
+MODIS_N_HORIZONTAL = 36  # tiles across full longitude range
+MODIS_N_VERTICAL = 18  # tiles across full latitude range
 
 
 # ---------------------------------------------------------------------------
@@ -233,9 +233,7 @@ def load_ndvi_file(path: Path) -> Tuple[KDTree, pd.DataFrame]:
     # Aggregate duplicate (Lat, Lon) pairs by mean.
     agg_cols = {col: "mean" for col in month_cols.values()}
     grouped = raw.groupby(["Lat", "Lon"], as_index=False).agg(agg_cols)
-    log.info(
-        f"  {path.name}: {len(raw)} raw rows → {len(grouped)} unique (Lat, Lon) points"
-    )
+    log.info(f"  {path.name}: {len(raw)} raw rows → {len(grouped)} unique (Lat, Lon) points")
 
     # Rename to feat_ndvi_month_{1..12}.
     rename = {col: f"feat_ndvi_month_{month}" for month, col in month_cols.items()}
@@ -243,7 +241,9 @@ def load_ndvi_file(path: Path) -> Tuple[KDTree, pd.DataFrame]:
 
     # Compute seasonal aggregates.
     for season, months in SEASONS.items():
-        available = [f"feat_ndvi_month_{m}" for m in months if f"feat_ndvi_month_{m}" in grouped.columns]
+        available = [
+            f"feat_ndvi_month_{m}" for m in months if f"feat_ndvi_month_{m}" in grouped.columns
+        ]
         col_name = f"feat_ndvi_mean_{season}"
         if available:
             grouped[col_name] = grouped[available].mean(axis=1)
@@ -251,7 +251,9 @@ def load_ndvi_file(path: Path) -> Tuple[KDTree, pd.DataFrame]:
             grouped[col_name] = np.nan
 
     # Drop grid points where every monthly NDVI value is NaN.
-    all_feat_cols = [f"feat_ndvi_month_{m}" for m in range(1, 13) if f"feat_ndvi_month_{m}" in grouped.columns]
+    all_feat_cols = [
+        f"feat_ndvi_month_{m}" for m in range(1, 13) if f"feat_ndvi_month_{m}" in grouped.columns
+    ]
     n_before = len(grouped)
     grouped = grouped[grouped[all_feat_cols].notna().any(axis=1)].reset_index(drop=True)
     n_dropped = n_before - len(grouped)
@@ -293,15 +295,11 @@ def fill_ndvi_gaps(points: pd.DataFrame, modis_df: pd.DataFrame) -> pd.DataFrame
     where MODIS data is available.  Seasonal aggregate columns are recomputed afterward.
     """
     month_cols = _monthly_feat_cols(points)
-    months_with_gaps = [
-        int(c.split("_")[-1]) for c in month_cols if points[c].isna().any()
-    ]
+    months_with_gaps = [int(c.split("_")[-1]) for c in month_cols if points[c].isna().any()]
     if not months_with_gaps:
         return points
 
-    log.info(
-        f"    Gap-filling {len(months_with_gaps)} month(s) from MODIS: {months_with_gaps}"
-    )
+    log.info(f"    Gap-filling {len(months_with_gaps)} month(s) from MODIS: {months_with_gaps}")
 
     # Build a KDTree on the MODIS grid for fast lookups.
     modis_tree = KDTree(modis_df[["Lat", "Lon"]].values)
@@ -332,7 +330,9 @@ def fill_ndvi_gaps(points: pd.DataFrame, modis_df: pd.DataFrame) -> pd.DataFrame
 
     # Recompute seasonal aggregates with the now-filled monthly values.
     for season, months in SEASONS.items():
-        avail = [f"feat_ndvi_month_{m}" for m in months if f"feat_ndvi_month_{m}" in filled.columns]
+        avail = [
+            f"feat_ndvi_month_{m}" for m in months if f"feat_ndvi_month_{m}" in filled.columns
+        ]
         col_name = f"feat_ndvi_mean_{season}"
         if avail:
             filled[col_name] = filled[avail].mean(axis=1)
@@ -366,8 +366,8 @@ def lookup_ndvi(
 def _earthaccess_login() -> None:
     """Authenticate with NASA EarthData using environment variables.
 
-    Reads EARTHDATA_USERNAME and EARTHDATA_PASSWORD from the environment.
-    Raises RuntimeError if credentials are missing or authentication fails.
+    Reads EARTHDATA_USERNAME and EARTHDATA_PASSWORD from the environment. Raises RuntimeError if
+    credentials are missing or authentication fails.
     """
     try:
         import earthaccess
@@ -449,7 +449,8 @@ def _download_modis_year(
         if required_tiles:
             tile_pattern = re.compile(r"\.(h\d{2}v\d{2})\.")
             filtered_existing = [
-                f for f in existing
+                f
+                for f in existing
                 if (m := tile_pattern.search(f.name)) and m.group(1) in required_tiles
             ]
             n_skipped = len(existing) - len(filtered_existing)
@@ -459,7 +460,9 @@ def _download_modis_year(
                 f"({n_skipped} skipped). Required: {sorted(required_tiles)}"
             )
             return filtered_existing
-        log.info(f"  {short_name} {year}: {len(existing)} HDF file(s) already cached, skipping download.")
+        log.info(
+            f"  {short_name} {year}: {len(existing)} HDF file(s) already cached, skipping download."
+        )
         return existing
 
     log.info(f"  {short_name} {year}: searching for granules (bbox={bbox}) ...")
@@ -485,9 +488,7 @@ def _download_modis_year(
             # earthaccess granule objects expose the filename via producer_granule_id
             # or via the native-id string; fall back to str(g) if neither works.
             name = (
-                getattr(g, "producer_granule_id", None)
-                or getattr(g, "granule_ur", None)
-                or str(g)
+                getattr(g, "producer_granule_id", None) or getattr(g, "granule_ur", None) or str(g)
             )
             m = tile_pattern.search(str(name))
             if m and m.group(1) in required_tiles:
@@ -522,8 +523,8 @@ def _make_latlon_grid(
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Build 2-D lat/lon grids for a MODIS tile given its upper-left corner and pixel sizes.
 
-    Returns (lat_2d, lon_2d) arrays shaped (nrows, ncols), where lat decreases
-    downward and lon increases rightward.
+    Returns (lat_2d, lon_2d) arrays shaped (nrows, ncols), where lat decreases downward and lon
+    increases rightward.
     """
     row_idx, col_idx = np.meshgrid(np.arange(nrows), np.arange(ncols), indexing="ij")
     lat_2d = ul_lat - (row_idx + 0.5) * pixel_size_lat
@@ -581,9 +582,12 @@ def _parse_modis_struct_metadata(hdf_path: Path) -> Optional[dict]:
     lr_lon = np.degrees(lr_x / (R * np.cos(np.radians(lr_lat)))) if abs(lr_lat) < 90 else 0.0
 
     return {
-        "ul_lon": ul_lon, "ul_lat": ul_lat,
-        "lr_lon": lr_lon, "lr_lat": lr_lat,
-        "nrows": nrows,   "ncols": ncols,
+        "ul_lon": ul_lon,
+        "ul_lat": ul_lat,
+        "lr_lon": lr_lon,
+        "lr_lat": lr_lat,
+        "nrows": nrows,
+        "ncols": ncols,
     }
 
 
@@ -650,8 +654,10 @@ def _read_one_hdf(
     # Points outside the tile bounding box are skipped — no raster needed.
     if plot_lats is not None and plot_lons is not None:
         in_tile = (
-            (plot_lats <= geo["ul_lat"]) & (plot_lats >= geo["lr_lat"]) &
-            (plot_lons >= geo["ul_lon"]) & (plot_lons <= geo["lr_lon"])
+            (plot_lats <= geo["ul_lat"])
+            & (plot_lats >= geo["lr_lat"])
+            & (plot_lons >= geo["ul_lon"])
+            & (plot_lons <= geo["lr_lon"])
         )
         if not in_tile.any():
             return None  # this tile contains no plot points
@@ -684,7 +690,7 @@ def _read_one_hdf(
             log.warning(f"    {hdf_path.name}: error reading NDVI SDS: {exc}")
             try:
                 hdf.end()
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             return None
 
@@ -718,8 +724,7 @@ def _read_one_hdf(
                 break
         if ndvi_key is None:
             log.warning(
-                f"    {hdf_path.name}: NDVI SDS not found. "
-                f"Available: {list(datasets.keys())}"
+                f"    {hdf_path.name}: NDVI SDS not found. " f"Available: {list(datasets.keys())}"
             )
             hdf.end()
             return None
@@ -732,7 +737,7 @@ def _read_one_hdf(
         log.warning(f"    {hdf_path.name}: error reading NDVI SDS: {exc}")
         try:
             hdf.end()
-        except Exception:
+        except Exception:  # nosec B110
             pass
         return None
 
@@ -746,9 +751,12 @@ def _read_one_hdf(
         ndvi = ndvi[:nrows, :ncols]
 
     lat_2d, lon_2d = _make_latlon_grid(
-        ul_lon=geo["ul_lon"], ul_lat=geo["ul_lat"],
-        pixel_size_lat=pixel_size_lat, pixel_size_lon=pixel_size_lon,
-        nrows=nrows, ncols=ncols,
+        ul_lon=geo["ul_lon"],
+        ul_lat=geo["ul_lat"],
+        pixel_size_lat=pixel_size_lat,
+        pixel_size_lon=pixel_size_lon,
+        nrows=nrows,
+        ncols=ncols,
     )
 
     return month, (lat_2d, lon_2d, ndvi)
@@ -788,10 +796,16 @@ def _hdf_to_monthly_ndvi(
     n_plots = len(plot_lats) if use_plot_sampling else 0
 
     if use_plot_sampling:
-        month_sum: Dict[int, np.ndarray] = {m: np.zeros(n_plots, dtype=np.float64) for m in range(1, 13)}
-        month_cnt: Dict[int, np.ndarray] = {m: np.zeros(n_plots, dtype=np.int32)   for m in range(1, 13)}
+        month_sum: Dict[int, np.ndarray] = {
+            m: np.zeros(n_plots, dtype=np.float64) for m in range(1, 13)
+        }
+        month_cnt: Dict[int, np.ndarray] = {
+            m: np.zeros(n_plots, dtype=np.int32) for m in range(1, 13)
+        }
     else:
-        month_arrays: Dict[int, List[Tuple[np.ndarray, np.ndarray, np.ndarray]]] = {m: [] for m in range(1, 13)}
+        month_arrays: Dict[int, List[Tuple[np.ndarray, np.ndarray, np.ndarray]]] = {
+            m: [] for m in range(1, 13)
+        }
 
     done_count = 0
     hdf_start = time.time()
@@ -799,7 +813,10 @@ def _hdf_to_monthly_ndvi(
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {
             pool.submit(
-                _read_one_hdf, p, year, product,
+                _read_one_hdf,
+                p,
+                year,
+                product,
                 plot_lats if use_plot_sampling else None,
                 plot_lons if use_plot_sampling else None,
             ): p
@@ -821,7 +838,7 @@ def _hdf_to_monthly_ndvi(
                     # b = ndvi_pts (1-D float array, may contain NaN)
                     # (the third element is None — unused in this path)
                     pt_indices = a
-                    ndvi_vals  = b
+                    ndvi_vals = b
                     valid = ~np.isnan(ndvi_vals)
                     if valid.any():
                         np.add.at(month_sum[month], pt_indices[valid], ndvi_vals[valid])
@@ -834,7 +851,11 @@ def _hdf_to_monthly_ndvi(
             filled = int(20 * done_count / n_files)
             bar = "█" * filled + "░" * (20 - filled)
             rate = done_count / elapsed if elapsed > 0 else 0
-            eta_str = _fmt_duration((n_files - done_count) / rate) if rate > 0 and done_count < n_files else "—"
+            eta_str = (
+                _fmt_duration((n_files - done_count) / rate)
+                if rate > 0 and done_count < n_files
+                else "—"
+            )
             log.info(
                 f"    [{bar}] {done_count:3d}/{n_files}  {pct:5.1f}%  "
                 f"elapsed={_fmt_duration(elapsed)}  ETA={eta_str}"
@@ -874,8 +895,8 @@ def _hdf_to_monthly_ndvi(
     agg_start = time.time()
     months_total = sum(1 for v in month_arrays.values() if v)
     months_done = [0]
-    _cur_month  = [0]
-    _cur_npix   = [0]
+    _cur_month = [0]
+    _cur_npix = [0]
 
     def _agg_heartbeat() -> None:
         elapsed = time.time() - agg_start
@@ -891,8 +912,8 @@ def _hdf_to_monthly_ndvi(
         has_any = True
         _cur_month[0] = month
 
-        lat_parts:  List[np.ndarray] = []
-        lon_parts:  List[np.ndarray] = []
+        lat_parts: List[np.ndarray] = []
+        lon_parts: List[np.ndarray] = []
         ndvi_parts: List[np.ndarray] = []
         for lat_2d, lon_2d, ndvi_2d in tile_list:
             ndvi_flat = ndvi_2d.ravel()
@@ -908,20 +929,23 @@ def _hdf_to_monthly_ndvi(
             months_done[0] += 1
             continue
 
-        lats_all  = np.concatenate(lat_parts);  lat_parts.clear()
-        lons_all  = np.concatenate(lon_parts);  lon_parts.clear()
-        ndvis_all = np.concatenate(ndvi_parts).astype(np.float64);  ndvi_parts.clear()
+        lats_all = np.concatenate(lat_parts)
+        lat_parts.clear()
+        lons_all = np.concatenate(lon_parts)
+        lon_parts.clear()
+        ndvis_all = np.concatenate(ndvi_parts).astype(np.float64)
+        ndvi_parts.clear()
         _cur_npix[0] = len(lats_all)
 
         with _Heartbeat(interval=30, fn=_agg_heartbeat):
             lat_i = np.round(lats_all * SCALE).astype(np.int64)
             lon_i = np.round(lons_all * SCALE).astype(np.int64)
-            keys  = lat_i * 4_000_000 + lon_i
+            keys = lat_i * 4_000_000 + lon_i
             del lats_all, lons_all, lat_i, lon_i
             unique_keys, inverse = np.unique(keys, return_inverse=True)
             del keys
             ndvi_sum = np.bincount(inverse, weights=ndvis_all, minlength=len(unique_keys))
-            ndvi_cnt = np.bincount(inverse,                    minlength=len(unique_keys)).astype(np.int64)
+            ndvi_cnt = np.bincount(inverse, minlength=len(unique_keys)).astype(np.int64)
             del ndvis_all, inverse
 
         month_keys[month] = unique_keys
@@ -948,7 +972,7 @@ def _hdf_to_monthly_ndvi(
     log.info(f"  {product} {year}: building output DataFrame ({n_pts:,} unique grid points) ...")
 
     lats_out = (unique_grid_keys // 4_000_000).astype(np.float32) / SCALE
-    lons_out = (unique_grid_keys  % 4_000_000).astype(np.float32) / SCALE
+    lons_out = (unique_grid_keys % 4_000_000).astype(np.float32) / SCALE
     lons_out = np.where(lons_out > 180.0, lons_out - 400.0, lons_out)
 
     rows_out: Dict[str, np.ndarray] = {"Lat": lats_out, "Lon": lons_out}
@@ -1003,6 +1027,7 @@ def build_ndvi_from_modis(
     ``{i}_month{m}_meanNDVI`` column layout produced by ``_hdf_to_monthly_ndvi``.
     """
     import threading
+
     results: Dict[int, pd.DataFrame] = {}
     results_lock = threading.Lock()
 
@@ -1019,7 +1044,9 @@ def build_ndvi_from_modis(
             f"  [{i}/{n_years}] Year {year}: downloading granules ...  "
             f"(elapsed={_fmt_duration(elapsed)})"
         )
-        hdf_files = _download_modis_year(year, bbox, modis_cache_dir, required_tiles=required_tiles, product=product)
+        hdf_files = _download_modis_year(
+            year, bbox, modis_cache_dir, required_tiles=required_tiles, product=product
+        )
         if not hdf_files:
             log.warning(f"  Year {year}: no HDF files found, skipping.")
         else:
@@ -1042,8 +1069,12 @@ def build_ndvi_from_modis(
 
     def _process_year(year: int) -> Tuple[int, Optional[pd.DataFrame]]:
         df = _hdf_to_monthly_ndvi(
-            hdf_by_year[year], year, workers=workers, product=product,
-            plot_lats=plot_lats, plot_lons=plot_lons,
+            hdf_by_year[year],
+            year,
+            workers=workers,
+            product=product,
+            plot_lats=plot_lats,
+            plot_lons=plot_lons,
         )
         return year, df
 
@@ -1099,6 +1130,7 @@ def main(
     input_path = Path(input_csv)
     output_path = Path(output_csv)
     ndvi_path = Path(ndvi_dir)
+    cache_path = Path(modis_cache_dir) if modis_cache_dir else ndvi_path / "modis_hdf"
 
     if modis_product not in MODIS_PRODUCTS:
         raise ValueError(
@@ -1111,9 +1143,11 @@ def main(
     log.info(f"  input_csv : {input_path}")
     log.info(f"  output_csv: {output_path}")
     log.info(f"  ndvi_dir  : {ndvi_path}")
+    log.info(
+        f"  modis_cache_dir: {cache_path}  "
+        f"{'[download enabled]' if download else '[cache gap-fill if HDF files present]'}"
+    )
     if download:
-        cache_path = Path(modis_cache_dir) if modis_cache_dir else ndvi_path / "modis_hdf"
-        log.info(f"  modis_cache_dir: {cache_path}  [MODIS download enabled]")
         log.info(f"  modis_product : {modis_product}")
         log.info(f"  workers   : {workers}")
     log.info("=" * 60)
@@ -1125,14 +1159,14 @@ def main(
 
     df["year"] = df["year"].astype(int)
 
-    # ------------------------------------------------------------------ optional MODIS download
+    # ------------------------------------------------------------------ MODIS gap-filling
     # modis_data holds in-memory MODIS DataFrames keyed by year for gap-filling.
+    # Populated either via --download (fetches from NASA EarthData) or via the cache
+    # gap-fill step below (uses already-downloaded HDF files, no credentials needed).
     modis_data: Dict[int, pd.DataFrame] = {}
 
     if download:
         _earthaccess_login()
-
-        cache_path = Path(modis_cache_dir) if modis_cache_dir else ndvi_path / "modis_hdf"
         ndvi_path.mkdir(parents=True, exist_ok=True)
 
         # Compute bounding box from the CSV (add a small buffer).
@@ -1149,9 +1183,7 @@ def main(
         # the download is restricted to those tiles only.  Africa spans ~44 MODIS
         # tiles but many cover ocean or desert areas with no plots.
         required_tiles = _required_modis_tiles(df["lat"].values, df["lon"].values)
-        log.info(
-            f"Required MODIS tiles ({len(required_tiles)}): {sorted(required_tiles)}"
-        )
+        log.info(f"Required MODIS tiles ({len(required_tiles)}): {sorted(required_tiles)}")
 
         # Unique plot locations — passed to the HDF sampler so only these pixels
         # are extracted from each tile instead of building the full raster grid.
@@ -1166,12 +1198,20 @@ def main(
         # Years with no CSV at all — generate from MODIS and write to disk.
         years_no_csv = [y for y in years_in_csv if y not in existing_files]
         if years_no_csv:
-            log.info(f"Fetching MODIS for {len(years_no_csv)} year(s) with no NDVI CSV: {years_no_csv}")
+            log.info(
+                f"Fetching MODIS for {len(years_no_csv)} year(s) with no NDVI CSV: {years_no_csv}"
+            )
             new_data = build_ndvi_from_modis(
-                years_no_csv, bbox, ndvi_path, cache_path,
-                write_csv=True, workers=workers, required_tiles=required_tiles,
+                years_no_csv,
+                bbox,
+                ndvi_path,
+                cache_path,
+                write_csv=True,
+                workers=workers,
+                required_tiles=required_tiles,
                 product=modis_product,
-                plot_lats=plot_lats_arr, plot_lons=plot_lons_arr,
+                plot_lats=plot_lats_arr,
+                plot_lons=plot_lons_arr,
             )
             modis_data.update(new_data)
         else:
@@ -1201,16 +1241,80 @@ def main(
             )
             # Don't write new CSVs — originals are kept; gaps filled in memory.
             gap_data = build_ndvi_from_modis(
-                years_need_modis, bbox, ndvi_path, cache_path,
-                write_csv=False, workers=workers, required_tiles=required_tiles,
+                years_need_modis,
+                bbox,
+                ndvi_path,
+                cache_path,
+                write_csv=False,
+                workers=workers,
+                required_tiles=required_tiles,
                 product=modis_product,
-                plot_lats=plot_lats_arr, plot_lons=plot_lons_arr,
+                plot_lats=plot_lats_arr,
+                plot_lons=plot_lons_arr,
             )
             modis_data.update(gap_data)
         elif years_with_gaps:
             log.info(f"MODIS data already available for gapped year(s): {years_with_gaps}")
         else:
             log.info("No incomplete NDVI CSV files found; no gap-filling needed.")
+
+    # Gap-fill from existing HDF cache (runs even without --download).
+    # If the cache directory already contains HDF granules for a year, use them to fill
+    # NaN months in that year's NDVI CSV without requiring EarthData credentials.
+    if cache_path.exists():
+        _existing_ndvi = discover_ndvi_files(ndvi_path)
+        _years_in_csv = sorted(df["year"].unique())
+        years_to_fill_from_cache: List[int] = []
+
+        for _year, _path in _existing_ndvi.items():
+            if _year not in _years_in_csv or _year in modis_data:
+                continue
+            _year_hdf_dir = cache_path / str(_year)
+            if not _year_hdf_dir.exists() or not list(_year_hdf_dir.glob("*.hdf")):
+                continue
+            try:
+                _probe = pd.read_csv(_path, low_memory=False)
+                _month_cols = [c for c in _probe.columns if NDVI_COL_PATTERN.match(c)]
+                for _c in _month_cols:
+                    _probe[_c] = pd.to_numeric(_probe[_c], errors="coerce")
+                if _probe[_month_cols].isna().any().any():
+                    years_to_fill_from_cache.append(_year)
+            except Exception as exc:
+                log.warning(f"  Could not probe {_path.name} for gaps: {exc}")
+
+        if years_to_fill_from_cache:
+            log.info(
+                f"Gap-filling {len(years_to_fill_from_cache)} year(s) from existing MODIS HDF cache "
+                f"(no credentials needed): {years_to_fill_from_cache}"
+            )
+            _unique_locs = df[["lat", "lon"]].drop_duplicates()
+            _plot_lats = _unique_locs["lat"].values.astype(np.float32)
+            _plot_lons = _unique_locs["lon"].values.astype(np.float32)
+            # bbox is only used for downloading — pass dataset extent as a safe dummy
+            _dummy_bbox = (
+                float(df["lon"].min()),
+                float(df["lat"].min()),
+                float(df["lon"].max()),
+                float(df["lat"].max()),
+            )
+            _fill_data = build_ndvi_from_modis(
+                years_to_fill_from_cache,
+                _dummy_bbox,
+                ndvi_path,
+                cache_path,
+                write_csv=False,
+                workers=workers,
+                required_tiles=None,
+                product=modis_product,
+                plot_lats=_plot_lats,
+                plot_lons=_plot_lons,
+            )
+            modis_data.update(_fill_data)
+        else:
+            log.info(
+                f"No gap-fillable years found in MODIS HDF cache ({cache_path}); "
+                "run with --download to fetch MODIS data."
+            )
 
     # ------------------------------------------------------------------ discover files
     ndvi_files = discover_ndvi_files(ndvi_path)
@@ -1224,7 +1328,9 @@ def main(
     log.info(f"Years in CSV       : {years_in_csv}")
     log.info(f"Years with NDVI    : {years_with_ndvi}")
     if years_missing:
-        log.warning(f"Years WITHOUT NDVI : {years_missing}  → rows for these years will have NaN features")
+        log.warning(
+            f"Years WITHOUT NDVI : {years_missing}  → rows for these years will have NaN features"
+        )
 
     # ------------------------------------------------------------------ load NDVI per year
     ndvi_index: Dict[int, Tuple[KDTree, pd.DataFrame]] = {}
@@ -1340,7 +1446,7 @@ def main(
     print(f"  New NDVI columns       : {len(available)}")
     print(f"  Total columns          : {merged.columns.size}")
     print(f"  Elapsed time           : {elapsed:.1f}s")
-    print(f"  New feature names      :")
+    print("  New feature names      :")
     for col in sorted(available):
         print(f"    {col}")
     print("=" * 60)

@@ -5,7 +5,8 @@ dataset:
   data_dir: ${paths.data_dir}
   modalities:
     tessera:
-      # size must match the tile_size used when running the preprocessing script.
+      # size must match or be smaller than the tile_size used when running the
+      # preprocessing script.
       # Default: 9 pixels (set by yield_africa_tessera_preprocess.py --tile_size).
       size: 9
       format: npy
@@ -26,7 +27,9 @@ batch_size: 64
 num_workers: 0
 pin_memory: false
 
-split_mode: "random"
+split_mode: "spatial_clusters"
+spatial_split_distance_m: 10000 # 10 km — keeps enough spatial clusters for train/val/test split
+saved_split_file_name: null
 train_val_test_split: [0.7, 0.15, 0.15]
 save_split: false
 seed: ${seed}

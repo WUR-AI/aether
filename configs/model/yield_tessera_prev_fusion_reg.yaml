@@ -1,0 +1,27 @@
+defaults:
+  - yield_tessera_fusion_reg # inherit prediction_head, optimizer, scheduler, loss_fn
+  - _self_
+
+# Ablation variant B: tessera_prev (year Y−1) as the sole spatial branch.
+# Used to isolate the contribution of the preceding-year embedding when compared
+# against config A (tessera year Y only) in the dual-year ablation study.
+#
+# All other settings (head architecture, optimizer, loss) are inherited from
+# yield_tessera_fusion_reg.yaml.
+
+geo_encoder:
+  encoder_branches:
+    - encoder:
+        _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
+        geo_data_name: tessera_prev
+      projector:
+        _target_: src.models.components.geo_encoders.mlp_projector.MLPProjector
+        nn_layers: 1
+        output_dim: 256
+    - encoder:
+        _target_: src.models.components.geo_encoders.tabular_encoder.TabularEncoder
+        output_dim: 256
+        dropout_prob: 0.2
+        geo_data_name: tabular
+
+  fusion_strategy: "dynamic_gate"

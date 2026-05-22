@@ -21,6 +21,7 @@ import warnings
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -58,14 +59,22 @@ NDVI_COLS = NDVI_MONTHLY_COLS + NDVI_SEASONAL_COLS
 
 # Non-feature columns that should be excluded from the feature matrix
 NON_FEATURE_COLS = {
-    "name_loc", TARGET_COL, LAT_COL, LON_COL, COUNTRY_COL,
-    YEAR_COL, LOC_ACC_COL, "Landform", "GLAD",
+    "name_loc",
+    TARGET_COL,
+    LAT_COL,
+    LON_COL,
+    COUNTRY_COL,
+    YEAR_COL,
+    LOC_ACC_COL,
+    "Landform",
+    "GLAD",
 }
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def sep(title: str = "", width: int = 72) -> None:
     if title:
@@ -102,6 +111,7 @@ def _build_X_y(df: pd.DataFrame, feat_cols: list[str]) -> tuple[pd.DataFrame, pd
 # Loading
 # ---------------------------------------------------------------------------
 
+
 def load_csvs(base_path: Path, ndvi_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     sep("Loading CSVs")
     base = pd.read_csv(base_path)
@@ -114,6 +124,7 @@ def load_csvs(base_path: Path, ndvi_path: Path) -> tuple[pd.DataFrame, pd.DataFr
 # ---------------------------------------------------------------------------
 # Coverage comparison
 # ---------------------------------------------------------------------------
+
 
 def coverage_report(base: pd.DataFrame, ndvi: pd.DataFrame) -> None:
     sep("Coverage comparison")
@@ -130,13 +141,13 @@ def coverage_report(base: pd.DataFrame, ndvi: pd.DataFrame) -> None:
 
     if only_base:
         missing_countries = base.loc[base["name_loc"].isin(only_base), COUNTRY_COL].value_counts()
-        print(f"\n  Base-only locations by country (no NDVI coverage):")
+        print("\n  Base-only locations by country (no NDVI coverage):")
         for c, n in missing_countries.items():
             print(f"    {c:6s} {n:,}")
 
     if only_ndvi:
         extra_countries = ndvi.loc[ndvi["name_loc"].isin(only_ndvi), COUNTRY_COL].value_counts()
-        print(f"\n  NDVI-only locations by country (not in base):")
+        print("\n  NDVI-only locations by country (not in base):")
         for c, n in extra_countries.items():
             print(f"    {c:6s} {n:,}")
 
@@ -169,6 +180,7 @@ def coverage_report(base: pd.DataFrame, ndvi: pd.DataFrame) -> None:
 # Feature set comparison
 # ---------------------------------------------------------------------------
 
+
 def feature_set_report(base: pd.DataFrame, ndvi: pd.DataFrame) -> None:
     sep("Feature set comparison")
 
@@ -194,7 +206,9 @@ def feature_set_report(base: pd.DataFrame, ndvi: pd.DataFrame) -> None:
     if added:
         sep("NDVI feature coverage in NDVI CSV")
         total = len(ndvi)
-        print(f"  {'Feature':35s}  {'Non-null':>10s}  {'Missing':>10s}  {'Min':>7s}  {'Max':>7s}  {'Mean':>7s}")
+        print(
+            f"  {'Feature':35s}  {'Non-null':>10s}  {'Missing':>10s}  {'Min':>7s}  {'Max':>7s}  {'Mean':>7s}"
+        )
         print("  " + "─" * 82)
         for col in added:
             if col not in ndvi.columns:
@@ -203,8 +217,10 @@ def feature_set_report(base: pd.DataFrame, ndvi: pd.DataFrame) -> None:
             mn = ndvi[col].min() if nn > 0 else float("nan")
             mx = ndvi[col].max() if nn > 0 else float("nan")
             mu = ndvi[col].mean() if nn > 0 else float("nan")
-            print(f"  {col:35s}  {_pct(nn, total):>10s}  {_pct(total - nn, total):>10s}  "
-                  f"{mn:7.3f}  {mx:7.3f}  {mu:7.3f}")
+            print(
+                f"  {col:35s}  {_pct(nn, total):>10s}  {_pct(total - nn, total):>10s}  "
+                f"{mn:7.3f}  {mx:7.3f}  {mu:7.3f}"
+            )
 
     # Check whether shared feature values are identical (same preprocessing)
     sep("Shared feature consistency check (random 1000-row sample)")
@@ -222,16 +238,21 @@ def feature_set_report(base: pd.DataFrame, ndvi: pd.DataFrame) -> None:
         if max_diff > 1e-6:
             diffs.append((col, max_diff))
     if diffs:
-        print(f"  ⚠  {len(diffs)} shared features have differing values between base and NDVI CSVs:")
+        print(
+            f"  ⚠  {len(diffs)} shared features have differing values between base and NDVI CSVs:"
+        )
         for col, d in sorted(diffs, key=lambda x: -x[1])[:10]:
             print(f"    {col:35s}  max |Δ| = {d:.6f}")
     else:
-        print(f"  ✓  All {len(shared_to_check)} shared features are bit-identical between the two CSVs.")
+        print(
+            f"  ✓  All {len(shared_to_check)} shared features are bit-identical between the two CSVs."
+        )
 
 
 # ---------------------------------------------------------------------------
 # Random Forest comparison
 # ---------------------------------------------------------------------------
+
 
 def _run_rf_cv(
     df: pd.DataFrame,
@@ -250,13 +271,14 @@ def _run_rf_cv(
     gss = GroupShuffleSplit(n_splits=5, test_size=0.2, random_state=seed)
     rf_cv = RandomForestRegressor(n_estimators=n_trees, n_jobs=-1, random_state=seed)
     cv_r2 = cross_val_score(rf_cv, X, y, cv=gss, groups=groups, scoring="r2")
-    cv_mae = cross_val_score(rf_cv, X, y, cv=gss, groups=groups,
-                             scoring="neg_mean_absolute_error")
-    cv_rmse = cross_val_score(rf_cv, X, y, cv=gss, groups=groups,
-                              scoring="neg_root_mean_squared_error")
+    cv_mae = cross_val_score(rf_cv, X, y, cv=gss, groups=groups, scoring="neg_mean_absolute_error")
+    cv_rmse = cross_val_score(
+        rf_cv, X, y, cv=gss, groups=groups, scoring="neg_root_mean_squared_error"
+    )
 
-    print(f"    CV R²   : {cv_r2.mean():.3f} ± {cv_r2.std():.3f}  "
-          f"(folds: {np.round(cv_r2, 3)})")
+    print(
+        f"    CV R²   : {cv_r2.mean():.3f} ± {cv_r2.std():.3f}  " f"(folds: {np.round(cv_r2, 3)})"
+    )
     print(f"    CV MAE  : {-cv_mae.mean():.3f} ± {cv_mae.std():.3f} t/ha")
     print(f"    CV RMSE : {-cv_rmse.mean():.3f} ± {cv_rmse.std():.3f} t/ha")
 
@@ -279,9 +301,13 @@ def _run_rf_cv(
     print(f"    Skill (1-MAE/baseline): {1 - mae / baseline_mae:.3f}")
 
     metrics = {
-        "cv_r2_mean": cv_r2.mean(), "cv_r2_std": cv_r2.std(),
-        "cv_mae_mean": -cv_mae.mean(), "cv_rmse_mean": -cv_rmse.mean(),
-        "holdout_r2": r2, "holdout_mae": mae, "holdout_rmse": rmse,
+        "cv_r2_mean": cv_r2.mean(),
+        "cv_r2_std": cv_r2.std(),
+        "cv_mae_mean": -cv_mae.mean(),
+        "cv_rmse_mean": -cv_rmse.mean(),
+        "holdout_r2": r2,
+        "holdout_mae": mae,
+        "holdout_rmse": rmse,
         "baseline_mae": baseline_mae,
     }
     return rf, train_idx, test_idx, metrics, X, y
@@ -317,12 +343,16 @@ def rf_comparison(
     dr2_cv = m_ndvi["cv_r2_mean"] - m_base["cv_r2_mean"]
     dr2_ho = m_ndvi["holdout_r2"] - m_base["holdout_r2"]
     dmae = m_ndvi["holdout_mae"] - m_base["holdout_mae"]
-    print(f"  ΔR² (CV)      : {dr2_cv:+.3f}  "
-          f"({'improvement' if dr2_cv > 0 else 'degradation'})")
-    print(f"  ΔR² (holdout) : {dr2_ho:+.3f}  "
-          f"({'improvement' if dr2_ho > 0 else 'degradation'})")
-    print(f"  ΔMAE          : {dmae:+.3f} t/ha  "
-          f"({'lower = better' if dmae < 0 else 'higher = worse'})")
+    print(
+        f"  ΔR² (CV)      : {dr2_cv:+.3f}  " f"({'improvement' if dr2_cv > 0 else 'degradation'})"
+    )
+    print(
+        f"  ΔR² (holdout) : {dr2_ho:+.3f}  " f"({'improvement' if dr2_ho > 0 else 'degradation'})"
+    )
+    print(
+        f"  ΔMAE          : {dmae:+.3f} t/ha  "
+        f"({'lower = better' if dmae < 0 else 'higher = worse'})"
+    )
 
     # Side-by-side bar chart
     fig, axes = plt.subplots(1, 3, figsize=(13, 4))
@@ -330,22 +360,37 @@ def rf_comparison(
     colors = ["#4878CF", "#6ACC65"]
 
     for ax, metric, vals, title in [
-        (axes[0], "CV R²",
-         [m_base["cv_r2_mean"], m_ndvi["cv_r2_mean"]],
-         f"CV R²  (Δ={dr2_cv:+.3f})"),
-        (axes[1], "Holdout R²",
-         [m_base["holdout_r2"], m_ndvi["holdout_r2"]],
-         f"Holdout R²  (Δ={dr2_ho:+.3f})"),
-        (axes[2], "Holdout MAE (t/ha)",
-         [m_base["holdout_mae"], m_ndvi["holdout_mae"]],
-         f"Holdout MAE  (Δ={dmae:+.3f} t/ha)"),
+        (
+            axes[0],
+            "CV R²",
+            [m_base["cv_r2_mean"], m_ndvi["cv_r2_mean"]],
+            f"CV R²  (Δ={dr2_cv:+.3f})",
+        ),
+        (
+            axes[1],
+            "Holdout R²",
+            [m_base["holdout_r2"], m_ndvi["holdout_r2"]],
+            f"Holdout R²  (Δ={dr2_ho:+.3f})",
+        ),
+        (
+            axes[2],
+            "Holdout MAE (t/ha)",
+            [m_base["holdout_mae"], m_ndvi["holdout_mae"]],
+            f"Holdout MAE  (Δ={dmae:+.3f} t/ha)",
+        ),
     ]:
         bars = ax.bar(labels, vals, color=colors, width=0.5)
         ax.set_title(title, fontsize=10)
         ax.set_ylabel(metric)
         for bar, v in zip(bars, vals):
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.005,
-                    f"{v:.3f}", ha="center", va="bottom", fontsize=9)
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 0.005,
+                f"{v:.3f}",
+                ha="center",
+                va="bottom",
+                fontsize=9,
+            )
 
     plt.suptitle("Random Forest performance: Base vs. Base+NDVI", fontsize=11)
     plt.tight_layout()
@@ -353,14 +398,27 @@ def rf_comparison(
     plt.close(fig)
     print(f"\n  Saved: {out_dir / 'rf_comparison.png'}")
 
-    return (rf_base, te_b, X_base, y_base,
-            rf_ndvi, te_n, X_ndvi, y_ndvi,
-            ndvi_feats, m_base, m_ndvi, base_common, ndvi_common)
+    return (
+        rf_base,
+        te_b,
+        X_base,
+        y_base,
+        rf_ndvi,
+        te_n,
+        X_ndvi,
+        y_ndvi,
+        ndvi_feats,
+        m_base,
+        m_ndvi,
+        base_common,
+        ndvi_common,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Feature importance — NDVI contribution
 # ---------------------------------------------------------------------------
+
 
 def ndvi_importance_report(
     rf_ndvi: RandomForestRegressor,
@@ -380,11 +438,14 @@ def ndvi_importance_report(
     perm = permutation_importance(
         rf_ndvi, X_test, y_test, n_repeats=10, random_state=seed, n_jobs=-1
     )
-    imp_df = pd.DataFrame({
-        "mdi": rf_ndvi.feature_importances_,
-        "perm_mean": perm.importances_mean,
-        "perm_std": perm.importances_std,
-    }, index=feat_names).sort_values("perm_mean", ascending=False)
+    imp_df = pd.DataFrame(
+        {
+            "mdi": rf_ndvi.feature_importances_,
+            "perm_mean": perm.importances_mean,
+            "perm_std": perm.importances_std,
+        },
+        index=feat_names,
+    ).sort_values("perm_mean", ascending=False)
 
     # Separate NDVI vs. base features
     ndvi_imp = imp_df[imp_df.index.isin(NDVI_COLS)]
@@ -395,28 +456,35 @@ def ndvi_importance_report(
     base_perm = base_imp["perm_mean"].sum()
 
     print(f"\n  Total permutation importance (all features) : {total_perm:.4f}")
-    print(f"  Base features contribution                  : {base_perm:.4f}  "
-          f"({100 * base_perm / total_perm:.1f}%)")
-    print(f"  NDVI features contribution                  : {ndvi_perm:.4f}  "
-          f"({100 * ndvi_perm / total_perm:.1f}%)")
+    print(
+        f"  Base features contribution                  : {base_perm:.4f}  "
+        f"({100 * base_perm / total_perm:.1f}%)"
+    )
+    print(
+        f"  NDVI features contribution                  : {ndvi_perm:.4f}  "
+        f"({100 * ndvi_perm / total_perm:.1f}%)"
+    )
 
     # Top-15 overall
     print(f"\n  {'Feature':35s}  {'Perm':>7s}  {'±':>6s}  {'MDI':>7s}  Source")
     print("  " + "─" * 72)
     for feat, row in imp_df.head(15).iterrows():
         src = "NDVI" if feat in NDVI_COLS else "Base"
-        print(f"  {feat:35s}  {row.perm_mean:7.4f}  {row.perm_std:6.4f}  "
-              f"{row.mdi:7.4f}  {src}")
+        print(
+            f"  {feat:35s}  {row.perm_mean:7.4f}  {row.perm_std:6.4f}  " f"{row.mdi:7.4f}  {src}"
+        )
 
     # NDVI-only ranking
     if not ndvi_imp.empty:
-        print(f"\n  NDVI features ranked by permutation importance:")
+        print("\n  NDVI features ranked by permutation importance:")
         print(f"  {'Feature':35s}  {'Perm':>7s}  {'±':>6s}  {'Rank (overall)':>15s}")
         print("  " + "─" * 68)
         for feat, row in ndvi_imp.iterrows():
             overall_rank = list(imp_df.index).index(feat) + 1
-            print(f"  {feat:35s}  {row.perm_mean:7.4f}  {row.perm_std:6.4f}  "
-                  f"{'#' + str(overall_rank):>15s}")
+            print(
+                f"  {feat:35s}  {row.perm_mean:7.4f}  {row.perm_std:6.4f}  "
+                f"{'#' + str(overall_rank):>15s}"
+            )
 
     # Figure: base vs NDVI feature importance groups
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
@@ -425,9 +493,14 @@ def ndvi_importance_report(
     top20 = imp_df.head(20)
     colors = ["#E07B54" if f in NDVI_COLS else "#4878CF" for f in top20.index]
     y_pos = range(len(top20))
-    axes[0].barh(list(y_pos), top20["perm_mean"].values[::-1],
-                 xerr=top20["perm_std"].values[::-1],
-                 color=colors[::-1], ecolor="gray", capsize=3)
+    axes[0].barh(
+        list(y_pos),
+        top20["perm_mean"].values[::-1],
+        xerr=top20["perm_std"].values[::-1],
+        color=colors[::-1],
+        ecolor="gray",
+        capsize=3,
+    )
     axes[0].set_yticks(list(y_pos))
     axes[0].set_yticklabels(list(top20.index[::-1]), fontsize=8)
     axes[0].set_xlabel("Mean permutation importance (R² decrease)")
@@ -438,17 +511,22 @@ def ndvi_importance_report(
     if not monthly.empty:
         monthly["month"] = monthly.index.str.extract(r"(\d+)$").astype(int)
         monthly = monthly.sort_values("month")
-        axes[1].bar(monthly["month"], monthly["perm_mean"],
-                    yerr=monthly["perm_std"], color="#E07B54",
-                    ecolor="gray", capsize=3)
+        axes[1].bar(
+            monthly["month"],
+            monthly["perm_mean"],
+            yerr=monthly["perm_std"],
+            color="#E07B54",
+            ecolor="gray",
+            capsize=3,
+        )
         axes[1].set_xlabel("Month")
         axes[1].set_ylabel("Permutation importance")
         axes[1].set_title("NDVI monthly feature importance\n(seasonality signal)")
         axes[1].set_xticks(range(1, 13))
         axes[1].set_xticklabels(
-            ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-            rotation=45, fontsize=8
+            ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+            rotation=45,
+            fontsize=8,
         )
     else:
         axes[1].text(0.5, 0.5, "No monthly NDVI features", ha="center", va="center")
@@ -464,6 +542,7 @@ def ndvi_importance_report(
 # ---------------------------------------------------------------------------
 # PCA: does NDVI add independent signal?
 # ---------------------------------------------------------------------------
+
 
 def pca_comparison(
     base: pd.DataFrame,
@@ -516,22 +595,33 @@ def pca_comparison(
         print(f"\n  NDVI-only ({len(ndvi_only)} features) internal structure:")
         for t in (0.80, 0.90):
             n = int(np.searchsorted(cumvar_ndvi_only, t) + 1)
-            print(f"    {int(t*100)}% variance → {n} / {len(ndvi_only)} components  "
-                  f"(redundancy: {(1 - n/len(ndvi_only))*100:.0f}%)")
+            print(
+                f"    {int(t*100)}% variance → {n} / {len(ndvi_only)} components  "
+                f"(redundancy: {(1 - n/len(ndvi_only))*100:.0f}%)"
+            )
 
     # Scree comparison plot
     fig, ax = plt.subplots(figsize=(9, 4))
     n_base = min(len(cumvar_base), 50)
     n_ndvi = min(len(cumvar_ndvi), 50)
-    ax.plot(range(1, n_base + 1), cumvar_base[:n_base] * 100,
-            label=f"Base ({len(base_feats)} features)", color="#4878CF", linewidth=1.8)
-    ax.plot(range(1, n_ndvi + 1), cumvar_ndvi[:n_ndvi] * 100,
-            label=f"Base+NDVI ({len(ndvi_feats)} features)", color="#6ACC65",
-            linewidth=1.8, linestyle="--")
+    ax.plot(
+        range(1, n_base + 1),
+        cumvar_base[:n_base] * 100,
+        label=f"Base ({len(base_feats)} features)",
+        color="#4878CF",
+        linewidth=1.8,
+    )
+    ax.plot(
+        range(1, n_ndvi + 1),
+        cumvar_ndvi[:n_ndvi] * 100,
+        label=f"Base+NDVI ({len(ndvi_feats)} features)",
+        color="#6ACC65",
+        linewidth=1.8,
+        linestyle="--",
+    )
     for t in (80, 90, 95):
         ax.axhline(t, color="gray", linestyle=":", linewidth=0.8)
-        ax.text(max(n_base, n_ndvi) * 0.98, t + 0.5, f"{t}%",
-                ha="right", fontsize=8, color="gray")
+        ax.text(max(n_base, n_ndvi) * 0.98, t + 0.5, f"{t}%", ha="right", fontsize=8, color="gray")
     ax.set_xlabel("Number of principal components")
     ax.set_ylabel("Cumulative explained variance (%)")
     ax.set_title("PCA scree comparison — Base vs. Base+NDVI")
@@ -545,6 +635,7 @@ def pca_comparison(
 # ---------------------------------------------------------------------------
 # Per-country R² comparison
 # ---------------------------------------------------------------------------
+
 
 def per_country_comparison(
     rf_base: RandomForestRegressor,
@@ -574,12 +665,15 @@ def per_country_comparison(
             y_p = rf.predict(X.iloc[test_idx])[mask]
             r2 = r2_score(y_t, y_p) if len(y_t) > 1 else float("nan")
             mae = mean_absolute_error(y_t, y_p)
-            results.append({"country": country, "model": label, "n": mask.sum(),
-                             "r2": r2, "mae": mae})
+            results.append(
+                {"country": country, "model": label, "n": mask.sum(), "r2": r2, "mae": mae}
+            )
 
     results_df = pd.DataFrame(results)
-    print(f"  {'Country':8s}  {'n_base':>7s}  {'R²_base':>8s}  {'R²_ndvi':>8s}  "
-          f"{'ΔR²':>8s}  {'MAE_base':>9s}  {'MAE_ndvi':>9s}")
+    print(
+        f"  {'Country':8s}  {'n_base':>7s}  {'R²_base':>8s}  {'R²_ndvi':>8s}  "
+        f"{'ΔR²':>8s}  {'MAE_base':>9s}  {'MAE_ndvi':>9s}"
+    )
     print("  " + "─" * 72)
 
     countries = results_df["country"].unique()
@@ -593,8 +687,10 @@ def per_country_comparison(
         maeb = b["mae"].values[0]
         maen = n["mae"].values[0]
         nb = b["n"].values[0]
-        print(f"  {c:8s}  {nb:7d}  {r2b:8.3f}  {r2n:8.3f}  {r2n - r2b:+8.3f}  "
-              f"{maeb:9.3f}  {maen:9.3f}")
+        print(
+            f"  {c:8s}  {nb:7d}  {r2b:8.3f}  {r2n:8.3f}  {r2n - r2b:+8.3f}  "
+            f"{maeb:9.3f}  {maen:9.3f}"
+        )
 
     # Bar chart per country
     pivot = results_df.pivot(index="country", columns="model", values="r2").fillna(float("nan"))
@@ -619,6 +715,7 @@ def per_country_comparison(
 # ---------------------------------------------------------------------------
 # Hydra config recommendations
 # ---------------------------------------------------------------------------
+
 
 def hydra_recommendations(
     base: pd.DataFrame,
@@ -656,17 +753,23 @@ def hydra_recommendations(
     #     e.g. 2016–2018) — seasonal NaN here reflects source incompleteness.
     #   - years with a complete NDVI file (2019+) — NaN here is unexpected.
     seasonal_cols = [c for c in NDVI_SEASONAL_COLS if c in ndvi.columns]
-    monthly_cols  = [c for c in NDVI_MONTHLY_COLS  if c in ndvi.columns]
+    monthly_cols = [c for c in NDVI_MONTHLY_COLS if c in ndvi.columns]
 
     # Years that have an NDVI source file
     ndvi_file_years = sorted(ndvi["year"].unique()) if "year" in ndvi.columns else []
     # Infer which years have a file by checking if seasonal NaN < 100%
     years_with_file = (
-        ndvi.groupby("year")[seasonal_cols].apply(lambda g: g.isna().mean().mean())
+        ndvi.groupby("year")[seasonal_cols]
+        .apply(lambda g: g.isna().mean().mean())
         .pipe(lambda s: s[s < 1.0].index.tolist())
-        if seasonal_cols and "year" in ndvi.columns else []
+        if seasonal_cols and "year" in ndvi.columns
+        else []
     )
-    years_no_file = [y for y in ndvi["year"].unique() if y not in years_with_file] if "year" in ndvi.columns else []
+    years_no_file = (
+        [y for y in ndvi["year"].unique() if y not in years_with_file]
+        if "year" in ndvi.columns
+        else []
+    )
 
     rows_no_file = int(ndvi["year"].isin(years_no_file).sum()) if "year" in ndvi.columns else 0
     rows_with_file = len(ndvi) - rows_no_file
@@ -690,7 +793,8 @@ def hydra_recommendations(
     else:
         yr_seasonal = pd.Series(dtype=float)
 
-    print(f"""
+    print(
+        f"""
 DATASET SELECTION
 ─────────────────
   Base CSV  : {data_dir}/yield_africa/model_ready_yield_africa_base.csv
@@ -701,15 +805,22 @@ DATASET SELECTION
   Rows lost     : {len(base_only):,}
 
 NDVI DATA QUALITY BY YEAR
-──────────────────────────""")
+──────────────────────────"""
+    )
     for yr, pct in yr_seasonal.items():
-        note = "(no NDVI file)" if yr in years_no_file else ("(partial source data)" if pct > 5 else "")
+        note = (
+            "(no NDVI file)"
+            if yr in years_no_file
+            else ("(partial source data)" if pct > 5 else "")
+        )
         print(f"  {yr}  seasonal NaN: {pct:5.1f}%  {note}")
-    print(f"""
+    print(
+        f"""
   Seasonal missing rate — years with NDVI file : {seasonal_missing_covered:.1f}%
   Monthly  missing rate — years with NDVI file : {monthly_missing_covered:.1f}%
   Rows with no NDVI file (will use imputation) : {rows_no_file:,}  ({100*rows_no_file/len(ndvi):.1f}%)
-""")
+"""
+    )
 
     # Verdict
     # Use seasonal missing rate on covered years as the quality signal — that is
@@ -717,7 +828,7 @@ NDVI DATA QUALITY BY YEAR
     # individual monthly columns and are the primary NDVI signal for yield prediction).
     ndvi_meaningful = dr2_cv > 0.01 or dr2_ho > 0.01
     ndvi_coverage_ok = coverage_pct >= 95.0
-    ndvi_seasonal_ok = seasonal_missing_covered < 30.0   # seasonal cols, covered years only
+    ndvi_seasonal_ok = seasonal_missing_covered < 30.0  # seasonal cols, covered years only
     no_file_rows_minor = rows_no_file / len(ndvi) < 0.10  # < 10% rows lack a file entirely
 
     print("RECOMMENDATION")
@@ -766,7 +877,8 @@ NDVI DATA QUALITY BY YEAR
     print(f"  {rationale}")
 
     # Config snippets
-    print("""
+    print(
+        """
 HYDRA CONFIG SNIPPETS
 ─────────────────────
   1. Point data_dir to the external drive in your .env:
@@ -805,12 +917,14 @@ HYDRA CONFIG SNIPPETS
        Then override per-experiment:
          python src/train.py experiment=yield_africa_tabular_loco \\
            data.dataset.csv_name=model_ready_yield_africa_ndvi.csv
-""")
+"""
+    )
 
 
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -849,10 +963,21 @@ def main() -> None:
     feature_set_report(base, ndvi)
 
     # RF comparison
-    (rf_base, te_b, X_base, y_base,
-     rf_ndvi, te_n, X_ndvi, y_ndvi,
-     ndvi_feats, m_base, m_ndvi,
-     base_common, ndvi_common) = rf_comparison(base, ndvi, args.n_trees, args.seed, out_dir)
+    (
+        rf_base,
+        te_b,
+        X_base,
+        y_base,
+        rf_ndvi,
+        te_n,
+        X_ndvi,
+        y_ndvi,
+        ndvi_feats,
+        m_base,
+        m_ndvi,
+        base_common,
+        ndvi_common,
+    ) = rf_comparison(base, ndvi, args.n_trees, args.seed, out_dir)
 
     # NDVI feature importance
     ndvi_importance_report(rf_ndvi, X_ndvi, y_ndvi, te_n, out_dir, args.seed)
@@ -862,10 +987,16 @@ def main() -> None:
 
     # Per-country breakdown
     per_country_comparison(
-        rf_base, rf_ndvi,
-        X_base, X_ndvi, y_base, y_ndvi,
-        te_b, te_n,
-        base_common, ndvi_common,
+        rf_base,
+        rf_ndvi,
+        X_base,
+        X_ndvi,
+        y_base,
+        y_ndvi,
+        te_b,
+        te_n,
+        base_common,
+        ndvi_common,
         out_dir,
     )
 
