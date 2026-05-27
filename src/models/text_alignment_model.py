@@ -142,7 +142,7 @@ class TextAlignmentModel(BaseModel):
             if use_saved_threshold_if_available and all(
                 (
                     c.get("theta_k") is not None
-                    and c.get(f"n_baseline_{dataset_name}") is not None
+                    and c.get(f"accuracy_baseline_{dataset_name}") is not None
                     and c.get("is_max") is not None
                 )
                 for c in self.concept_configs
@@ -150,13 +150,14 @@ class TextAlignmentModel(BaseModel):
                 for i_c, c in enumerate(self.concept_configs):
                     c_name = self.concept_names[i_c]
                     theta_k = c["theta_k"]
-                    n_baseline = c[f"n_baseline_{dataset_name}"]
+                    self.dynamic_k_baselines[dataset_name][c_name] = self.concept_configs[i_c][
+                        f"accuracy_baseline_{dataset_name}"
+                    ]
 
                     if verbose:
                         print(
-                            f"Concept '{self.concept_names[i_c]}' in {dataset_name} set: is_max={c['is_max']}, saved theta_k={theta_k:.6f}, saved baseline={n_baseline}/{n_ds} ({n_baseline / n_ds * 100:.1f}%)"
+                            f"Concept '{self.concept_names[i_c]}' in {dataset_name} set: is_max={c['is_max']}, saved theta_k={theta_k:.6f}, saved baseline={self.dynamic_k_baselines[dataset_name][c_name]}%)"
                         )
-                    self.dynamic_k_baselines[dataset_name][c_name] = n_baseline / n_ds * 100
 
             else:
                 print(
@@ -242,13 +243,15 @@ class TextAlignmentModel(BaseModel):
                                 if c["is_max"]
                                 else max(aux_vals_current_ds) - 1e-6
                             )
-                    self.concept_configs[i_c][f"n_baseline_{dataset_name}"] = int(n_baseline)
 
                     if verbose:
                         print(
                             f"Concept '{self.concept_names[i_c]}' in {dataset_name} set: is_max={c['is_max']}, original theta_k={self.concept_configs[i_c]['theta_k']:.6f}, new theta_k={theta_k:.6f}, baseline={n_baseline}/{n_ds} ({n_baseline / n_ds * 100:.1f}%)"
                         )
                     self.dynamic_k_baselines[dataset_name][c_name] = n_baseline / n_ds * 100
+                    self.concept_configs[i_c][f"accuracy_baseline_{dataset_name}"] = float(
+                        self.dynamic_k_baselines[dataset_name][c_name]
+                    )
 
                 if len(list_concept_ids_drop) > 0 and dataset_name == "test":
                     print(
