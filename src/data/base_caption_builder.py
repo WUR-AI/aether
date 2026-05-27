@@ -28,6 +28,11 @@ class BaseCaptionBuilder(ABC):
         self.tokens_in_template = [self._extract_tokens(t) for t in self.templates]
 
         concepts_path = os.path.join(self.data_dir, "concept_captions", concepts_fname)
+        assert os.path.exists(concepts_path), f"Concepts file not found at {concepts_path}"
+        assert re.match(
+            r"v\d+\.json", concepts_fname
+        ), f"Concepts file must be in format v<number>.json, got {concepts_fname}"
+        self.concepts_path = concepts_path
         self.concepts = json.load(open(concepts_path))
 
         self.column_to_metadata_map: Dict[str] | None = None
@@ -57,6 +62,25 @@ class BaseCaptionBuilder(ABC):
         for t, f in fillers.items():
             template = template.replace(f"<{t}>", f, 1)
         return template
+
+    @final
+    def store_concept_thresholds(self, concept_configs: Dict[str, Any], update_self=True) -> None:
+        current_version = re.search(r"v(\d+)\.json", os.path.basename(self.concepts_path)).group(1)
+        new_version = int(current_version) + 1
+        new_concepts_fname = f"v{new_version}.json"
+        while os.path.exists(os.path.join(self.data_dir, "concept_captions", new_concepts_fname)):
+            new_version += 1
+            new_concepts_fname = f"v{new_version}.json"
+        new_concepts_path = os.path.join(self.data_dir, "concept_captions", new_concepts_fname)
+        json.dump(concept_configs, open(new_concepts_path, "w"), indent=4)
+        print(f"Concept thresholds stored in {new_concepts_path}")
+        if update_self:
+            self.update_concept_thresholds(concept_configs)
+            self.concepts_path = new_concepts_path
+
+    @final
+    def update_concept_thresholds(self, concept_configs: Dict[str, Any]) -> None:
+        self.concepts = concept_configs
 
     @abstractmethod
     def _build_from_template(
