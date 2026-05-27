@@ -348,9 +348,13 @@ class BaseDataset(Dataset, ABC):
         # Modality settings
         size = self.modalities["aef"]["size"]
         dtype = self.modalities["aef"].get("dtype")
+        format = self.modalities["aef"].get("format", "npy")
         dtype, is_bfloat16 = self.resolve_dtype(dtype)
 
-        im = self.load_tiff(filepath, np.dtype(dtype))
+        if format in "tif":
+            im = self.load_tiff(filepath, np.dtype(dtype))
+        else:
+            im = self.load_npy(filepath, np.dtype(dtype))
 
         if im.shape[-2:] != (size, size):
             im = center_crop_npy(im, (64, size, size))
