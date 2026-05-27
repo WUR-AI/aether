@@ -95,11 +95,11 @@ class BaseDataModule(LightningDataModule):
             return self.hparams.batch_size
 
         if self.hparams.batch_size % self.trainer.world_size != 0:
-            raise RuntimeError(f"Batch size ({self.hparams.batch_size}) is not divisible by the number of devices ({self.trainer.world_size}).")
+            raise RuntimeError(
+                f"Batch size ({self.hparams.batch_size}) is not divisible by the number of devices ({self.trainer.world_size})."
+            )
 
         return self.hparams.batch_size // self.trainer.world_size
-
-
 
     def split_data(self) -> None:
         """Split data into train, val and test.
@@ -353,6 +353,204 @@ class BaseDataModule(LightningDataModule):
 
         return split_indices
 
+    def setup_conceptcaption_validation_parameters(
+        self,
+        use_saved_threshold_if_available=True,
+        overwrite_existing_thresholds=False,
+        save_newly_computed_threshold=True,
+        compute_train_threshold=True,
+        verbose=1,
+    ):
+        """Set up the contrastive retrieval evaluation by computing dynamic k baselines and
+        initializing the validation object.
+
+        Parameters:
+        - use_saved_threshold_if_available: whether to use saved thresholds if available
+        - overwrite_existing_thresholds: whether to overwrite existing thresholds with newly computed ones
+        - save_newly_computed_threshold: whether to save newly computed thresholds to a new concept configs file
+        - compute_train_threshold: whether to compute thresholds only using the train set
+        - verbose: whether to print the dynamic ks and their baselines
+        - verbose: whether to print the dynamic ks and their baselines
+        """
+        if not (
+            hasattr(self, "data_train") or hasattr(self, "data_val") or hasattr(self, "data_test")
+        ):
+            raise RuntimeError(
+                "Data splits not found. Make sure to call this method after split_data() which creates the data splits."
+            )
+
+        assert (
+            compute_train_threshold
+        ), "Currently the only implementation of computing thresholds is by computing them on the train set only, and then using these for the validation and test set too."
+        if overwrite_existing_thresholds:
+            use_saved_threshold_if_available = False
+            save_newly_computed_threshold = True  # for reproducibility.
+
+        self.concepts = [c["concept_caption"] for c in self.concept_configs]
+        self.concept_names = [
+            f"{c['col'].replace('aux_', '')}_{'max' if c.get('is_max') else 'min'}"
+            for c in self.concept_configs
+        ]
+        list_concept_ids_drop = []
+        new_thresholds_computed = False
+        self.dynamic_k_baselines = {}
+        for dataset_name in [
+            "train",
+            "val",
+            "test",
+        ]:  # ensure 'train' is first for use_train_threshold logic!
+            if not hasattr(self, f"data_{dataset_name}"):
+                continue
+
+            tmp_ds = getattr(self, f"data_{dataset_name}")
+            n_ds = len(tmp_ds)
+            self.dynamic_k_baselines[dataset_name] = {}
+
+            if use_saved_threshold_if_available and all(
+                (
+                    c.get("theta_k") is not None
+                    and c.get(f"accuracy_baseline_{dataset_name}") is not None
+                    and c.get("is_max") is not None
+                )
+                for c in self.concept_configs
+            ):  # no need to compute if all concepts have saved thresholds and baselines
+                for i_c, c in enumerate(self.concept_configs):
+                    c_name = self.concept_names[i_c]
+                    theta_k = c["theta_k"]
+                    self.dynamic_k_baselines[dataset_name][c_name] = self.concept_configs[i_c][
+                        f"accuracy_baseline_{dataset_name}"
+                    ]
+
+                    if verbose:
+                        print(
+                            f"Concept '{self.concept_names[i_c]}' in {dataset_name} set: is_max={c['is_max']}, saved theta_k={theta_k:.6f}, saved baseline={self.dynamic_k_baselines[dataset_name][c_name]}%)"
+                        )
+
+            else:
+                print(
+                    f"WARNING: No saved thresholds and baselines found for some or all concepts for {dataset_name}, computing new ones. This may take a while..."
+                )
+                print(
+                    "To speed up this computation, make sure to run this method with a dataloader that has only the coordinates and aux data (no other EO data)."
+                )
+                new_thresholds_computed = True
+                if save_newly_computed_threshold:
+                    print(
+                        "The threshold values will be written to a new concept configs file if they are computed anew."
+                    )
+                else:
+                    print(
+                        "Consider setting save_newly_computed_threshold=True to store the computed thresholds and avoid recomputation in the future."
+                    )
+                # Iterate through dataset once to get aux values for all concepts (to avoid multiple iterations if multiple concepts). Best done with coords only dataset for speed!
+                aux_vals_per_concept = {i: [] for i in range(len(self.concept_configs))}
+                for item in tmp_ds:
+                    aux_data = item["aux"]["aux"]
+                    for i_c, c in enumerate(self.concept_configs):
+                        aux_col_id = c["id"]
+                        aux_vals_per_concept[i_c].append(aux_data[aux_col_id])
+
+                # Compute per concept
+                for i_c, c in enumerate(self.concept_configs):
+                    c_name = self.concept_names[i_c]
+                    aux_vals_current_ds = aux_vals_per_concept[i_c]
+
+                    if dataset_name == "train":
+                        if overwrite_existing_thresholds:
+                            theta_k = self.find_elbow_point(
+                                aux_vals_current_ds
+                            )  # only compute if not present
+                        else:
+                            theta_k = c.get("theta_k") or self.find_elbow_point(
+                                aux_vals_current_ds
+                            )  # only compute if not present
+                        self.concept_configs[i_c]["theta_k"] = float(
+                            theta_k
+                        )  # assign new theta_k to concept_configs for later use in validation
+                    else:
+                        theta_k = self.concept_configs[i_c]["theta_k"]
+
+                    n_baseline_max = sum(aux_val >= theta_k for aux_val in aux_vals_current_ds)
+                    n_baseline_min = sum(aux_val <= theta_k for aux_val in aux_vals_current_ds)
+
+                    if n_baseline_max < n_baseline_min:
+                        if not c.get("is_max", True):
+                            print(
+                                f"Concept {c_name} has n_baseline_max < n_baseline_min but is_max is False. Therefore it will NOT be used/stored. Please check the concept configs or the computed theta_k for this concept."
+                            )
+                            if i_c not in list_concept_ids_drop:
+                                list_concept_ids_drop.append(i_c)
+                        n_baseline = n_baseline_max
+                        _is_max = True
+                    else:
+                        if c.get("is_max", False):
+                            print(
+                                f"Concept {c_name} has n_baseline_max >= n_baseline_min but is_max is True. Therefore it will NOT be used/stored. Please check the concept configs or the computed theta_k for this concept."
+                            )
+                            if i_c not in list_concept_ids_drop:
+                                list_concept_ids_drop.append(i_c)
+                        n_baseline = n_baseline_min
+                        _is_max = False
+                    if "is_max" not in c:
+                        print(
+                            f"Concept {c_name} does not have 'is_max' specified. Setting is_max to {_is_max} based on whether n_baseline_max ({n_baseline_max}) is smaller than n_baseline_min ({n_baseline_min})."
+                        )
+                        self.concept_configs[i_c]["is_max"] = _is_max
+                        self.concept_names[i_c] = (
+                            f"{c['col'].replace('aux_', '')}_{'max' if _is_max else 'min'}"
+                        )
+
+                    if n_baseline == n_ds:
+                        n_baseline = (
+                            n_ds - 1
+                        )  # to avoid having a baseline of 100% (will still yield index score of 1)
+                        if dataset_name == "train":
+                            theta_k = (
+                                min(aux_vals_current_ds) + 1e-6
+                                if c["is_max"]
+                                else max(aux_vals_current_ds) - 1e-6
+                            )
+
+                    if verbose:
+                        print(
+                            f"Concept '{self.concept_names[i_c]}' in {dataset_name} set: is_max={c['is_max']}, original theta_k={self.concept_configs[i_c]['theta_k']:.6f}, new theta_k={theta_k:.6f}, baseline={n_baseline}/{n_ds} ({n_baseline / n_ds * 100:.1f}%)"
+                        )
+                    self.dynamic_k_baselines[dataset_name][c_name] = n_baseline / n_ds * 100
+                    self.concept_configs[i_c][f"accuracy_baseline_{dataset_name}"] = float(
+                        self.dynamic_k_baselines[dataset_name][c_name]
+                    )
+
+                if len(list_concept_ids_drop) > 0 and dataset_name == "test":
+                    print(
+                        f"Dropping concepts with ids {list_concept_ids_drop} and names {[self.concept_names[i] for i in list_concept_ids_drop]} from evaluation due to mismatch between is_max and whether n_baseline_max or n_baseline_min is smaller."
+                    )
+                    self.concept_configs = [
+                        c
+                        for i, c in enumerate(self.concept_configs)
+                        if i not in list_concept_ids_drop
+                    ]
+                    self.concepts = [c["concept_caption"] for c in self.concept_configs]
+                    self.concept_names = [
+                        f"{c['col'].replace('aux_', '')}_{'max' if c['is_max'] else 'min'}"
+                        for c in self.concept_configs
+                    ]
+                    self.dynamic_k_baselines[dataset_name] = {
+                        c_name: baseline
+                        for i, (c_name, baseline) in enumerate(
+                            self.dynamic_k_baselines[dataset_name].items()
+                        )
+                        if i not in list_concept_ids_drop
+                    }
+
+        if (
+            save_newly_computed_threshold and new_thresholds_computed
+        ):  # only save after computing on train set, and only if we are computing new thresholds (not just using saved ones), to avoid overwriting with the same values or with values computed on val/test set
+            self.caption_builder.store_concept_thresholds(self.concept_configs, update_self=True)
+        elif new_thresholds_computed:
+            self.caption_builder.update_concept_thresholds(self.concept_configs)
+
+        return None
+
     def train_dataloader(self) -> DataLoader[Any]:
         """Create and return the train dataloader.
 
@@ -366,7 +564,9 @@ class BaseDataModule(LightningDataModule):
             ),
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
-            prefetch_factor=(self.hparams.prefetch_factor if self.hparams.num_workers > 0 else None),
+            prefetch_factor=(
+                self.hparams.prefetch_factor if self.hparams.num_workers > 0 else None
+            ),
             shuffle=True,
             collate_fn=(
                 partial(
@@ -389,8 +589,12 @@ class BaseDataModule(LightningDataModule):
             batch_size=self.batch_size_per_device,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
-            persistent_workers=(bool(self.hparams.persistent_workers) if self.hparams.num_workers > 0 else False),
-            prefetch_factor=(self.hparams.prefetch_factor if self.hparams.num_workers > 0 else None),
+            persistent_workers=(
+                bool(self.hparams.persistent_workers) if self.hparams.num_workers > 0 else False
+            ),
+            prefetch_factor=(
+                self.hparams.prefetch_factor if self.hparams.num_workers > 0 else None
+            ),
             shuffle=False,
             collate_fn=(
                 partial(
@@ -413,8 +617,12 @@ class BaseDataModule(LightningDataModule):
             batch_size=self.batch_size_per_device,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
-            persistent_workers=(bool(self.hparams.persistent_workers) if self.hparams.num_workers > 0 else False),
-            prefetch_factor=(self.hparams.prefetch_factor if self.hparams.num_workers > 0 else None),
+            persistent_workers=(
+                bool(self.hparams.persistent_workers) if self.hparams.num_workers > 0 else False
+            ),
+            prefetch_factor=(
+                self.hparams.prefetch_factor if self.hparams.num_workers > 0 else None
+            ),
             shuffle=False,
             collate_fn=(
                 partial(
@@ -426,6 +634,37 @@ class BaseDataModule(LightningDataModule):
                 else None
             ),
         )
+
+    @staticmethod
+    def find_elbow_point(vals):
+        """Vals is a list of tensor values."""
+        with torch.no_grad():
+            vals = torch.tensor(vals).cpu().numpy()
+            vals = vals[~np.isnan(vals)]  # remove NaN values
+
+            vals = np.sort(vals)
+            vals = vals[vals > vals[0]]
+            x = np.arange(len(vals)) / len(vals)
+            y = vals
+            if x[0] == x[-1]:  # all values are the same
+                print(
+                    "All values are the same, returning the value itself as elbow point.", vals[0]
+                )
+                return vals[0]
+            slope = (y[-1] - y[0]) / (x[-1] - x[0])  # diagonal from first to last point
+            intercept = y[0] - slope * x[0]
+            orthogonal_slope = -1 / slope
+
+            intercepts_orthogonal = y - orthogonal_slope * x
+            intersection_diagonal_orthogonal = (intercepts_orthogonal - intercept) / (
+                slope - orthogonal_slope
+            )
+            distances = np.sqrt(
+                (x - intersection_diagonal_orthogonal) ** 2 + (y - (slope * x + intercept)) ** 2
+            )  # distance to diagonal
+            elbow_index = np.argmax(distances)
+            elbow_point = y[elbow_index]
+            return elbow_point
 
 
 if __name__ == "__main__":
