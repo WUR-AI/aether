@@ -209,7 +209,6 @@ class TextAlignmentModel(BaseModel):
         avr_scores = {f"{mode}_avr_top-{k}": [] for k in self.ks if k != "dynamic_k"}
         avr_scores[f"{mode}_avr_top-dyn_k"] = []
         avr_scores[f"{mode}_avr_top-dyn_k_index"] = []
-        # avr_scores = {}
         for i, result in concept_scores.items():  # loop through concepts
             if verbose:
                 print(f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:')

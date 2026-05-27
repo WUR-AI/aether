@@ -5,9 +5,9 @@
         "theta_k": 0.3,
         "col": "aux_corine_frac_11",
         "id": 20,
-        "n_baseline_train": 151,
-        "n_baseline_val": 35,
-        "n_baseline_test": 33
+        "accuracy_baseline_train": 16.098079681396484,
+        "accuracy_baseline_val": 17.85714340209961,
+        "accuracy_baseline_test": 17.74193572998047
     },
     {
         "concept_caption": "Area with infrastructure such as roads, railways, airport, ports and heavy industry.",
@@ -15,9 +15,9 @@
         "theta_k": 0.1,
         "col": "aux_corine_frac_12",
         "id": 23,
-        "n_baseline_train": 70,
-        "n_baseline_val": 17,
-        "n_baseline_test": 18
+        "accuracy_baseline_train": 7.462686538696289,
+        "accuracy_baseline_val": 8.673469543457031,
+        "accuracy_baseline_test": 9.67741870880127
     },
     {
         "concept_caption": "Arable land with crops for agriculture",
@@ -25,9 +25,9 @@
         "theta_k": 0.65,
         "col": "aux_corine_frac_21",
         "id": 36,
-        "n_baseline_train": 103,
-        "n_baseline_val": 19,
-        "n_baseline_test": 20
+        "accuracy_baseline_train": 10.980810165405273,
+        "accuracy_baseline_val": 9.693877220153809,
+        "accuracy_baseline_test": 10.75268840789795
     },
     {
         "concept_caption": "Pasture fields with grass for grazing animals",
@@ -35,9 +35,9 @@
         "theta_k": 0.6,
         "col": "aux_corine_frac_231",
         "id": 45,
-        "n_baseline_train": 74,
-        "n_baseline_val": 27,
-        "n_baseline_test": 20
+        "accuracy_baseline_train": 7.889125347137451,
+        "accuracy_baseline_val": 13.77550983428955,
+        "accuracy_baseline_test": 10.75268840789795
     },
     {
         "concept_caption": "Agricultural land used for crops, pasture or mixed farming",
@@ -45,9 +45,9 @@
         "theta_k": 0.05,
         "col": "aux_corine_frac_24",
         "id": 46,
-        "n_baseline_train": 64,
-        "n_baseline_val": 13,
-        "n_baseline_test": 9
+        "accuracy_baseline_train": 6.823028087615967,
+        "accuracy_baseline_val": 6.632652759552002,
+        "accuracy_baseline_test": 4.838709354400635
     },
     {
         "concept_caption": "Forested area with many trees",
@@ -55,9 +55,9 @@
         "theta_k": 0.25,
         "col": "aux_corine_frac_31",
         "id": 52,
-        "n_baseline_train": 199,
-        "n_baseline_val": 34,
-        "n_baseline_test": 38
+        "accuracy_baseline_train": 21.21535301208496,
+        "accuracy_baseline_val": 17.346939086914062,
+        "accuracy_baseline_test": 20.43010711669922
     },
     {
         "concept_caption": "Scrub area with trees, shrub, moors.",
@@ -65,9 +65,9 @@
         "theta_k": 0.2,
         "col": "aux_corine_frac_32",
         "id": 56,
-        "n_baseline_train": 98,
-        "n_baseline_val": 18,
-        "n_baseline_test": 11
+        "accuracy_baseline_train": 10.447761535644531,
+        "accuracy_baseline_val": 9.183673858642578,
+        "accuracy_baseline_test": 5.913978576660156
     },
     {
         "concept_caption": "Moorlands and heathlands with low vegetation",
@@ -75,9 +75,9 @@
         "theta_k": 0.2,
         "col": "aux_corine_frac_322",
         "id": 58,
-        "n_baseline_train": 52,
-        "n_baseline_val": 11,
-        "n_baseline_test": 8
+        "accuracy_baseline_train": 5.543709754943848,
+        "accuracy_baseline_val": 5.612244606018066,
+        "accuracy_baseline_test": 4.301075458526611
     },
     {
         "concept_caption": "Wetlands such as marshes, swamps, mudflats and bogs.",
@@ -85,9 +85,9 @@
         "theta_k": 0.2,
         "col": "aux_corine_frac_4",
         "id": 67,
-        "n_baseline_train": 33,
-        "n_baseline_val": 8,
-        "n_baseline_test": 5
+        "accuracy_baseline_train": 3.5181236267089844,
+        "accuracy_baseline_val": 4.081632614135742,
+        "accuracy_baseline_test": 2.6881721019744873
     },
     {
         "concept_caption": "Peat bogs",
@@ -95,9 +95,9 @@
         "theta_k": 0.2,
         "col": "aux_corine_frac_412",
         "id": 70,
-        "n_baseline_train": 9,
-        "n_baseline_val": 0,
-        "n_baseline_test": 3
+        "accuracy_baseline_train": 0.9594882726669312,
+        "accuracy_baseline_val": 0.0,
+        "accuracy_baseline_test": 1.612903118133545
     },
     {
         "concept_caption": "Water bodies such as lakes, rivers and sea",
@@ -105,9 +105,9 @@
         "theta_k": 0.2,
         "col": "aux_corine_frac_5",
         "id": 75,
-        "n_baseline_train": 69,
-        "n_baseline_val": 9,
-        "n_baseline_test": 15
+        "accuracy_baseline_train": 7.356076717376709,
+        "accuracy_baseline_val": 4.591836929321289,
+        "accuracy_baseline_test": 8.064516067504883
     },
     {
         "concept_caption": "Warm area with high summer temperatures",
@@ -115,9 +115,9 @@
         "theta_k": 22.0,
         "col": "aux_bioclim_05",
         "id": 4,
-        "n_baseline_train": 85,
-        "n_baseline_val": 16,
-        "n_baseline_test": 33
+        "accuracy_baseline_train": 9.061833381652832,
+        "accuracy_baseline_val": 8.163265228271484,
+        "accuracy_baseline_test": 17.74193572998047
     },
     {
         "concept_caption": "Cold area with low winter temperatures",
@@ -125,9 +125,9 @@
         "theta_k": -0.6000000238418579,
         "col": "aux_bioclim_06",
         "id": 5,
-        "n_baseline_train": 52,
-        "n_baseline_val": 13,
-        "n_baseline_test": 11
+        "accuracy_baseline_train": 5.543709754943848,
+        "accuracy_baseline_val": 6.632652759552002,
+        "accuracy_baseline_test": 5.913978576660156
     },
     {
         "concept_caption": "Wet area with a lot of rainfall",
@@ -135,9 +135,9 @@
         "theta_k": 950.0,
         "col": "aux_bioclim_12",
         "id": 11,
-        "n_baseline_train": 144,
-        "n_baseline_val": 35,
-        "n_baseline_test": 10
+        "accuracy_baseline_train": 15.351812362670898,
+        "accuracy_baseline_val": 17.85714340209961,
+        "accuracy_baseline_test": 5.376344203948975
     },
     {
         "concept_caption": "Remote area far from roads and infrastructure",
@@ -145,9 +145,9 @@
         "theta_k": 1500.0,
         "col": "aux_meandist_road",
         "id": 84,
-        "n_baseline_train": 47,
-        "n_baseline_val": 8,
-        "n_baseline_test": 13
+        "accuracy_baseline_train": 5.0106611251831055,
+        "accuracy_baseline_val": 4.081632614135742,
+        "accuracy_baseline_test": 6.9892473220825195
     },
     {
         "concept_caption": "Densely populated area with many houses",
@@ -155,8 +155,8 @@
         "theta_k": 1500.0,
         "col": "aux_pop_density",
         "id": 85,
-        "n_baseline_train": 99,
-        "n_baseline_val": 22,
-        "n_baseline_test": 22
+        "accuracy_baseline_train": 10.554370880126953,
+        "accuracy_baseline_val": 11.224489212036133,
+        "accuracy_baseline_test": 11.827957153320312
     }
 ]
