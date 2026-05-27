@@ -205,22 +205,31 @@ class TextAlignmentModel(BaseModel):
         similarity = self.concept_similarities(geo_feats)
 
         concept_scores = self.contrastive_val(similarity, aux_values=aux_vals)
-        # TODO pearson
 
-        avr_scores = {f"{mode}_avr_top-{k}": [] for k in self.ks}
-        for i, result in concept_scores.items():
+        avr_scores = {f"{mode}_avr_top-{k}": [] for k in self.ks if k != "dynamic_k"}
+        avr_scores[f"{mode}_avr_top-dyn_k"] = []
+        avr_scores[f"{mode}_avr_top-dyn_k_index"] = []
+        # avr_scores = {}
+        for i, result in concept_scores.items():  # loop through concepts
             if verbose:
                 print(f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:')
-            for k, v in result.items():
+            for k, v in result.items():  # loop through k values
                 if k == "dynamic_k":
-                    self.log(f"dyn_k_{self.concept_names[i]}", v, **self.log_kwargs)
+                    self.log(f"{mode}_dyn_k_{self.concept_names[i]}", v, **self.log_kwargs)
                     indexed_v = (v - self.dynamic_k_baselines[mode][self.concept_names[i]]) / (
                         100 - self.dynamic_k_baselines[mode][self.concept_names[i]]
                     )
-                    self.log(f"dyn_k_index_{self.concept_names[i]}", indexed_v, **self.log_kwargs)
+                    self.log(
+                        f"{mode}_dyn_k_index_{self.concept_names[i]}", indexed_v, **self.log_kwargs
+                    )
+
+                    avr_scores[f"{mode}_avr_top-dyn_k"].append(v)
+                    avr_scores[f"{mode}_avr_top-dyn_k_index"].append(indexed_v)
+                else:
+                    avr_scores[f"{mode}_avr_top-{k}"].append(v)
+
                 if verbose:
                     print(f"Top-{k}: {v:.1f}%")
-                avr_scores[f"{mode}_avr_top-{k}"].append(v)
 
         for k, v in avr_scores.items():
             avr_scores[k] = sum(v) / len(v)
