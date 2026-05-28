@@ -4,9 +4,7 @@ import torch
 import torch.nn as nn
 
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
-from src.models.components.geo_encoders.identity_encoder import IdentityEncoder
 from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
-from src.utils.errors import IllegalArgumentCombination
 
 
 class EncoderWrapper(BaseGeoEncoder):
@@ -98,10 +96,6 @@ class EncoderWrapper(BaseGeoEncoder):
 
             # Configure adapter/projector if requested
             if "projector" in branch:
-                if isinstance(encoder, IdentityEncoder):
-                    raise IllegalArgumentCombination(
-                        "Identity encoder cannot have linear projector"
-                    )
                 projector = branch["projector"]
 
                 projector.set_input_dim(input_dim=branch_dim)
