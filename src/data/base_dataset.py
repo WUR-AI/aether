@@ -9,7 +9,9 @@ import rasterio
 import torch
 from torch.utils.data import Dataset
 
+from src.data_preprocessing.tessera_embeds import NoTileError, PartialTileError
 from src.utils.data_utils import center_crop_npy
+from src.utils.errors import MissingDataError
 
 TORCH_DTYPES = {
     "float32": torch.float32,
@@ -86,6 +88,9 @@ class BaseDataset(Dataset, ABC):
                 m_dtype = dtype
                 self.modalities[mod] = {"dtype": m_dtype}
 
+        # More precise dataset name (with modalities)
+        self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
+
         # Set data attributes
         self.registry_path = os.path.join(data_dir, "registry.txt")
         if type(dataset_name) is str:
@@ -156,6 +161,16 @@ class BaseDataset(Dataset, ABC):
         for modality, params in self.modalities.items():
             if modality == "coords":
                 columns.extend(["lat", "lon"])
+            elif modality in ["aef_avr", "tessera_avr"]:
+                df = pd.read_csv(params.get("path", KeyError))
+                df["name_loc"] = df["name_loc"].astype(str)
+
+                self.df["name_loc"] = self.df["name_loc"].astype(str)
+
+                self.df = self.df.merge(df, on="name_loc", how="left")
+
+                max_no = 128 if modality == "tessera_avr" else 64
+                columns.extend([f"avr_{i}" for i in range(0, max_no)])
             else:
                 # Add paths
                 self.add_modality_paths_to_df(
@@ -246,6 +261,7 @@ class BaseDataset(Dataset, ABC):
             tessera_from_df,
         )
 
+
         print("\n\nSetting up Tessera data...\n\n")
         download_missing_tiles = False
 
@@ -306,7 +322,7 @@ class BaseDataset(Dataset, ABC):
                                 tessera_con=gt,
                             )
                             continue
-                        except Exception as e:
+                        except NoTileError or PartialTileError as e:
                             print(f"Tile for {fname} could not be retrieved. Error: {e}")
                     else:
                         self.records.pop(i)
