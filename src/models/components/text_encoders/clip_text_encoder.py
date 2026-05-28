@@ -31,6 +31,7 @@ class ClipTextEncoder(BaseTextEncoder):
 
     @override
     def forward(self, batch: Dict[str, torch.Tensor], mode: str) -> torch.Tensor:
+        """Forward pass through the text encoder."""
         # Get text inputs
         text_input = batch.get("text")
 
@@ -50,7 +51,11 @@ class ClipTextEncoder(BaseTextEncoder):
             device = next(self.model.parameters()).device
             text_tokens = {k: v.to(device) for k, v in text_tokens.items()}
 
-            text_embeds = self.model.get_text_features(**text_tokens)
+            if any(p.requires_grad for p in self.model.parameters()):
+                text_embeds = self.model.get_text_features(**text_tokens)
+            else:
+                with torch.inference_mode():
+                    text_embeds = self.model.get_text_features(**text_tokens)
 
             # Project
             if self.projector is not None:
