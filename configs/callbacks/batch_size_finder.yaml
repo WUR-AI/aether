@@ -1,5 +1,6 @@
 # https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.BatchSizeFinder.html
 
 _target_: lightning.pytorch.callbacks.BatchSizeFinder
-mode: 'binsearch'
+mode: "power"
 init_val: 16
+max_val: 1024
