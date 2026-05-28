@@ -45,7 +45,7 @@ class ButterflyDataset(BaseDataset):
             dataset_name="s2bms",
             seed=seed,
             cache_dir=cache_dir,
-            implemented_mod={"s2", "tessera", "coords", "aef"},
+            implemented_mod={"s2", "tessera", "coords", "aef", "aef_avr", "tessera_avr"},
             mock=mock,
             dtype=dtype,
         )
@@ -183,6 +183,16 @@ class ButterflyDataset(BaseDataset):
                 formatted_row["eo"][modality] = self.load_tessera(row["tessera_path"])
             elif modality == "aef":
                 formatted_row["eo"][modality] = self.load_aef(row["aef_path"])
+            elif modality == "aef_avr":
+                formatted_row["eo"][modality] = torch.tensor(
+                    [row[f"avr_{i}"] for i in range(64)],
+                    dtype=getattr(torch, self.modalities["aef_avr"].get("dtype")),
+                )
+            elif modality == "tessera_avr":
+                formatted_row["eo"][modality] = torch.tensor(
+                    [row[f"avr_{i}"] for i in range(128)],
+                    dtype=getattr(torch, self.modalities["tessera_avr"].get("dtype")),
+                )
 
         if self.use_target_data:
             formatted_row["target"] = torch.tensor(
