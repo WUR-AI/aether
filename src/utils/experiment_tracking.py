@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 from pathlib import Path
 
@@ -7,7 +8,7 @@ import wandb
 from omegaconf import DictConfig
 
 # Which wandb projects to log runs from
-PROJECTS = ["s2bms_prediction"]  # Important to keep updating!
+PROJECTS = ["s2bms_prediction", "s2bms_alignment"]  # Important to keep updating!
 EXPERIMENT_TRACKER_NAME = "experiment_tracker.csv"
 ENTITY = "aether_xai"
 
@@ -46,6 +47,8 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
         cfg.logger.wandb.entity if cfg.get("logger", {}).get("wandb", {}).get("entity") else ENTITY
     )
     projects = cfg.get("projects") or PROJECTS
+    if isinstance(projects, str):
+        projects = [projects]
 
     # Find all experiments on wandb and add missing/faulty ones in the table
     runs_list = []
@@ -65,15 +68,25 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
                 run_id = run.id
                 seed = run.config["seed"]
                 best_path = run.summary.get("best_model_path", "null")
+                best_epoch = float(re.search(r".*_([0-9]{3})\.ckpt$", best_path).group(1))
                 source_dir = run.summary.get("source_dir", "null")
-                best_metric = run.config.get("best_val_loss", None)
+                best_val_loss = run.config.get("best_val_loss", None)
+                if project == "s2bms_prediction":
+                    best_val_mse_loss = run.config.get("best_val_mse_loss", None)
 
                 # Get the best loss based on tracked history
-                if best_metric is None:
-                    results = run.history(pandas=True)
+                results = run.history(pandas=True)
+                if best_val_loss is None:
                     if len(results) > 0:
-                        best_metric = results.groupby("epoch")["val_loss"].mean().min().item()
-                        run.summary.update({"best_val_loss": best_metric})
+                        loss_per_epoch = results.groupby("epoch")["val_loss"].mean()
+                        if best_epoch != loss_per_epoch.idxmin():
+                            raise ValueError()
+                        best_val_loss = loss_per_epoch.min().item()
+                        run.summary.update({"best_val_loss": best_val_loss})
+                if project == "s2bms_prediction" and best_val_mse_loss is None:
+                    mse_loss_per_epoch = results.groupby("epoch")["val_mse_loss"].mean()
+                    best_val_mse_loss = mse_loss_per_epoch[best_epoch].item()
+                    run.summary.update({"best_val_mse_loss": best_val_mse_loss})
 
                 experiment = run.summary.get("experiment")
                 if experiment is None:
@@ -95,7 +108,7 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
                 # Add missing experiments to the table
                 df = update_experiment_df(
                     run_id=run_id,
-                    best_metric=best_metric,
+                    best_metric=best_val_loss,
                     best_path=best_path,
                     source_dir=source_dir,
                     experiment=experiment,
