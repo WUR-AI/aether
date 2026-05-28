@@ -1,6 +1,5 @@
 from typing import Dict, Tuple, override
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -124,8 +123,9 @@ class TextAlignmentModel(BaseModel):
                 return
 
         # Encode concepts if text branch is frozen
-        with torch.no_grad():
+        with torch.inference_mode():
             self.concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
+            self.concept_embeds = F.normalize(self.concept_embeds, dim=1)
 
     @override
     def forward(
@@ -185,10 +185,12 @@ class TextAlignmentModel(BaseModel):
         self.log_dict(metrics, batch_size=local_batch_size, **self.log_kwargs)
 
         if mode in ["val", "test"]:
+            aux = batch.get("aux", {}).get("aux")
             self.outputs_epoch_memory.append(
                 {
-                    "geo_feats": geo_feats.detach(),
-                    "aux_vals": batch.get("aux", {}).get("aux").detach(),
+                    # Store on CPU to avoid holding the whole epoch on GPU.
+                    "geo_feats": geo_feats.detach().cpu(),
+                    "aux_vals": aux.detach().cpu() if aux is not None else None,
                 }
             )
 
@@ -198,8 +200,11 @@ class TextAlignmentModel(BaseModel):
 
         # Combine batches
         geo_feats = torch.cat([x["geo_feats"] for x in self.outputs_epoch_memory], dim=0)
+        geo_feats = geo_feats.to(self.device, non_blocking=True)
 
-        aux_vals = torch.cat([x["aux_vals"] for x in self.outputs_epoch_memory], dim=0)
+        aux_vals = torch.cat([x["aux_vals"] for x in self.outputs_epoch_memory], dim=0).to(
+            self.device, non_blocking=True
+        )
 
         # Rank on similarity
         similarity = self.concept_similarities(geo_feats)
@@ -247,23 +252,34 @@ class TextAlignmentModel(BaseModel):
         return self._on_epoch_end("test")
 
     def concept_similarities(self, geo_embeds, concept=None) -> torch.Tensor:
+        device_type = geo_embeds.device.type
+        is_bf16 = self.trainer.precision == "bf16-mixed" and device_type == "cuda"
+
         # Get concept embeddings
         if concept is not None:
             # If only one concept is provided
             if isinstance(concept, str):
                 concept = [concept]
-            with torch.no_grad():
-                concept_embeds = self.text_encoder({"text": concept}, mode="train")
+
+            with torch.inference_mode():
+                with torch.autocast(
+                    device_type=device_type, dtype=torch.bfloat16, enabled=is_bf16
+                ):
+                    concept_embeds = self.text_encoder({"text": concept}, mode="train")
+            concept_embeds = F.normalize(concept_embeds, dim=1)
 
         elif self.concept_embeds is not None:
             concept_embeds = self.concept_embeds
         else:
-            with torch.no_grad():
-                concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
+            with torch.inference_mode():
+                with torch.autocast(
+                    device_type=device_type, dtype=torch.bfloat16, enabled=is_bf16
+                ):
+                    concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
+            concept_embeds = F.normalize(concept_embeds, dim=1)
 
         # Similarity
         geo_embeds = F.normalize(geo_embeds, dim=1)
-        concept_embeds = F.normalize(concept_embeds, dim=1)
         similarity_matrix = concept_embeds @ geo_embeds.T
 
         return similarity_matrix
