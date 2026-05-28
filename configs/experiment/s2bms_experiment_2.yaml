@@ -1,0 +1,56 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+# AEF with average encoder and linear prediction head, for tile sizes 128 and 256, each with 3 random seeds
+
+defaults:
+  - override /model: s2bms_prediction
+  - override /data: s2bms_prediction
+  - override /metrics: s2bms_predictive
+
+tags:
+  - prediction
+  - aef
+  - aef_${str:${data.dataset.modalities.aef.size}}
+  - ${str:${seed}}
+
+experiment_name: avr_aef_${str:${data.dataset.modalities.aef.size}}_linear
+
+model:
+  geo_encoder:
+    _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
+    geo_data_name: aef
+  trainable_modules: [prediction_head]
+  prediction_head:
+    _target_: src.models.components.pred_heads.linear_pred_head.LinearPredictionHead
+
+data:
+  dataset:
+    modalities:
+      aef:
+        format: tif
+        enable_nans: true
+    use_target_data: true
+    use_aux_data: false
+  caption_builder:
+  pin_memory: true
+  num_workers: 14
+  batch_size: 128
+  saved_split_file_name: "split_indices_s2bms_2024-08-14-1459_union_aef_tsr_val_test.pth"
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "predictive"
+    project: "s2bms_prediction"
+  aim:
+    experiment: "predictive"
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      seed: 12345, 404, 654
+      +data.dataset.modalities.aef.size: 128, 256

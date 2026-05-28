@@ -46,7 +46,6 @@ class BaseDataModule(LightningDataModule):
         :param num_workers: number of workers for dataloader
         :param pin_memory: pin memory for dataloader
         :param persistent_workers: keep DataLoader workers alive between epochs
-        :param persistent_workers:
         :param dataset_name: dataset name
         :param split_mode: data split mode: random/from_file
         :param save_split: if to save split file

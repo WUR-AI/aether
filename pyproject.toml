@@ -1,7 +1,7 @@
 [project]
 name = "aether"
 version = '1.0'
-requires-python = ">=3.12"
+requires-python = "==3.12.3"
 dependencies = [
     "lightning==2.6.1",
     "torch>=2.9.1",
@@ -46,6 +46,10 @@ create-data = [
     "pipreqs>=0.5.0",
     "earthaccess>=0.11.0",
     "pyhdf>=0.11.4",
+]
+
+visualisation = [
+    "folium>=0.20.0",
 ]
 
 [tool.pytest.ini_options]
