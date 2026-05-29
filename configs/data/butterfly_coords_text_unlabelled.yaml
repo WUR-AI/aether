@@ -22,6 +22,7 @@ caption_builder:
 batch_size: 16
 num_workers: 8
 pin_memory: true
-split_mode: "from_df"
+split_mode: "from_file"
 save_split: false
+saved_split_file_name: "split_indices_s2bms+s2bms-unlabelled-20260529_2026-05-29-1438.pth"
 seed: ${seed}

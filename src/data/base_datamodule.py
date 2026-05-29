@@ -133,6 +133,13 @@ class BaseDataModule(LightningDataModule):
             val_indices = self.dataset.df[self.dataset.df.split == "val"].index
             test_indices = self.dataset.df[self.dataset.df.split == "test"].index
 
+            if self.hparams.save_split:
+                split_indices = {
+                    "train_indices": self.dataset.df.loc[train_indices, "name_loc"],
+                    "val_indices": self.dataset.df.loc[val_indices, "name_loc"],
+                    "test_indices": self.dataset.df.loc[test_indices, "name_loc"],
+                }
+
         elif self.hparams.split_mode == "spatial_clusters":
             min_dist = self.hparams.spatial_split_distance_m
             coords = np.array([self.dataset.df.lat, self.dataset.df.lon]).T
@@ -341,7 +348,7 @@ class BaseDataModule(LightningDataModule):
                 f"split_indices_{self.hparams.dataset_name}_{timestamp}.pth",
             ),
         )
-        print(f"Saved split indices to split_indices_{timestamp}.pth")
+        print(f"Saved split indices to split_indices_{self.hparams.dataset_name}_{timestamp}.pth")
 
     def load_split_indices(self, filepath: str = None) -> dict:
         """Load split indices from a file."""

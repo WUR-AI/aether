@@ -28,7 +28,7 @@ class BaseDataset(Dataset, ABC):
         modalities: dict,
         use_target_data: bool = True,
         use_aux_data: Dict[str, List[str] | str] | str | None = None,
-        dataset_name: str = "BaseDataset",
+        dataset_name: str | List[str] = "BaseDataset",
         seed: int = 12345,
         mode: str = "train",
         cache_dir: str = None,
@@ -87,25 +87,31 @@ class BaseDataset(Dataset, ABC):
                 m_dtype = dtype
                 self.modalities[mod] = {"dtype": m_dtype}
 
-        # More precise dataset name (with modalities)
-        self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
-
         # Set data attributes
         self.registry_path = os.path.join(data_dir, "registry.txt")
-        if "unlabel" in dataset_name:
-            dataset_dirname = dataset_name.split("-unlabel")[0]
+        if type(dataset_name) is str:
+            dataset_name = [dataset_name]
+        if "unlabel" in dataset_name[0]:
+            dataset_dirname = dataset_name[0].split("-unlabel")[0]
         else:
-            dataset_dirname = dataset_name
+            dataset_dirname = dataset_name[0]
         self.data_dir = os.path.join(data_dir, dataset_dirname)
         self.cache_dir = cache_dir or os.path.join(data_dir, "cache")
-        for d in [self.data_dir, self.cache_dir]:
+        for d in [self.cache_dir]:
             os.makedirs(d, exist_ok=True)
 
         # Read model ready csv df
-        csv_filename = csv_name or f"model_ready_{dataset_name}.csv"
-        path_csv = os.path.join(self.data_dir, csv_filename)
-        assert os.path.exists(path_csv), f"{path_csv} does not exist."
-        self.df: pd.DataFrame = pd.read_csv(path_csv)
+        for i_ds, ds in enumerate(dataset_name):
+            csv_filename = csv_name or f"model_ready_{ds}.csv"
+            path_csv = os.path.join(self.data_dir, csv_filename)
+            assert os.path.exists(
+                path_csv
+            ), f"{path_csv} does not exist. (Expecting {ds} to exist in {self.data_dir})"
+            tmp_df: pd.DataFrame = pd.read_csv(path_csv)
+            if i_ds == 0:
+                self.df = tmp_df
+            else:
+                self.df = pd.concat([self.df, tmp_df], ignore_index=True)
 
         # Other attributes or placeholders
         self.pooch_cli = None
@@ -132,6 +138,10 @@ class BaseDataset(Dataset, ABC):
         else:
             self.use_aux_data = None
 
+        # More precise dataset name (with modalities)
+        if isinstance(dataset_name, list):
+            dataset_name = "+".join(dataset_name)
+        self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
         self.mode: str = mode  # 'train', 'val', 'test'
         self.records: dict[str, Any] = self.get_records()
 
