@@ -54,7 +54,7 @@ class ClipTextEncoder(BaseTextEncoder):
             if any(p.requires_grad for p in self.model.parameters()):
                 text_embeds = self.model.get_text_features(**text_tokens)
             else:
-                with torch.inference_mode():
+                with torch.no_grad():
                     text_embeds = self.model.get_text_features(**text_tokens)
 
             # Project
