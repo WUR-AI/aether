@@ -41,7 +41,7 @@ class ButterflyDataset(BaseDataset):
 
         assert not (
             use_unlabelled_data and use_target_data
-        ), "Joint use of unlabelled and target data is not supported."
+        ), "Joint use of unlabelled and target data is not supported yet."
         if use_unlabelled_data:
             dataset_name = ["s2bms", "s2bms-unlabelled-20260529"]
         else:

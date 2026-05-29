@@ -68,7 +68,6 @@ class BaseDataModule(LightningDataModule):
             self.concept_configs = caption_builder.concepts
 
         self.split_data()
-        self._setup_flag = False
 
     @property
     def tabular_dim(self):
@@ -266,17 +265,14 @@ class BaseDataModule(LightningDataModule):
 
         if split_data_from_inds:
             self.data_train = torch.utils.data.Subset(self.dataset, train_indices)
-            self.data_train.dataset.mode = "train"
             print(f"Train dataset split size: {len(self.data_train)}")
             self.data_val = torch.utils.data.Subset(self.dataset, val_indices)
-            self.data_val.dataset.mode = "val"
             print(f"Validate dataset split size: {len(self.data_val)}")
 
             if test_indices is not None:
                 self.data_test = torch.utils.data.Subset(self.dataset, test_indices)
-                self.data_test.dataset.mode = "test"
-                print(f"Test dataset split size: {len(self.data_test)}")
             else:
+                print(f"Test dataset split size: {len(self.data_test)}")
                 self.data_test = None
 
         if self.hparams.save_split:
