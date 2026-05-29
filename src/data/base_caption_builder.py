@@ -168,3 +168,50 @@ def get_adjective_for_percentage(value: float) -> str:
         return "predominantly"
     else:
         return "almost entirely"
+
+def sample_adjective_for_percentage(percent: float) -> str:
+    """Convert a percentage (0-100) to a descriptive adjective, randomly sampled from synonyms."""
+    if not 0 <= percent <= 100:
+        raise ValueError(f"Percentage must be between 0 and 100, got {percent}")
+
+    synonyms = {
+        "none":         ["none", "zero", "absent", "nonexistent"],
+        "negligible":   ["negligible", "trivial", "trace", "barely any", "scarcely any"],
+        "minimal":      ["minimal", "tiny", "very little", "marginal", "meager"],
+        "slight":       ["slight", "small", "modest", "limited", "faint"],
+        "some":         ["some", "a bit of", "a portion of", "partial", "a measure of"],
+        "moderate":     ["moderate", "fair", "reasonable", "middling", "decent"],
+        "considerable": ["considerable", "notable", "meaningful", "appreciable", "marked"],
+        "substantial":  ["substantial", "solid", "sizable", "hefty", "goodly"],
+        "significant":  ["significant", "large", "strong", "pronounced", "prominent"],
+        "major":        ["major", "great", "high", "intense", "serious"],
+        "extensive":    ["extensive", "vast", "sweeping", "far-reaching", "immense"],
+        "complete":     ["complete", "total", "full", "entire", "absolute"],
+    }
+
+    if percent == 0:
+        key = "none"
+    elif percent < 10:
+        key = "negligible"
+    elif percent < 20:
+        key = "minimal"
+    elif percent < 30:
+        key = "slight"
+    elif percent < 40:
+        key = "some"
+    elif percent < 50:
+        key = "moderate"
+    elif percent < 60:
+        key = "considerable"
+    elif percent < 70:
+        key = "substantial"
+    elif percent < 80:
+        key = "significant"
+    elif percent < 90:
+        key = "major"
+    elif percent < 100:
+        key = "extensive"
+    else:
+        key = "complete"
+
+    return random.choice(synonyms[key])
