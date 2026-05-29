@@ -91,7 +91,11 @@ class BaseDataset(Dataset, ABC):
 
         # Set data attributes
         self.registry_path = os.path.join(data_dir, "registry.txt")
-        self.data_dir = os.path.join(data_dir, dataset_name)
+        if "unlabel" in dataset_name:
+            dataset_dirname = dataset_name.split("-unlabel")[0]
+        else:
+            dataset_dirname = dataset_name
+        self.data_dir = os.path.join(data_dir, dataset_dirname)
         self.cache_dir = cache_dir or os.path.join(data_dir, "cache")
         for d in [self.data_dir, self.cache_dir]:
             os.makedirs(d, exist_ok=True)
@@ -371,7 +375,7 @@ class BaseDataset(Dataset, ABC):
         if arr.shape[-2:] != (size, size):
             arr = center_crop_npy(arr, (128, size, size))
 
-        if  self.modalities["tessera"].get("enable_nans", False):
+        if self.modalities["tessera"].get("enable_nans", False):
             # Nans are 0 across all 128 channels
             mask = np.all(arr == 0, axis=0)
             arr[mask] = torch.nan

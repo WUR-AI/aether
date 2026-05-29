@@ -126,6 +126,14 @@ class BaseDataModule(LightningDataModule):
                     "test_indices": self.data_test.dataset.df.name_loc,
                 }
 
+        elif self.hparams.split_mode == "from_df":
+            assert hasattr(
+                self.dataset.df, "split"
+            ), "Dataset dataframe must have a 'split' column for 'from_df' split mode."
+            train_indices = self.dataset.df[self.dataset.df.split == "train"].index
+            val_indices = self.dataset.df[self.dataset.df.split == "val"].index
+            test_indices = self.dataset.df[self.dataset.df.split == "test"].index
+
         elif self.hparams.split_mode == "spatial_clusters":
             min_dist = self.hparams.spatial_split_distance_m
             coords = np.array([self.dataset.df.lat, self.dataset.df.lon]).T

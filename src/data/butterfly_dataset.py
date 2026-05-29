@@ -5,7 +5,7 @@ import numpy as np
 import pooch
 import torch
 
-from src.data.base_dataset import BaseDataset, TORCH_DTYPES
+from src.data.base_dataset import TORCH_DTYPES, BaseDataset
 from src.data_preprocessing.renaming_utils import rename_s2bms
 from src.utils.data_utils import center_crop_npy
 from src.utils.errors import IllegalArgumentCombination
@@ -16,6 +16,7 @@ class ButterflyDataset(BaseDataset):
         self,
         data_dir: str,
         modalities: dict,
+        use_unlabelled_data: bool = False,
         use_target_data: bool = True,
         use_aux_data: Any = None,
         seed: int = 12345,
@@ -33,21 +34,29 @@ class ButterflyDataset(BaseDataset):
         :param seed: random seed
         :param cache_dir: path to cache dir
         :param mock: whether to mock csv file
-        :param dtype: global dtype (used if not specified for each modality individually), also used for aux, target
-
+        :param dtype: global dtype (used if not specified for each modality individually), also
+            used for aux, target
         """
+
+        assert not (
+            use_unlabelled_data and use_target_data
+        ), "Joint use of unlabelled and target data is not supported yet."
+        if use_unlabelled_data:
+            dataset_name = "s2bms-unlabelled-20260529"
+        else:
+            dataset_name = "s2bms"
 
         super().__init__(
             data_dir=data_dir,
             modalities=modalities,
             use_target_data=use_target_data,
             use_aux_data=use_aux_data,
-            dataset_name="s2bms",
+            dataset_name=dataset_name,
             seed=seed,
             cache_dir=cache_dir,
             implemented_mod={"s2", "tessera", "coords", "aef"},
             mock=mock,
-            dtype=dtype
+            dtype=dtype,
         )
 
     def setup(self):
@@ -132,10 +141,10 @@ class ButterflyDataset(BaseDataset):
         size = self.modalities["s2"]["size"]
         np_dtype, is_bfloat16 = self.resolve_dtype(self.modalities["s2"]["dtype"])
 
-        im = self.load_tiff(filepath, dtype=np.dtype('uint16'))
-        if self.modalities["s2"].get("channels", '') == "4c":
+        im = self.load_tiff(filepath, dtype=np.dtype("uint16"))
+        if self.modalities["s2"].get("channels", "") == "4c":
             c = 4
-        elif self.modalities["s2"].egt("channels", '') == "rgb":
+        elif self.modalities["s2"].egt("channels", "") == "rgb":
             im = im[:3, :, :]
             c = 3
         else:
@@ -169,7 +178,10 @@ class ButterflyDataset(BaseDataset):
 
         for modality in self.modalities:
             if modality in ["coords"]:
-                formatted_row["eo"][modality] = torch.tensor([row["lat"], row["lon"]], dtype=TORCH_DTYPES[self.modalities[modality]['dtype']])
+                formatted_row["eo"][modality] = torch.tensor(
+                    [row["lat"], row["lon"]],
+                    dtype=TORCH_DTYPES[self.modalities[modality]["dtype"]],
+                )
             elif modality == "s2":
                 formatted_row["eo"][modality] = self.load_s2(row["s2_path"])
                 # TODO: augmentations
