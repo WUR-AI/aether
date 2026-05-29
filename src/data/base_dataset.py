@@ -10,6 +10,7 @@ import torch
 from torch.utils.data import Dataset
 
 from src.utils.data_utils import center_crop_npy
+from src.utils.errors import MissingDataError
 
 TORCH_DTYPES = {
     "float32": torch.float32,
@@ -231,13 +232,16 @@ class BaseDataset(Dataset, ABC):
         Right now retrieval is through GeoTessera API
         """
 
-        print("\n\nSetting up Tessera data...\n\n")
-        from geotessera import GeoTessera
-
         from src.data_preprocessing.tessera_embeds import (
             get_tessera_embeds,
             tessera_from_df,
         )
+
+        print("\n\nSetting up Tessera data...\n\n")
+        download_missing_tiles = False
+
+        # Check if data is already available
+        dst_dir = os.path.join(self.data_dir, "eo/tessera")
 
         year = self.modalities["tessera"].get(
             "year", KeyError('Missing parameter "year" for Tessera modality')
@@ -245,9 +249,6 @@ class BaseDataset(Dataset, ABC):
         size = self.modalities["tessera"].get(
             "size", KeyError('Missing parameter "size" for Tessera modality')
         )
-
-        # Check if data is already available
-        dst_dir = os.path.join(self.data_dir, "eo/tessera")
 
         # If data does not exist or is empty → full download
         if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
@@ -265,26 +266,38 @@ class BaseDataset(Dataset, ABC):
             # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
             # or self.setup_tessera_from_pooch() <- per children class implementation
 
+        # Download missing rows (if any)
         else:
-            # Download missing rows (if any)
+            from geotessera import GeoTessera
+
+            print("Downloading missing Tessera tiles...")
+            print("[Warning]: it may download tessera tiles filled with 0a")
+
             avail_files = os.listdir(dst_dir)
             gt = None
-            for rec in self.records:
+            for i, rec in enumerate(self.records):
                 fname = os.path.basename(rec["tessera_path"])
                 if fname not in avail_files:
-                    print(f"Retrieving missing Tessera data: {fname}")
-                    gt = gt or GeoTessera(cache_dir=self.cache_dir)
-                    row = self.df[self.df["name_loc"] == rec["name_loc"]]
-                    lon, lat = row.lon.item(), row.lat.item()
-                    get_tessera_embeds(
-                        lon,
-                        lat,
-                        rec["name_loc"],
-                        year=year,
-                        save_dir=dst_dir,
-                        tile_size=size,
-                        tessera_con=gt,
-                    )
+                    if download_missing_tiles:
+                        print(f"Retrieving missing Tessera data: {fname}")
+                        gt = gt or GeoTessera(cache_dir=self.cache_dir)
+                        row = self.df[self.df["name_loc"] == rec["name_loc"]]
+                        lon, lat = row.lon.item(), row.lat.item()
+                        try:
+                            get_tessera_embeds(
+                                lon,
+                                lat,
+                                rec["name_loc"],
+                                year=year,
+                                save_dir=dst_dir,
+                                tile_size=size,
+                                tessera_con=gt,
+                            )
+                            continue
+                        except Exception as e:
+                            print(f"Tile for {fname} could not be retrieved. Error: {e}")
+                self.records.pop(i)
+                print(f"No tile found for {fname} thus it will not be used.")
 
     @final
     def setup_aef(self) -> None:
@@ -343,9 +356,13 @@ class BaseDataset(Dataset, ABC):
         # Modality settings
         size = self.modalities["aef"]["size"]
         dtype = self.modalities["aef"].get("dtype")
+        format = self.modalities["aef"].get("format", "npy")
         dtype, is_bfloat16 = self.resolve_dtype(dtype)
 
-        im = self.load_tiff(filepath, np.dtype(dtype))
+        if format in "tif":
+            im = self.load_tiff(filepath, np.dtype(dtype))
+        else:
+            im = self.load_npy(filepath, np.dtype(dtype))
 
         if im.shape[-2:] != (size, size):
             im = center_crop_npy(im, (64, size, size))
@@ -379,7 +396,6 @@ class BaseDataset(Dataset, ABC):
             # Nans are 0 across all 128 channels
             mask = np.all(arr == 0, axis=0)
             arr[mask] = torch.nan
-        # TODO any normalisation needed
         # TODO any normalisation needed
 
         tensor = torch.from_numpy(arr)

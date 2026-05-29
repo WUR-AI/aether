@@ -1,0 +1,19 @@
+_target_: src.models.predictive_model.PredictiveModel
+
+metrics: ${metrics}
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.01
+  weight_decay: 0.0
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 5
+
+loss_fn:
+  _target_: src.models.components.loss_fns.bce_loss.BCELoss

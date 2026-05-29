@@ -1,0 +1,51 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+# Geoclip with MLP prediction head, with 3 random seeds
+
+defaults:
+  - override /model: s2bms_prediction
+  - override /data: s2bms_prediction
+  - override /metrics: s2bms_predictive
+
+tags:
+  - prediction
+  - geoclip
+  - ${str:${seed}}
+
+experiment_name: geoclip_mlp
+
+model:
+  geo_encoder:
+    _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
+    geo_data_name: coords
+  trainable_modules: [prediction_head]
+  prediction_head:
+    _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
+
+data:
+  dataset:
+    modalities:
+      coords:
+    use_target_data: true
+    use_aux_data: false
+  caption_builder:
+  num_workers: 14
+  batch_size: 128
+  saved_split_file_name: "split_indices_s2bms_2024-08-14-1459_union_aef_tsr_val_test.pth"
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "predictive"
+    project: "s2bms_prediction"
+  aim:
+    experiment: "predictive"
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      seed: 12345, 404, 654

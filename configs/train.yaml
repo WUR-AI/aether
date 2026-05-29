@@ -12,7 +12,7 @@ defaults:
   - paths: ${oc.env:STORAGE_MODE,local}
   - extras: default
   - hydra: default
-  - metrics: butterfly_predictive
+  - metrics: s2bms_predictive
 
   # experiment configs allow for version control of specific hyperparameters
   # e.g. best hyperparameters for given model and datamodule
@@ -48,3 +48,7 @@ ckpt_path: null
 
 # seed for random number generators in pytorch, numpy and python.random
 seed: 12345
+
+# wandb projects with valid checkpoints
+# Important to keep updating!
+projects:

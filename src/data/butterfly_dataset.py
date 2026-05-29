@@ -144,7 +144,7 @@ class ButterflyDataset(BaseDataset):
         im = self.load_tiff(filepath, dtype=np.dtype("uint16"))
         if self.modalities["s2"].get("channels", "") == "4c":
             c = 4
-        elif self.modalities["s2"].egt("channels", "") == "rgb":
+        elif self.modalities["s2"].get("channels", "") == "rgb":
             im = im[:3, :, :]
             c = 3
         else:
@@ -155,6 +155,9 @@ class ButterflyDataset(BaseDataset):
         if self.modalities["s2"].get("preprocessing") == "zscored":
             im = im.astype(np.int32)
             im = self.zscore_image(im)
+        elif self.modalities["s2"].get("preprocessing") == "div_10000":
+            im = im / 10000.0
+            im = im.clip(0, 1)
         else:
             im = np.clip(im, 0, 2000)
             im = im / 2000.0
