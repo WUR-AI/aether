@@ -6,6 +6,7 @@ dataset:
   data_dir: ${paths.data_dir}/
   modalities:
     coords:
+  use_unlabelled_data: false
   use_target_data: false
   use_aux_data: "all"
   seed: ${seed}
