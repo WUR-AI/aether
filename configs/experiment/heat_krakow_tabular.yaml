@@ -1,0 +1,28 @@
+# @package _global_
+# Guatemala performance: R2=0.562, RMSE=1.282, MAE=1.040
+# Kraków performance: R2=0.621, RMSE=1.257, MAE=0.949
+defaults:
+  - override /model: heat_tabular_reg
+  - override /data: heat_krakow
+  - override /metrics: krakow_regression
+tags: ["heat_island", "krakow", "tabular", "regression"]
+seed: 12345
+trainer:
+  min_epochs: 1
+  max_epochs: 100
+data:
+  batch_size: 64
+callbacks:
+  model_checkpoint:
+    monitor: val_r2
+    mode: max
+  early_stopping:
+    monitor: val_r2
+    mode: max
+    patience: 20
+logger:
+  wandb:
+    tags: ${tags}
+    group: "heat_island"
+  aim:
+    experiment: "heat_island"
