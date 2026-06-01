@@ -11,6 +11,7 @@ from torch.utils.data import Dataset
 
 from src.data_preprocessing.tessera_embeds import NoTileError, PartialTileError
 from src.utils.data_utils import center_crop_npy
+from src.utils.errors import MissingDataError
 
 TORCH_DTYPES = {
     "float32": torch.float32,
@@ -314,8 +315,8 @@ class BaseDataset(Dataset, ABC):
                                 tessera_con=gt,
                             )
                             continue
-                        except NoTileError or PartialTileError:
-                            print(f"Tile for {fname} could not be retrieved.")
+                        except NoTileError or PartialTileError as e:
+                            print(f"Tile for {fname} could not be retrieved. Error: {e}")
                 self.records.pop(i)
                 print(f"No tile found for {fname} thus it will not be used.")
 
