@@ -5,10 +5,6 @@ dataset:
 
   data_dir: ${paths.data_dir}
   modalities:
-    coords:
-    aef:
-      size: 256
-      format: tif
   use_target_data: true # default true
   use_aux_data: none # default false
   seed: ${seed}

@@ -89,51 +89,32 @@ class TextAlignmentModel(BaseModel):
                 self.trainable_modules.append("geo_encoder.extra_projector")
 
         # Configure contrastive retrieval evaluation
-        self.setup_retrieval_evaluation()
+        self.setup_retrieval_evaluation(verbose=0)
         print("------------------------")
 
-    def setup_retrieval_evaluation(self):
+    def setup_retrieval_evaluation(
+        self,
+        use_saved_threshold_if_available=True,
+        overwrite_existing_thresholds=False,
+        save_newly_computed_threshold=True,
+        compute_train_threshold=True,
+        verbose=1,
+    ):
+        # Configure concept thresholds for contrastive retrieval evaluation:
+        self.trainer.datamodule.setup_conceptcaption_validation_parameters(
+            use_saved_threshold_if_available=use_saved_threshold_if_available,
+            overwrite_existing_thresholds=overwrite_existing_thresholds,
+            save_newly_computed_threshold=save_newly_computed_threshold,
+            compute_train_threshold=compute_train_threshold,
+            verbose=verbose,
+        )
+
         self.concept_configs = self.trainer.datamodule.concept_configs
-        self.concepts = [c["concept_caption"] for c in self.concept_configs]
-        self.concept_names = [
-            f"{c['col'].replace('aux_', '')}_{'max' if c['is_max'] else 'min'}"
-            for c in self.concept_configs
-        ]
+        self.concepts = self.trainer.datamodule.concepts
+        self.concept_names = self.trainer.datamodule.concept_names
+        self.dynamic_k_baselines = self.trainer.datamodule.dynamic_k_baselines
 
-        dataset_names = ["train", "val", "test"]
-        self.dynamic_k_baselines = {}
-        for dataset_name in dataset_names:
-            if not hasattr(self.trainer.datamodule, f"data_{dataset_name}"):
-                continue
-
-            tmp_ds = getattr(self.trainer.datamodule, f"data_{dataset_name}")
-            n_ds = len(tmp_ds)
-            self.dynamic_k_baselines[dataset_name] = {}
-
-            # Placeholder for all concepts
-            aux_vals_per_concept = {i: [] for i in range(len(self.concept_configs))}
-
-            for item in tmp_ds:
-                aux_data = item["aux"]["aux"]
-                for i_c, c in enumerate(self.concept_configs):
-                    aux_col_id = c["id"]
-                    aux_vals_per_concept[i_c].append(aux_data[aux_col_id])
-
-            # Compute per concept
-            for i_c, c in enumerate(self.concept_configs):
-                c_name = self.concept_names[i_c]
-                aux_vals_current_ds = aux_vals_per_concept[i_c]
-
-                theta_k = self.find_elbow_point(aux_vals_current_ds)
-                self.concept_configs[i_c][
-                    "theta_k"
-                ] = theta_k  # assign new theta_k to concept_configs for later use in validation
-                if c["is_max"]:
-                    n_baseline = sum(aux_val >= theta_k for aux_val in aux_vals_current_ds)
-                else:
-                    n_baseline = sum(aux_val <= theta_k for aux_val in aux_vals_current_ds)
-                self.dynamic_k_baselines[dataset_name][c_name] = n_baseline / n_ds * 100
-
+        # Set up loss and metrics for contrastive retrieval evaluation:
         self.contrastive_val = RetrievalContrastiveValidation(self.ks, self.concept_configs)
         self.outputs_epoch_memory = []
 
@@ -213,7 +194,7 @@ class TextAlignmentModel(BaseModel):
 
         return loss
 
-    def _on_epoch_end(self, mode: str):
+    def _on_epoch_end(self, mode: str, verbose=0):
 
         # Combine batches
         geo_feats = torch.cat([x["geo_feats"] for x in self.outputs_epoch_memory], dim=0)
@@ -224,20 +205,30 @@ class TextAlignmentModel(BaseModel):
         similarity = self.concept_similarities(geo_feats)
 
         concept_scores = self.contrastive_val(similarity, aux_values=aux_vals)
-        # TODO pearson
 
-        avr_scores = {f"{mode}_avr_top-{k}": [] for k in self.ks}
-        for i, result in concept_scores.items():
-            print(f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:')
-            for k, v in result.items():
+        avr_scores = {f"{mode}_avr_top-{k}": [] for k in self.ks if k != "dynamic_k"}
+        avr_scores[f"{mode}_avr_top-dyn_k"] = []
+        avr_scores[f"{mode}_avr_top-dyn_k_index"] = []
+        for i, result in concept_scores.items():  # loop through concepts
+            if verbose:
+                print(f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:')
+            for k, v in result.items():  # loop through k values
                 if k == "dynamic_k":
-                    self.log(f"dyn_k_{self.concept_names[i]}", v, **self.log_kwargs)
+                    self.log(f"{mode}_dyn_k_{self.concept_names[i]}", v, **self.log_kwargs)
                     indexed_v = (v - self.dynamic_k_baselines[mode][self.concept_names[i]]) / (
                         100 - self.dynamic_k_baselines[mode][self.concept_names[i]]
                     )
-                    self.log(f"dyn_k_index_{self.concept_names[i]}", indexed_v, **self.log_kwargs)
-                print(f"Top-{k}: {v:.1f}%")
-                avr_scores[f"{mode}_avr_top-{k}"].append(v)
+                    self.log(
+                        f"{mode}_dyn_k_index_{self.concept_names[i]}", indexed_v, **self.log_kwargs
+                    )
+
+                    avr_scores[f"{mode}_avr_top-dyn_k"].append(v)
+                    avr_scores[f"{mode}_avr_top-dyn_k_index"].append(indexed_v)
+                else:
+                    avr_scores[f"{mode}_avr_top-{k}"].append(v)
+
+                if verbose:
+                    print(f"Top-{k}: {v:.1f}%")
 
         for k, v in avr_scores.items():
             avr_scores[k] = sum(v) / len(v)
@@ -276,23 +267,3 @@ class TextAlignmentModel(BaseModel):
         similarity_matrix = concept_embeds @ geo_embeds.T
 
         return similarity_matrix
-
-    @staticmethod
-    def find_elbow_point(vals):
-        vals = np.sort(vals)
-        x = np.arange(len(vals)) / len(vals)
-        y = vals
-        slope = (y[-1] - y[0]) / (x[-1] - x[0])  # diagonal from first to last point
-        intercept = y[0] - slope * x[0]
-        orthogonal_slope = -1 / slope
-
-        intercepts_orthogonal = y - orthogonal_slope * x
-        intersection_diagonal_orthogonal = (intercepts_orthogonal - intercept) / (
-            slope - orthogonal_slope
-        )
-        distances = np.sqrt(
-            (x - intersection_diagonal_orthogonal) ** 2 + (y - (slope * x + intercept)) ** 2
-        )  # distance to diagonal
-        elbow_index = np.argmax(distances)
-        elbow_point = y[elbow_index]
-        return elbow_point

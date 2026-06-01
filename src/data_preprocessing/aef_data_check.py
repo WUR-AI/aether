@@ -5,6 +5,7 @@ import numpy as np
 from torchvision.transforms import v2
 
 import src.data_preprocessing.data_utils as du
+from src.utils.data_utils import center_crop_npy
 
 
 def main(paths):
@@ -18,7 +19,7 @@ def main(paths):
         p_id = os.path.basename(p).split(".")[0].split("-")[-1]
         img = du.load_tiff(p)
         for s in sizes:
-            im = v2.CenterCrop(size=s)(img)
+            im = center_crop_npy(img, (64, s, s))
 
             if im.shape[1:] != (s, s):
                 with open(f"logs/aef_size_mismatch_{s}.txt", "a") as f:
@@ -37,17 +38,17 @@ def main(paths):
                     print(f"25% of {p_id} is 0")
                     f.write(f"{p_id}\n")
 
-            # if np.isinf(im).any():
-            #     with open(f'logs/aef_nans_{s}.txt', 'a') as f:
-            #         f.write(f"{p_id}\n")
+            if np.isinf(im).any():
+                with open(f"logs/aef_nans_{s}.txt", "a") as f:
+                    f.write(f"{p_id}\n")
 
 
 if __name__ == "__main__":
-    os.chdir("../..")
+    # os.chdir("../..")
     print(os.getcwd())
 
-    paths = glob.glob("data/s2bms/eo/aef/*.tif")
-    # paths = glob.glob("/lustre/backup/SHARED/AIN/aether/data/s2bms/eo/aef/*.tif")
+    # paths = glob.glob("data/s2bms/eo/aef/*.tif")
+    paths = glob.glob("/lustre/backup/SHARED/AIN/aether/data/s2bms/eo/aef/*.tif")
     paths.sort()
 
     main(paths)

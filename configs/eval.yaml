@@ -12,7 +12,7 @@ defaults:
   - paths: ${oc.env:STORAGE_MODE,local}
   - extras: default
   - hydra: default
-  - metrics: butterfly_predictive
+  - metrics: s2bms_predictive
 
   # experiment configs allow for version control of specific hyperparameters
   # e.g. best hyperparameters for given model and datamodule

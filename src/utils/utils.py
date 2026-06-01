@@ -75,6 +75,8 @@ def task_wrapper(task_func: Callable) -> Callable:
     """
 
     def wrap(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        metric_dict: Dict[str, Any] = {}
+        object_dict: Dict[str, Any] = {}
         # execute the task
         try:
             metric_dict, object_dict = task_func(cfg=cfg)
@@ -101,6 +103,25 @@ def task_wrapper(task_func: Callable) -> Callable:
                 if wandb.run:
                     log.info("Closing wandb!")
                     wandb.finish()
+
+            # best-effort cleanup to avoid memory growth across sequential multiruns
+            try:
+                if isinstance(object_dict, dict):
+                    for k in ("trainer", "model", "datamodule", "callbacks", "logger"):
+                        if k in object_dict:
+                            object_dict[k] = None
+                import gc
+
+                gc.collect()
+                if find_spec("torch"):
+                    import torch
+
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                        torch.cuda.ipc_collect()
+            except Exception:
+                # cleanup should never mask the original exception
+                pass
 
         return metric_dict, object_dict
 

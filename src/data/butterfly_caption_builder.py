@@ -7,6 +7,7 @@ import torch
 from src.data.base_caption_builder import (
     BaseCaptionBuilder,
     get_adjective_for_percentage,
+    sample_adjective_for_percentage,
 )
 from src.data.base_dataset import BaseDataset
 from src.data_preprocessing.data_utils import (
@@ -133,7 +134,7 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
 
             if "corine" in token:
                 if convert_corine_perc:
-                    adjective = get_adjective_for_percentage(value)
+                    adjective = sample_adjective_for_percentage(value)
                     formatted_desc = f"{adjective} {formatted_desc}"
                 else:
                     formatted_desc = formatted_desc + f' ({round(value)} {units if units else ""})'
