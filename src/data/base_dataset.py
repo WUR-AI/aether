@@ -87,9 +87,6 @@ class BaseDataset(Dataset, ABC):
                 m_dtype = dtype
                 self.modalities[mod] = {"dtype": m_dtype}
 
-        # More precise dataset name (with modalities)
-        self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
-
         # Set data attributes
         self.registry_path = os.path.join(data_dir, "registry.txt")
         if type(dataset_name) is str:
