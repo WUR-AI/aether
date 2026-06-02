@@ -119,8 +119,9 @@ def task_wrapper(task_func: Callable) -> Callable:
                     if torch.cuda.is_available():
                         torch.cuda.empty_cache()
                         torch.cuda.ipc_collect()
-            except Exception:
+            except Exception as e:
                 # cleanup should never mask the original exception
+                print(e)
                 pass
 
         return metric_dict, object_dict
