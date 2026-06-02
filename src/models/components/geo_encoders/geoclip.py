@@ -2,7 +2,6 @@ from typing import Dict, List, override
 
 import torch
 from geoclip import LocationEncoder
-from torch.nn import functional as F
 
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
 
