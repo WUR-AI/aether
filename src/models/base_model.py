@@ -78,7 +78,7 @@ class BaseModel(LightningModule, ABC):
         """Updates model based data-bound configurations (through datamodule), This method is
         called after trainer is initialized and datamodule is available."""
         if self.setup_flag:
-            print(f"Model {self.__str__()} is already set up!")
+            print("Model is already set up!")
             return
 
         # If trainer is attached get num_classes and tabular_dim from datamodule (data-dependent)
