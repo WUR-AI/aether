@@ -66,7 +66,6 @@ class BaseDataModule(LightningDataModule):
             self.caption_builder = caption_builder
             self.caption_builder.sync_with_dataset(self.dataset)
             self.concept_configs = caption_builder.concepts
-
         self._setup_flag = False
 
     @property
@@ -83,6 +82,7 @@ class BaseDataModule(LightningDataModule):
 
         Called by model trainer (trainer.fit()).
         """
+
         if not self._setup_flag:
             # Set up the dataset (download requested modalities)
             self.dataset.setup()
@@ -277,7 +277,7 @@ class BaseDataModule(LightningDataModule):
             self.data_train = torch.utils.data.Subset(self.dataset, train_indices)
             print(f"Train dataset split size: {len(self.data_train)}")
             self.data_val = torch.utils.data.Subset(self.dataset, val_indices)
-            self.data_val.dataset.mode = "val"
+            print(f"Validate dataset split size: {len(self.data_val)}")
 
             if test_indices is not None:
                 self.data_test = torch.utils.data.Subset(self.dataset, test_indices)
