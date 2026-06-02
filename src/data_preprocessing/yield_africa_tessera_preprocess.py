@@ -36,8 +36,8 @@ import logging
 import multiprocessing
 import os
 import socket
-import time
 import sys
+import time
 from pathlib import Path
 
 # Ensure the project root is on sys.path when the script is run directly.
@@ -45,7 +45,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import pandas as pd
 
-from src.data_preprocessing.tessera_embeds import NoTileError, PartialTileError, get_tessera_embeds
+from src.data_preprocessing.tessera_embeds import (
+    NoTileError,
+    PartialTileError,
+    get_tessera_embeds,
+)
 
 log = logging.getLogger(__name__)
 
@@ -65,6 +69,7 @@ _process_gt = None
 def _init_worker(cache_dir: str, use_local_registry: bool, registry_dir: str) -> None:
     """Pool initializer: runs once per worker process to set up GeoTessera."""
     from geotessera import GeoTessera
+
     global _process_gt
     socket.setdefaulttimeout(60)
     embeddings_dir = str(Path(cache_dir) / "raw")
@@ -78,13 +83,18 @@ def _init_worker(cache_dir: str, use_local_registry: bool, registry_dir: str) ->
 def _worker_fetch(args: tuple) -> str:
     """Multiprocessing worker — reuses the per-process GeoTessera instance.
 
-    Must be a top-level function so it is picklable across processes.
-    Returning normally means success; raising means error (logged by caller).
+    Must be a top-level function so it is picklable across processes. Returning normally means
+    success; raising means error (logged by caller).
     """
     lon, lat, name_loc, year, save_dir, tile_size = args
     get_tessera_embeds(
-        lon=lon, lat=lat, name_loc=name_loc, year=year,
-        save_dir=save_dir, tile_size=tile_size, tessera_con=_process_gt,
+        lon=lon,
+        lat=lat,
+        name_loc=name_loc,
+        year=year,
+        save_dir=save_dir,
+        tile_size=tile_size,
+        tessera_con=_process_gt,
     )
     return name_loc
 
@@ -160,8 +170,8 @@ def fetch_tessera_tiles(
     # Per-task timeout: when a worker process exceeds this, it is killed and
     # the record added to stuck.txt.  Multiprocessing (unlike threading) allows
     # true process termination, so stuck downloads cannot block forward progress.
-    HEARTBEAT = 15      # seconds between "still fetching" log lines
-    TILE_TIMEOUT = 60   # seconds per record before the worker process is killed
+    HEARTBEAT = 15  # seconds between "still fetching" log lines
+    TILE_TIMEOUT = 60  # seconds per record before the worker process is killed
     # Note: stuck workers spin at 100% CPU and leak ~55 MB/s of rasterio
     # MemoryFile objects inside GeoTessera's fetch loop.  60s caps peak memory
     # at ~3 GB per stuck record and recovers 3x faster than the old 180s limit.
@@ -177,13 +187,17 @@ def fetch_tessera_tiles(
         else:
             stuck_records = set(stuck_file.read_text().splitlines())
             if stuck_records:
-                print(f"  Skipping {len(stuck_records)} previously-stuck record(s): {sorted(stuck_records)}")
+                print(
+                    f"  Skipping {len(stuck_records)} previously-stuck record(s): {sorted(stuck_records)}"
+                )
 
     rows = [row for _, row in df.iterrows() if row.name_loc not in stuck_records]
     done = 0
 
     _pool_initargs = (cache_dir, _use_local_registry, str(_default_registry_dir))
-    pool = multiprocessing.Pool(processes=workers, initializer=_init_worker, initargs=_pool_initargs)
+    pool = multiprocessing.Pool(
+        processes=workers, initializer=_init_worker, initargs=_pool_initargs
+    )
     try:
         for row in rows:
             args = (row.lon, row.lat, row.name_loc, int(row.year), str(save_dir), tile_size)
@@ -204,7 +218,9 @@ def fetch_tessera_tiles(
                     print(f"  Skipped {row.name_loc}: no TESSERA data for this location/year")
                     break
                 except PartialTileError:
-                    print(f"  Skipped {row.name_loc}: tile too close to mosaic edge, not enough context")
+                    print(
+                        f"  Skipped {row.name_loc}: tile too close to mosaic edge, not enough context"
+                    )
                     break
                 except Exception as exc:
                     print(f"  ERROR fetching {row.name_loc}: {exc}")
@@ -213,7 +229,9 @@ def fetch_tessera_tiles(
             if timed_out:
                 pool.terminate()
                 pool.join()
-                pool = multiprocessing.Pool(processes=workers, initializer=_init_worker, initargs=_pool_initargs)
+                pool = multiprocessing.Pool(
+                    processes=workers, initializer=_init_worker, initargs=_pool_initargs
+                )
                 with open(stuck_file, "a") as fh:
                     fh.write(row.name_loc + "\n")
                 print(
