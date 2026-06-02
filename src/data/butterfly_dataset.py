@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List, override
+from typing import Any, Dict, override
 
 import numpy as np
 import pooch
@@ -16,6 +16,7 @@ class ButterflyDataset(BaseDataset):
         self,
         data_dir: str,
         modalities: dict,
+        use_unlabelled_data: bool = False,
         use_target_data: bool = True,
         use_aux_data: Any = None,
         seed: int = 12345,
@@ -37,12 +38,20 @@ class ButterflyDataset(BaseDataset):
             used for aux, target
         """
 
+        assert not (
+            use_unlabelled_data and use_target_data
+        ), "Joint use of unlabelled and target data is not supported yet."
+        if use_unlabelled_data:
+            dataset_name = "s2bms-unlabelled-20260529"
+        else:
+            dataset_name = "s2bms"
+
         super().__init__(
             data_dir=data_dir,
             modalities=modalities,
             use_target_data=use_target_data,
             use_aux_data=use_aux_data,
-            dataset_name="s2bms",
+            dataset_name=dataset_name,
             seed=seed,
             cache_dir=cache_dir,
             implemented_mod={"s2", "tessera", "coords", "aef", "aef_avr", "tessera_avr"},
