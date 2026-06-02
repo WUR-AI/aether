@@ -68,6 +68,7 @@ class BaseDataModule(LightningDataModule):
             self.concept_configs = caption_builder.concepts
 
         self.split_data()
+        self._setup_flag = False
 
     @property
     def tabular_dim(self):
@@ -83,9 +84,10 @@ class BaseDataModule(LightningDataModule):
 
         Called by model trainer (trainer.fit()).
         """
-
-        # Set up the dataset (download requested modalities)
-        self.dataset.setup()
+        if not self._setup_flag:
+            # Set up the dataset (download requested modalities)
+            self.dataset.setup()
+            self._setup_flag = True
 
     @property
     def batch_size_per_device(self) -> None:
