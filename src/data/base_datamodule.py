@@ -275,10 +275,13 @@ class BaseDataModule(LightningDataModule):
 
         if split_data_from_inds:
             self.data_train = torch.utils.data.Subset(self.dataset, train_indices)
+            print(f"Train dataset split size: {len(self.data_train)}")
             self.data_val = torch.utils.data.Subset(self.dataset, val_indices)
+            print(f"Validate dataset split size: {len(self.data_val)}")
 
             if test_indices is not None:
                 self.data_test = torch.utils.data.Subset(self.dataset, test_indices)
+                print(f"Test dataset split size: {len(self.data_test)}")
             else:
                 self.data_test = None
 
