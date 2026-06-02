@@ -118,7 +118,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
                     else:
                         data_name = "satclip"
                 else:
-                    data_name = f"{k}_{data_dict[k]['size']}"
+                    data_name = f"{k}_{data_dict[k].get('size', '')}"
             else:
                 ks = list(data_dict.keys())
                 data_name = str("".join([f'{k}_{data_dict[k].get("size", "")}' for k in ks]))
