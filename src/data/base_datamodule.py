@@ -67,6 +67,8 @@ class BaseDataModule(LightningDataModule):
             self.caption_builder.sync_with_dataset(self.dataset)
             self.concept_configs = caption_builder.concepts
 
+        self.split_data()
+
     @property
     def tabular_dim(self):
         return self.dataset.tabular_dim

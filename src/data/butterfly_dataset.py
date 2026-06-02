@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List, override
+from typing import Any, Dict, override
 
 import numpy as np
 import pooch
