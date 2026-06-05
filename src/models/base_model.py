@@ -104,8 +104,11 @@ class BaseModel(LightningModule, ABC):
     @final
     def full_freezer(self):
         """Freeze the whole network."""
+        print("--------Frozen--------")
         for name, param in self.named_parameters():
             param.requires_grad = False
+        print("Full model")
+        print("------------------------")
 
         for name, module in self.named_modules():
             module.eval()
