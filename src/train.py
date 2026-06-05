@@ -121,7 +121,11 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
                     data_name = f"{k}_{data_dict[k].get('size', '')}"
             else:
                 ks = list(data_dict.keys())
-                data_name = str("".join([f'{k}_{data_dict[k].get("size", "")}' for k in ks]))
+                ks_new = [
+                    f"{k}{f'_{k.get('size')}' if isinstance(k, dict) and k.get('size') else ''}"
+                    for k in ks
+                ]
+                data_name = "-".join(map(str, ks_new))
 
             # Log details to wandb
             wandb_logger.log_metrics(
