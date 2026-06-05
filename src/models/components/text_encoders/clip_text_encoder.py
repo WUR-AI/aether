@@ -10,7 +10,7 @@ from src.models.components.text_encoders.base_text_encoder import (
 
 
 class ClipTextEncoder(BaseTextEncoder):
-    def __init__(self, hf_cache_dir: str = "../.cache", output_normalization="l2") -> None:
+    def __init__(self, hf_cache_dir: str = "../.cache", use_geoclip_projector=True) -> None:
         super().__init__()
         self.processor = CLIPProcessor.from_pretrained(
             "openai/clip-vit-large-patch14",
@@ -22,12 +22,13 @@ class ClipTextEncoder(BaseTextEncoder):
             cache_dir=hf_cache_dir,
         )
 
-        self.projector = GeoCLIP().image_encoder.mlp
+        if use_geoclip_projector:
+            self.projector = GeoCLIP().image_encoder.mlp
 
         self.model.vision_model = None
         self.model.visual_projection = None
 
-        self.output_dim = 512
+        self.output_dim = 512 if use_geoclip_projector else 768
 
     @override
     def forward(self, batch: Dict[str, torch.Tensor], mode: str) -> torch.Tensor:
