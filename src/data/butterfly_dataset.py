@@ -23,6 +23,7 @@ class ButterflyDataset(BaseDataset):
         cache_dir: str = None,
         mock: bool = False,
         dtype: str = "float32",
+        return_name_loc: bool = False,
     ) -> None:
         """A dataset implementation for the Butterfly diversity use case.
 
@@ -57,6 +58,7 @@ class ButterflyDataset(BaseDataset):
             implemented_mod={"s2", "tessera", "coords", "aef", "aef_avr", "tessera_avr"},
             mock=mock,
             dtype=dtype,
+            return_name_loc=return_name_loc,
         )
 
     def setup(self):
@@ -217,6 +219,9 @@ class ButterflyDataset(BaseDataset):
                     )
                 else:
                     formatted_row["aux"][aux_cat] = [row[v] for v in vals]
+
+        if self.return_name_loc:
+            formatted_row["name_loc"] = row["name_loc"]
 
         return formatted_row
 
