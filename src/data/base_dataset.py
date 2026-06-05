@@ -38,6 +38,7 @@ class BaseDataset(Dataset, ABC):
         use_features: bool = True,
         csv_name: str = None,
         dtype: str = "float32",
+        return_name_loc: bool = False,
     ) -> None:
         """Interface for any use case dataset.
 
@@ -145,6 +146,7 @@ class BaseDataset(Dataset, ABC):
         self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
         self.mode: str = mode  # 'train', 'val', 'test'
         self.records: dict[str, Any] = self.get_records()
+        self.return_name_loc: bool = return_name_loc
 
     @final
     def get_records(self) -> dict[str, Any]:
