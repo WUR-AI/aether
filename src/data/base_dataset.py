@@ -166,7 +166,7 @@ class BaseDataset(Dataset, ABC):
                 self.df = self.df.merge(df, on="name_loc", how="left")
 
                 max_no = 128 if modality == "tessera_avr" else 64
-                columns.extend([f"avr_{i}" for i in range(0, max_no)])
+                columns.extend([f"emb_{i}" for i in range(0, max_no)])
             else:
                 # Add paths
                 self.add_modality_paths_to_df(
