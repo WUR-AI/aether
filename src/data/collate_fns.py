@@ -36,6 +36,9 @@ def collate_fn(
     if batch[0].get("target") is not None:
         batch_collected["target"] = smart_stack([item["target"] for item in batch])
 
+    if batch[0].get("name_loc") is not None:
+        batch_collected["name_loc"] = smart_stack([item["name_loc"] for item in batch])
+
     # convert aux into captions
     if mode == "train":
         batch_collected["text"] = caption_builder.random(batch_collected["aux"])
