@@ -1,6 +1,5 @@
 import os
 import re
-import shutil
 from pathlib import Path
 
 import pandas as pd
@@ -8,9 +7,23 @@ import wandb
 from omegaconf import DictConfig
 
 # Which wandb projects to log runs from
-PROJECTS = ["s2bms_prediction", "s2bms_alignment"]  # Important to keep updating!
+PROJECTS = ["s2bms_prediction"]  # , "s2bms_alignment"]  # Important to keep updating!
 EXPERIMENT_TRACKER_NAME = "experiment_tracker.csv"
 ENTITY = "aether_xai"
+
+
+def update_wandb_run_id(run_id, project_name, updates_dict):
+    api = wandb.Api()
+    entity = ENTITY
+
+    run = api.run(f"{entity}/{project_name}/{run_id}")
+
+    # Update the config
+    for key, value in updates_dict.items():
+        run.config[key] = value
+
+    run.config.save()
+    print(f"Successfully updated run {run_id}")
 
 
 def experiment_check(cfg: DictConfig):
@@ -102,7 +115,12 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
                         else:
                             data_name = "satclip"
                     else:
-                        data_name = f"{k}_{data_dict[k]['size']}"
+                        ks = list(data_dict.keys())
+                        ks_new = [
+                            f"{k}{f'_{k.get('size')}' if isinstance(k, dict) and k.get('size') else ''}"
+                            for k in ks
+                        ]
+                        data_name = "-".join(map(str, ks_new))
                     run.summary.update({"data_used": data_name})
 
                 # Add missing experiments to the table
@@ -209,6 +227,6 @@ def clean_local_ckpts(cfg: DictConfig, df: pd.DataFrame) -> None:
         if str(local_ckpt) not in keep:
             print(f"Do you want to remove {local_ckpt}? (y/n)")
             answer = input()
-            if answer != "y":
-                shutil.rmtree(local_ckpt)
+            if answer == "y":
+                os.remove(str(local_ckpt))
                 print(f"Removed {local_ckpt}.")
