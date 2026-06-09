@@ -11,7 +11,6 @@ from torch.utils.data import Dataset
 
 from src.data_preprocessing.tessera_embeds import NoTileError, PartialTileError
 from src.utils.data_utils import center_crop_npy
-from src.utils.errors import MissingDataError
 
 TORCH_DTYPES = {
     "float32": torch.float32,
