@@ -173,13 +173,15 @@ def _is_prefix_trained(trainable_modules: list[str], prefix: str) -> bool:
     return any(m.split(".")[0] == prefix for m in trainable_modules)
 
 
-def load_inference_model(inference_ckpt_path: str) -> InferenceModel:
+def load_inference_model(inference_ckpt_path: str, cache_path: str | None) -> InferenceModel:
     """Loads inference model from a merged checkpoint.
 
     :param inference_ckpt_path: path to inference model weights
     :return: an InferenceModel with pre-trained weights
     """
     inference_ckpt = torch.load(inference_ckpt_path, map_location="cpu", weights_only=False)
+    if cache_path:
+        inference_ckpt["hyper_parameters"]["text_encoder"]["hf_cache_dir"] = cache_path
     model = hydra.utils.instantiate(inference_ckpt["hyper_parameters"])
     model.setup("inference")
     res = model.load_state_dict(inference_ckpt["state_dict"], strict=False)
