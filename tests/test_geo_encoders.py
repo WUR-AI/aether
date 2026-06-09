@@ -6,10 +6,10 @@ import pytest
 import torch
 
 from src.models.components.geo_encoders.average_encoder import AverageEncoder
-from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
 from src.models.components.geo_encoders.cnn_encoder import CNNEncoder
 from src.models.components.geo_encoders.geoclip import GeoClipCoordinateEncoder
-from src.models.components.geo_encoders.multimodal_encoder import MultiModalEncoder
+from src.models.components.geo_encoders.mlp_projector import MLPProjector
+from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
 
 
 # @pytest.mark.slow
@@ -19,13 +19,21 @@ def test_geo_encoder_generic_properties(create_butterfly_dataset):
         "geoclip_coords": GeoClipCoordinateEncoder,
         "cnn": CNNEncoder,
         "average": AverageEncoder,
-        "multimodal_coords": MultiModalEncoder,
+        "tabular": TabularEncoder,
+        "mlp_projector": MLPProjector,
     }
     ds, dm = create_butterfly_dataset
     batch = next(iter(dm.train_dataloader()))
 
     for geo_encoder_name, geo_encoder_class in dict_geo_encoders.items():
-        geo_encoder = geo_encoder_class()
+        if geo_encoder_class is MLPProjector:
+            geo_encoder = geo_encoder_class(output_dim=64, input_dim=128)
+        elif geo_encoder_class is TabularEncoder:
+            geo_encoder = geo_encoder_class(output_dim=64, input_dim=128, hidden_dim=128)
+        else:
+            geo_encoder = geo_encoder_class()
+
+        geo_encoder.setup()
 
         assert hasattr(
             geo_encoder, "geo_encoder"

@@ -1,0 +1,35 @@
+# @package _global_
+# Ablation config A — baseline: tessera (year Y) + tabular, dynamic_gate fusion.
+#
+# This is the single-year baseline for the dual-year ablation study. Run this
+# first: it saves the train/val/test split so configs B–E use identical data.
+#
+# After this run, note the saved split filename from the console output, then
+# set ABLATION_SPLIT in the notebook before launching configs B–E.
+
+defaults:
+  - override /model: yield_tessera_fusion_reg
+  - override /data: yield_africa_tessera_KEN
+  - override /metrics: yield_africa_regression
+
+tags: ["yield_africa", "tessera_ablation", "KEN", "config_A"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 150
+  gradient_clip_val: 1.0
+
+data:
+  batch_size: 64
+  save_split: true
+  dataset:
+    use_features: true
+
+logger:
+  wandb:
+    name: "ablation_A_tessera"
+    tags: ${tags}
+    group: "ablation_dual_tessera_KEN"
+  aim:
+    experiment: "yield_africa_ablation"

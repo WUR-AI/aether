@@ -15,7 +15,7 @@ class CosineSimilarities(BaseMetrics):
     def forward(
         self,
         mode: str,
-        eo_feats: torch.Tensor,
+        geo_feats: torch.Tensor,
         text_feats: torch.Tensor,
         local_batch_size: int,
         **kwargs,
@@ -23,7 +23,7 @@ class CosineSimilarities(BaseMetrics):
         """Calculate cosine similarity between eo and text embeddings and logs it."""
 
         # Similarity matrix
-        cos_sim_matrix = F.cosine_similarity(eo_feats[:, None, :], text_feats[None, :, :], dim=-1)
+        cos_sim_matrix = F.cosine_similarity(geo_feats[:, None, :], text_feats[None, :, :], dim=-1)
 
         # Average for positive and negative pairs
         # TODO change label option if we change what gets treated to be pos/neg

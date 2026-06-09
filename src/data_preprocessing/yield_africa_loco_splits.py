@@ -112,12 +112,10 @@ def generate_splits(
         torch.save(split, out_path)
 
         log.info(
-            f"  {country}: train={n_train}, val={n_val}, test={n_test} "
-            f"-> {out_path.name}"
+            f"  {country}: train={n_train}, val={n_val}, test={n_test} " f"-> {out_path.name}"
         )
         print(
-            f"  Saved split_loco_{country}.pth  "
-            f"(train={n_train}, val={n_val}, test={n_test})"
+            f"  Saved split_loco_{country}.pth  " f"(train={n_train}, val={n_val}, test={n_test})"
         )
 
 

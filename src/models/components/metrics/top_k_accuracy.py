@@ -15,6 +15,7 @@ class TopKAccuracy(BaseMetrics):
         self,
         pred: torch.Tensor,
         batch: Dict[str, torch.Tensor],
+        mode: str,
         **kwargs,
     ) -> Dict[str, torch.float]:
 
@@ -39,5 +40,5 @@ class TopKAccuracy(BaseMetrics):
             tmp_joint = tmp_pred_greater_th * tmp_label_greater_th
             n_present = torch.sum(tmp_joint, dim=1)  # sum per batch sample
             top_k_acc = n_present.float() / k  # accuracy per batch sample
-            accs[f"top_{k}_acc"] = top_k_acc.mean()
+            accs[f"{mode}_top_{k}_acc"] = top_k_acc.mean()
         return accs

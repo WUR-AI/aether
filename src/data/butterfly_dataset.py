@@ -5,9 +5,9 @@ import numpy as np
 import pooch
 import torch
 
-import src.data_preprocessing.data_utils as du
-from src.data.base_dataset import BaseDataset
+from src.data.base_dataset import TORCH_DTYPES, BaseDataset
 from src.data_preprocessing.renaming_utils import rename_s2bms
+from src.utils.data_utils import center_crop_npy
 from src.utils.errors import IllegalArgumentCombination
 
 
@@ -16,11 +16,13 @@ class ButterflyDataset(BaseDataset):
         self,
         data_dir: str,
         modalities: dict,
+        use_unlabelled_data: bool = False,
         use_target_data: bool = True,
         use_aux_data: Any = None,
         seed: int = 12345,
         cache_dir: str = None,
         mock: bool = False,
+        dtype: str = "float32",
     ) -> None:
         """A dataset implementation for the Butterfly diversity use case.
 
@@ -32,18 +34,29 @@ class ButterflyDataset(BaseDataset):
         :param seed: random seed
         :param cache_dir: path to cache dir
         :param mock: whether to mock csv file
+        :param dtype: global dtype (used if not specified for each modality individually), also
+            used for aux, target
         """
+
+        assert not (
+            use_unlabelled_data and use_target_data
+        ), "Joint use of unlabelled and target data is not supported."
+        if use_unlabelled_data:
+            dataset_name = ["s2bms", "s2bms-unlabelled-20260529"]
+        else:
+            dataset_name = "s2bms"
 
         super().__init__(
             data_dir=data_dir,
             modalities=modalities,
             use_target_data=use_target_data,
             use_aux_data=use_aux_data,
-            dataset_name="s2bms",
+            dataset_name=dataset_name,
             seed=seed,
             cache_dir=cache_dir,
             implemented_mod={"s2", "tessera", "coords", "aef"},
             mock=mock,
+            dtype=dtype,
         )
 
     def setup(self):
@@ -122,24 +135,43 @@ class ButterflyDataset(BaseDataset):
         return im
 
     def load_s2(self, filepath: str):
-        im = du.load_tiff(filepath, datatype="np")
+        """Loads s2 image tile from file as a tensor."""
 
-        if self.modalities["s2"]["channels"] == "4c":
-            pass
-        elif self.modalities["s2"]["channels"] == "rgb":
+        # Modality settings
+        size = self.modalities["s2"]["size"]
+        np_dtype, is_bfloat16 = self.resolve_dtype(self.modalities["s2"]["dtype"])
+
+        im = self.load_tiff(filepath, dtype=np.dtype("uint16"))
+        if self.modalities["s2"].get("channels", "") == "4c":
+            c = 4
+        elif self.modalities["s2"].get("channels", "") == "rgb":
             im = im[:3, :, :]
+            c = 3
         else:
             raise IllegalArgumentCombination(
-                f"Channel specification {self.n_bands} is not implemented."
+                f"Channel specification {self.modalities["s2"].get("channels", 'null')} is not implemented."
             )
 
-        if self.modalities["s2"]["preprocessing"] == "zscored":
+        if self.modalities["s2"].get("preprocessing") == "zscored":
             im = im.astype(np.int32)
             im = self.zscore_image(im)
+        elif self.modalities["s2"].get("preprocessing") == "div_10000":
+            im = im / 10000.0
+            im = im.clip(0, 1)
         else:
             im = np.clip(im, 0, 2000)
             im = im / 2000.0
-        return torch.tensor(im).float()
+
+        im = im.astype(dtype=np_dtype)
+
+        # Crop
+        if im.shape[-2:] != (size, size):
+            im = center_crop_npy(im, (c, size, size))
+
+        tensor = torch.from_numpy(im)
+        if is_bfloat16:
+            tensor = tensor.to(torch.bfloat16)
+        return tensor
 
     @override
     def __getitem__(self, idx: int) -> Dict[str, Any]:
@@ -149,19 +181,21 @@ class ButterflyDataset(BaseDataset):
 
         for modality in self.modalities:
             if modality in ["coords"]:
-                formatted_row["eo"][modality] = torch.tensor([row["lat"], row["lon"]])
+                formatted_row["eo"][modality] = torch.tensor(
+                    [row["lat"], row["lon"]],
+                    dtype=TORCH_DTYPES[self.modalities[modality]["dtype"]],
+                )
             elif modality == "s2":
                 formatted_row["eo"][modality] = self.load_s2(row["s2_path"])
                 # TODO: augmentations
             elif modality == "tessera":
-                formatted_row["eo"][modality] = self.load_npy(row["tessera_path"])
-                # TODO any normalisation needed
+                formatted_row["eo"][modality] = self.load_tessera(row["tessera_path"])
             elif modality == "aef":
                 formatted_row["eo"][modality] = self.load_aef(row["aef_path"])
 
         if self.use_target_data:
             formatted_row["target"] = torch.tensor(
-                [row[k] for k in self.target_names], dtype=torch.float32
+                [row[k] for k in self.target_names], dtype=self.dtype
             )
 
         if self.use_aux_data:
@@ -169,7 +203,7 @@ class ButterflyDataset(BaseDataset):
             for aux_cat, vals in self.use_aux_data.items():
                 if aux_cat == "aux":
                     formatted_row["aux"][aux_cat] = torch.tensor(
-                        [row[v] for v in vals], dtype=torch.float32
+                        [row[v] for v in vals], dtype=self.dtype
                     )
                 else:
                     formatted_row["aux"][aux_cat] = [row[v] for v in vals]

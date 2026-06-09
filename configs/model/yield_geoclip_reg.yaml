@@ -1,9 +1,7 @@
 _target_: src.models.predictive_model.PredictiveModel
 
 geo_encoder:
-  _target_: src.models.components.geo_encoders.multimodal_encoder.MultiModalEncoder
-  use_coords: true
-  use_tabular: false
+  _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
 
 prediction_head:
   _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
@@ -13,8 +11,10 @@ prediction_head:
 
 # Only the prediction head is trained; GeoClip encoder is frozen.
 trainable_modules: [prediction_head]
-# Disable L2 normalization before MLP regression to keep magnitude of features
+# Disable L2 unit-sphere projection (F.normalize) — regression needs full vector structure, not just direction
 normalize_features: false
+# Z-score the target before loss; metrics are reported in original yield units
+standardize_targets: true
 
 metrics: ${metrics}
 

@@ -5,12 +5,15 @@ Features:
 - Load raw dataset (CSV or Parquet)
 - Compute derived features (CN_ratio, layer deltas, WHC proxy, aridity index)
 - Apply log transforms to skewed features
-- Fit StandardScaler on train split only
-- Encode categorical features as integer indices
+- Encode categorical features as integer indices (fitted on train split)
 - Remove yield outliers beyond 3 IQR
 - Preserve metadata columns
-- Save fitted transformers for inference-time reuse
+- Save fitted label encoders for inference-time reuse
 - Calculate and save spatial cross-validation splits
+
+Note: continuous feature normalisation (StandardScaler) is intentionally omitted here.
+It is applied at training time by TabularEncoder using the actual training split, so that
+the same CSV can be used with any split strategy (random, LOCO, spatial) without leakage.
 """
 
 import argparse
@@ -24,7 +27,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import LabelEncoder
 
 log = logging.getLogger(__name__)
 
@@ -182,6 +185,30 @@ AUX_FEATURES = [
 
 LOG_TRANSFORM_FEATURES = ["Dist_water", "Paved", "Unpaved", "Pop_10km"]
 
+# Classified versions of derived features (computed from raw measurements, not present in
+# the source CSV).  These are created by classify_derived_features() after
+# compute_derived_features() runs, then encoded alongside AUX_FEATURES.
+#
+# feat_bd_layer_delta is intentionally excluded: only 10 unique values across the
+# dataset, making quantile-based 5-class splitting degenerate.
+#
+# Each entry: source_col -> (output_cl_col, description, unit, n_decimals)
+DERIVED_AUX_SPECS: Dict[str, tuple] = {
+    "CN_ratio": ("CN_ratio_cl", "carbon-to-nitrogen ratio in topsoil", "", 1),
+    "C_layer_delta": ("C_layer_delta_cl", "topsoil carbon enrichment over subsoil", "g/kg", 1),
+    "WHC_proxy": ("WHC_proxy_cl", "estimated water holding capacity", "mm/m", 0),
+    "aridity_index": (
+        "aridity_index_cl",
+        "aridity index (climatic moisture deficit over MAP)",
+        "",
+        2,
+    ),
+}
+
+# Output column names from DERIVED_AUX_SPECS — treated identically to AUX_FEATURES in
+# encoding and renaming (they receive the aux_ prefix to become aux_cn_ratio_cl etc.)
+DERIVED_AUX_FEATURES: List[str] = [spec[0] for spec in DERIVED_AUX_SPECS.values()]
+
 TARGET_COLUMNS = ["Yld_ton_ha"]
 
 NAME_LOC_COLUMN = "ID"
@@ -211,6 +238,7 @@ WHC_LOOKUP_SAXTON_RAWLS_2006_OM2P5 = {
 # ---------------------------------------------------------------------------
 # Preprocessing functions
 # ---------------------------------------------------------------------------
+
 
 def build_column_rename_map(
     continuous_features: List[str],
@@ -289,6 +317,62 @@ def apply_log_transforms(df: pd.DataFrame, log_transform_features: List[str]) ->
     return df
 
 
+def _classify_to_5class(
+    series: pd.Series,
+    train_mask: pd.Series,
+    description: str,
+    unit: str,
+    n_decimals: int,
+) -> pd.Series:
+    """Classify a continuous series into 5 ordinal label strings.
+
+    Quintile boundaries (p20, p40, p60, p80) are fitted on training rows only. Labels follow the
+    "Very low / Low / Medium / High / Very high" convention so that LabelEncoder's alphabetical
+    sort produces the same encoding map as all other aux_*_cl columns: {H=0, L=1, M=2, VH=3, VL=4}.
+    """
+    train_vals = series[train_mask].dropna()
+    bounds = train_vals.quantile([0.2, 0.4, 0.6, 0.8]).values
+    fmt = f".{n_decimals}f"
+    unit_str = f" {unit}" if unit else ""
+
+    def _label(v: float) -> str:
+        if pd.isna(v):
+            return np.nan
+        if v < bounds[0]:
+            return f"Very low {description} (<{bounds[0]:{fmt}}{unit_str})"
+        elif v < bounds[1]:
+            return f"Low {description} ({bounds[0]:{fmt}}-{bounds[1]:{fmt}}{unit_str})"
+        elif v < bounds[2]:
+            return f"Medium {description} ({bounds[1]:{fmt}}-{bounds[2]:{fmt}}{unit_str})"
+        elif v < bounds[3]:
+            return f"High {description} ({bounds[2]:{fmt}}-{bounds[3]:{fmt}}{unit_str})"
+        else:
+            return f"Very high {description} (>{bounds[3]:{fmt}}{unit_str})"
+
+    return series.map(_label)
+
+
+def classify_derived_features(
+    df: pd.DataFrame,
+    train_mask: pd.Series,
+    specs: Dict[str, tuple],
+) -> pd.DataFrame:
+    """Create 5-class ordinal label columns for derived continuous features.
+
+    For each entry in specs, reads the source column, computes quintile boundaries from training
+    rows, and writes a new string-label column. These columns are later encoded by
+    fit_label_encoders / apply_label_encoders and renamed to aux_*_cl by build_column_rename_map.
+    """
+    df = df.copy()
+    for src_col, (out_col, description, unit, n_decimals) in specs.items():
+        if src_col not in df.columns:
+            warnings.warn(f"Derived feature '{src_col}' not found; skipping classification")
+            continue
+        df[out_col] = _classify_to_5class(df[src_col], train_mask, description, unit, n_decimals)
+        log.info(f"  Classified {src_col} -> {out_col}")
+    return df
+
+
 def remove_yield_outliers(
     df: pd.DataFrame,
     target_col: str = "Yld_ton_ha",
@@ -313,29 +397,6 @@ def remove_yield_outliers(
         )
 
     return df[~outlier_mask].copy(), outlier_mask
-
-
-def fit_scaler(df: pd.DataFrame, continuous_features: List[str]) -> StandardScaler:
-    """Fit StandardScaler on continuous features."""
-    available_features = [f for f in continuous_features if f in df.columns]
-    if len(available_features) < len(continuous_features):
-        missing = set(continuous_features) - set(available_features)
-        warnings.warn(f"Missing continuous features: {missing}")
-    scaler = StandardScaler()
-    scaler.fit(df[available_features])
-    return scaler
-
-
-def apply_scaler(
-    df: pd.DataFrame,
-    scaler: StandardScaler,
-    continuous_features: List[str],
-) -> pd.DataFrame:
-    """Apply fitted StandardScaler to continuous features."""
-    df = df.copy()
-    available_features = [f for f in continuous_features if f in df.columns]
-    df[available_features] = scaler.transform(df[available_features])
-    return df
 
 
 def fit_label_encoders(
@@ -419,11 +480,7 @@ def calculate_spatial_splits(
 
     splits: Dict[str, Any] = {}
     for fold in range(n_splits):
-        val_names = [
-            name
-            for bid in fold_block_ids[fold]
-            for name in block_to_names[bid].tolist()
-        ]
+        val_names = [name for bid in fold_block_ids[fold] for name in block_to_names[bid].tolist()]
         train_names = [
             name
             for f in range(n_splits)
@@ -466,7 +523,6 @@ def main(
     out_csv_path = Path(out_csv)
     data_dir = out_csv_path.parent
 
-    scaler_path = data_dir / f"fitted_scaler_{MODEL_READY_DATA_NAME}.pkl"
     encoders_path = data_dir / f"label_encoders_{MODEL_READY_DATA_NAME}.pkl"
     spatial_split_path = (
         data_dir
@@ -540,24 +596,22 @@ def main(
     train_df = df[train_mask]
     log.info(f"Training set size: {len(train_df)} samples")
 
-    # Fit transformers on train split only
-    log.info("Fitting StandardScaler on train split...")
-    scaler = fit_scaler(train_df, CONTINUOUS_FEATURES)
+    # Classify derived continuous features into 5-class ordinal label columns
+    log.info("Classifying derived features...")
+    df = classify_derived_features(df, train_mask, DERIVED_AUX_SPECS)
+    # Re-align train_df after classification (same rows, new columns)
+    train_df = df[train_mask]
 
+    # Fit label encoders on train split only
     log.info("Fitting LabelEncoders on train split...")
-    all_categorical = TABULAR_CATEGORICAL_FEATURES + AUX_FEATURES
+    all_categorical = TABULAR_CATEGORICAL_FEATURES + AUX_FEATURES + DERIVED_AUX_FEATURES
     encoders = fit_label_encoders(train_df, all_categorical)
 
-    # Apply transformations to full dataset
-    log.info("Applying transformations to full dataset...")
-    df = apply_scaler(df, scaler, CONTINUOUS_FEATURES)
+    # Apply label encoders to full dataset
+    log.info("Applying label encoders to full dataset...")
     df = apply_label_encoders(df, encoders, all_categorical)
 
-    # Save transformers
-    scaler_path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(scaler, scaler_path)
-    log.info(f"Saved scaler to {scaler_path}")
-
+    # Save label encoders
     encoders_path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(encoders, encoders_path)
     log.info(f"Saved encoders to {encoders_path}")
@@ -588,7 +642,7 @@ def main(
     rename_map = build_column_rename_map(
         continuous_features=CONTINUOUS_FEATURES,
         tabular_categorical_features=TABULAR_CATEGORICAL_FEATURES,
-        aux_features=AUX_FEATURES,
+        aux_features=AUX_FEATURES + DERIVED_AUX_FEATURES,
         target_columns=TARGET_COLUMNS,
         name_loc_column=NAME_LOC_COLUMN,
         metadata_columns=METADATA_COLUMNS,
@@ -614,11 +668,6 @@ def main(
         }
         df["location_accuracy"] = df["location_accuracy"].str.lower().map(accuracy_map)
 
-    # Keep scaler metadata in sync with new column names
-    if hasattr(scaler, "feature_names_in_") and scaler.feature_names_in_ is not None:
-        scaler.feature_names_in_ = np.array(
-            [rename_map.get(n, n) for n in scaler.feature_names_in_]
-        )
     encoders = {rename_map.get(k, k): v for k, v in encoders.items()}
 
     # Calculate and save spatial splits (optional)
@@ -649,7 +698,9 @@ def main(
     log.info(f"  Rows in output: {len(df)}")
     log.info(f"  Continuous features: {len(CONTINUOUS_FEATURES)}")
     log.info(f"  Tabular categorical features (feat_): {len(TABULAR_CATEGORICAL_FEATURES)}")
-    log.info(f"  Aux/caption features (aux_): {len(AUX_FEATURES)}")
+    log.info(
+        f"  Aux/caption features (aux_): {len(AUX_FEATURES)} base + {len(DERIVED_AUX_FEATURES)} derived = {len(AUX_FEATURES) + len(DERIVED_AUX_FEATURES)} total"
+    )
     log.info(
         f"  Yield range: {df['target_yld_ton_ha'].min():.2f} - {df['target_yld_ton_ha'].max():.2f} t/ha"
     )

@@ -21,6 +21,7 @@ class ClipLoss(BaseLossFn):
         self,
         eo_mod: torch.Tensor,
         text_mod: torch.Tensor,
+        mode: str | None = None,
         **kwargs,
     ) -> torch.Tensor | Dict[str, torch.Tensor]:
 
@@ -41,7 +42,7 @@ class ClipLoss(BaseLossFn):
 
         loss = (loss1 + loss2) / 2
         if "return_label" in kwargs:
-            return {self.name: loss}
+            return {f"{mode}_{self.name}": loss}
         else:
             return loss
 

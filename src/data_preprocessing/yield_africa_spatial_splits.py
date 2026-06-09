@@ -79,13 +79,12 @@ def make_spatial_split(
     """Return a split-indices dict using DBSCAN spatial clustering.
 
     :param df: full model-ready dataframe (must contain 'lat', 'lon', 'name_loc')
-    :param distance_m: DBSCAN eps in metres — pairs of fields closer than this
-        value are assigned to the same cluster
+    :param distance_m: DBSCAN eps in metres — pairs of fields closer than this value are assigned
+        to the same cluster
     :param train_val_test_split: (train, val, test) proportions, must sum to 1.0
     :param seed: random seed for GroupShuffleSplit
-    :return: dict with 'train_indices', 'val_indices', 'test_indices' as
-        pd.Series of name_loc strings, plus 'clusters' as a numpy array of
-        cluster labels (same length as df)
+    :return: dict with 'train_indices', 'val_indices', 'test_indices' as pd.Series of name_loc
+        strings, plus 'clusters' as a numpy array of cluster labels (same length as df)
     """
     # Deduplicate to unique (lat, lon) locations before clustering.
     # yield_africa has ~9 rows per location (one per year); running DBSCAN on all
@@ -271,9 +270,7 @@ def generate_splits(
             f"(train={n_train}, val={n_val}, test={n_test}, "
             f"total={n_train + n_val + n_test}/{len(df)})"
         )
-        log.info(
-            f"  {dist_km}km: train={n_train}, val={n_val}, test={n_test} -> {out_name}"
-        )
+        log.info(f"  {dist_km}km: train={n_train}, val={n_val}, test={n_test} -> {out_name}")
 
 
 def main() -> None:

@@ -18,6 +18,7 @@ class BCELoss(BaseLossFn):
         pred: torch.Tensor,
         labels: torch.Tensor | None = None,
         batch: Dict[str, torch.Tensor] | None = None,
+        mode: str | None = None,
         **kwargs,
     ) -> torch.Tensor or Dict[str, torch.Tensor]:
 
@@ -25,7 +26,7 @@ class BCELoss(BaseLossFn):
         loss = self.criterion(pred, labels)
 
         if "return_label" in kwargs:
-            return {self.name: loss}
+            return {f"{mode}_{self.name}": loss}
         else:
             return loss
 

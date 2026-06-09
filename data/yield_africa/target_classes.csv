@@ -1,0 +1,2 @@
+col,description,units,ordinal_map,nominal_labels
+aux_yld_ton_ha_cl,crop yield,ton/ha,"{""0"": 3, ""1"": 1, ""2"": 2, ""3"": 4, ""4"": 0}","{""0"": ""High yield (4.5-6.3 ton per hectare)"", ""1"": ""Low yield (1.7-3.0 ton per hectare)"", ""2"": ""Medium yield (3.1-4.5 ton per hectare)"", ""3"": ""Very high yield (6.3-10.8 ton per hectare)"", ""4"": ""Very low yield (< 1.7 ton per hectare)""}"
