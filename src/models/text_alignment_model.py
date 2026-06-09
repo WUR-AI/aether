@@ -10,9 +10,8 @@ from src.models.components.metrics.contrastive_validation import (
     RetrievalContrastiveValidation,
 )
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
-from src.models.components.text_encoders.base_text_encoder import (
-    BaseTextEncoder,
-)
+from src.models.components.projectors_adapters.base_encoder import BaseEncoder
+from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
 
 
 class TextAlignmentModel(BaseModel):
@@ -25,6 +24,8 @@ class TextAlignmentModel(BaseModel):
         scheduler: torch.optim.lr_scheduler,
         loss_fn: BaseLossFn,
         metrics: MetricsWrapper,
+        geo_adapter: BaseEncoder | None = None,
+        text_adapter: BaseEncoder | None = None,
         num_classes: int | None = None,
         tabular_dim: int | None = None,
         ks: list[int] | None = [5, 10, 15],
@@ -45,6 +46,7 @@ class TextAlignmentModel(BaseModel):
         :param match_to_geo: whether to match dimensions of text encoder to geo_encoder or visa-
             versa
         """
+
         super().__init__(
             trainable_modules=trainable_modules,
             geo_encoder=geo_encoder,
@@ -58,6 +60,8 @@ class TextAlignmentModel(BaseModel):
             tabular_dim=tabular_dim,
         )
 
+        self.geo_adapter = geo_adapter
+        self.text_adapter = text_adapter
         # Metrics
         self.ks = ks
         self.log_kwargs = dict(on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
@@ -75,12 +79,35 @@ class TextAlignmentModel(BaseModel):
         # Set up encoders and missing adapters/projectors
         print("-------Model------------")
         new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup() or []]
+
+        if self.geo_adapter:
+            self.geo_adapter.set_input_dim(self.geo_encoder.output_dim)
+            new_modules.extend([f"geo_adapter.{i}" for i in self.geo_adapter.setup() or []])
+
         new_modules.extend([f"text_encoder.{i}" for i in self.text_encoder.setup() or []])
+        if self.text_adapter:
+            self.text_adapter.set_input_dim(self.text_encoder.input_dim)
+            new_modules.extend([f"text_adapter.{i}" for i in self.text_adapter.setup() or []])
+
         self.trainable_modules.extend(new_modules)
 
         # Extra projector for text encoder if eo and text dim not match
-        if self.geo_encoder.output_dim != self.text_encoder.output_dim:
-            if self.match_to_geo:
+        geo_branch_dim = (
+            self.geo_adapter.output_dim if self.geo_adapter else self.geo_encoder.output_dim
+        )
+        text_branch_dim = (
+            self.text_adapter.output_dim if self.text_adapter else self.text_encoder.output_dim
+        )
+
+        if geo_branch_dim != text_branch_dim:
+            if self.geo_adapter or self.text_adapter:
+                print(
+                    f"You opted to use: {'geo' if self.geo_adapter else '' and 'text' if self.text_adapter else ''} adapter(s)",
+                    "but you miss-configured output dimensions:"
+                    f"geo:{geo_branch_dim} vs text: {text_branch_dim}",
+                    "Please try again.",
+                )
+            elif self.match_to_geo:
                 self.text_encoder.add_projector(projected_dim=self.geo_encoder.output_dim)
                 self.trainable_modules.append("text_encoder.extra_projector")
             else:
@@ -137,7 +164,11 @@ class TextAlignmentModel(BaseModel):
 
         # Embed modalities
         geo_feats = self.geo_encoder(batch)
+        if self.geo_adapter:
+            geo_feats = self.geo_adapter(geo_feats)
         text_feats = self.text_encoder(batch, mode)
+        if self.text_adapter:
+            text_feats = self.text_adapter(text_feats)
 
         # Change dtype of geo data if it does not match text dtype
         if geo_feats.dtype != text_feats.dtype:

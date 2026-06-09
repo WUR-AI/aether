@@ -77,3 +77,10 @@ class BasePredictionHead(nn.Module, ABC):
         elif len(dtypes) == 0:
             return None
         return dtypes.pop()
+
+    @final
+    def update_configs(self, cfg):
+        if len(self.cfg_dict) == 0:
+            self.cfg_dict = cfg
+        else:
+            print("Configs for prediction head not updated")
