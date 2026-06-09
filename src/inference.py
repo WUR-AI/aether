@@ -36,8 +36,21 @@ def main(cfg: DictConfig) -> Optional[float]:
     # Otherwise merge model from two checkpoints
     else:
         model = merge_inference_model(cfg, save_ckpt=True)
-
+    model.to("mps")
     # TODO: do what you need with the inference model
+    if cfg.data:
+        datamodule = hydra.utils.instantiate(cfg.get("data"))
+        datamodule.setup()
+
+        concepts = [
+            c["concept_caption"] for c in datamodule.caption_builder.__dict__["concepts"]
+        ]  # or other source of concepts
+        text_embeds = model.forward_text(concepts)
+
+        # per location (batching uses location text generation)
+        for d in datamodule.data_train:
+            geo_embeds, pred = model.forward_geo(d)
+            # TODO: do what you need with the inference model
 
     return
 
