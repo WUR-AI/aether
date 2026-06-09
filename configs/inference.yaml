@@ -22,7 +22,7 @@ alignment_ckpt_path: ${paths.checkpoint_root}/s2bms_alignment_ckpt/dmts2wpm_epoc
 # If set, inference.py will save a merged inference checkpoint you can reload with
 # `inference_ckpt_path`.
 #save_inference_ckpt_path: ${paths.checkpoint_root}/s2bms_inference_model/${now:%Y-%m-%d}_${now:%H-%M-%S}.ckpt
-inference_ckpt_path: ${paths.checkpoint_root}/s2bms_inference_model/2026-06-09_12-05-05.ckpt
+inference_ckpt_path: ${paths.checkpoint_root}/s2bms_inference_model/2026-06-09_13-17-38.ckpt
 #save_inference_ckpt_path: null
 save_ckpt: true
 

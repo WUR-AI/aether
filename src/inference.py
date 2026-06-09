@@ -37,6 +37,7 @@ def main(cfg: DictConfig) -> Optional[float]:
     else:
         model = merge_inference_model(cfg, save_ckpt=True)
     model.to("mps")
+
     # TODO: do what you need with the inference model
     if cfg.data:
         datamodule = hydra.utils.instantiate(cfg.get("data"))
@@ -49,7 +50,8 @@ def main(cfg: DictConfig) -> Optional[float]:
 
         # per location (batching uses location text generation)
         for d in datamodule.data_train:
-            geo_embeds, pred = model.forward_geo(d)
+            b = {"eo": {"aef_avr": d["eo"]["aef_avr"].unsqueeze(0).to("mps")}}
+            geo_embeds, pred = model.forward_geo(b)
             # TODO: do what you need with the inference model
 
     return
