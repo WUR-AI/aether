@@ -3,8 +3,8 @@ import torch
 from src.models.components.geo_encoders.average_encoder import AverageEncoder
 from src.models.components.geo_encoders.cnn_encoder import CNNEncoder
 from src.models.components.geo_encoders.geoclip import GeoClipCoordinateEncoder
-from src.models.components.geo_encoders.mlp_projector import MLPProjector
 from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
+from src.models.components.projectors_adapters.mlp_projector import MLPProjector
 
 
 # @pytest.mark.slow
