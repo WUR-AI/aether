@@ -1,6 +1,10 @@
 import os
 import sys
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
