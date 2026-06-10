@@ -46,6 +46,4 @@ class MLPProjector(BaseEncoder):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         feats = self.net(x)
-        if self.extra_projector:
-            feats = self.extra_projector(feats)
         return feats
