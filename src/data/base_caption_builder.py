@@ -8,18 +8,26 @@ from typing import Any, Dict, List, final
 import torch
 
 from src.data.base_dataset import BaseDataset
+from src.utils.errors import IllegalArgumentCombination
 
 
 class BaseCaptionBuilder(ABC):
     def __init__(
-        self, templates_fname: str, concepts_fname: str, data_dir: str, seed: int
+        self,
+        templates_fname: str,
+        concepts_fname: str,
+        data_dir: str,
+        seed: int,
+        n_captions_for_validation: int | str = "all",
     ) -> None:
         """Interface of caption builder class for converting numerical auxiliary data values into
         textual descriptions from provided caption templates.
 
         :param templates_fname: path to a json file with caption templates.
+        :param concepts_fname: path to a json file with concepts.
         :param data_dir: directory where data is stored.
         :param seed: random seed.
+        :param n_captions_for_validation: number of captions to randomly sample for validation
         """
 
         self.data_dir = data_dir
@@ -38,6 +46,15 @@ class BaseCaptionBuilder(ABC):
         self.column_to_metadata_map: Dict[str] | None = None
         self.seed = seed
         random.seed(self.seed)
+
+        if n_captions_for_validation == "all":
+            self.n = self.__len__
+        elif n_captions_for_validation > len(self):
+            raise IllegalArgumentCombination(
+                f"Requested {n_captions_for_validation} captions exceeds template dictionary size"
+            )
+        else:
+            self.n = n_captions_for_validation
 
     @final
     def __len__(self):
@@ -111,15 +128,20 @@ class BaseCaptionBuilder(ABC):
 
         return formatted_rows
 
-    def all(self, aux_values) -> List[str]:
-        """Return a list of captions from all available templates."""
+    def sample_multiple_or_all(self, aux_values):
+        """Return self.n captions from randomly sampled templates for each data point."""
         formatted_rows = []
         for i in range(0, len(aux_values["aux"])):
             descriptions = []
             row_aux = aux_values["aux"][i]
             row_top = aux_values.get("top")[i] if aux_values.get("top") else None
 
-            for template_idx in range(0, len(self)):
+            template_ids = random.choices(
+                range(len(self.templates)),
+                k=self.n,
+            )
+
+            for template_idx in template_ids:
                 descriptions.append(
                     self._build_from_template(template_idx, aux=row_aux, top=row_top)
                 )
