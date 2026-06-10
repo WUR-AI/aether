@@ -7,7 +7,7 @@ import wandb
 from omegaconf import DictConfig
 
 # Which wandb projects to log runs from
-PROJECTS = ["s2bms_prediction"]  # , "s2bms_alignment"]  # Important to keep updating!
+PROJECTS = ["s2bms_prediction", "s2bms_alignment"]  # Important to keep updating!
 EXPERIMENT_TRACKER_NAME = "experiment_tracker.csv"
 ENTITY = "aether_xai"
 
@@ -53,6 +53,7 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
     # Get existing experiment table
     df, df_path = open_experiment_df(cfg)
     ids = list(df.run_id) if len(df) > 0 else []
+    df_len = len(df)
 
     # Connect to wandb api
     api = wandb.Api()
@@ -92,9 +93,10 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
                 if best_val_loss is None:
                     if len(results) > 0:
                         loss_per_epoch = results.groupby("epoch")["val_loss"].mean()
-                        if best_epoch != loss_per_epoch.idxmin():
-                            raise ValueError()
-                        best_val_loss = loss_per_epoch.min().item()
+                        if best_epoch:
+                            best_val_loss = loss_per_epoch[best_epoch]
+                        else:
+                            best_val_loss = loss_per_epoch.min().item()
                         run.summary.update({"best_val_loss": best_val_loss})
                 if project == "s2bms_prediction" and best_val_mse_loss is None:
                     mse_loss_per_epoch = results.groupby("epoch")["val_mse_loss"].mean()
@@ -137,8 +139,11 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
                 )
 
     # Return experiment df
-    if len(df) > 0:
+    if df_len - len(df) > 0:
         print(f"Saved {len(runs_list)} runs to {df_path}.")
+        return df
+    if len(df) > 0:
+        print("No runs updated.")
         return df
     else:
         print("No runs found.")
