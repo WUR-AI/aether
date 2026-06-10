@@ -43,6 +43,6 @@ def collate_fn(
     if mode == "train":
         batch_collected["text"] = caption_builder.random(batch_collected["aux"])
     else:
-        batch_collected["text"] = caption_builder.all(batch_collected["aux"])
+        batch_collected["text"] = caption_builder.sample_multiple_or_all(batch_collected["aux"])
 
     return batch_collected
