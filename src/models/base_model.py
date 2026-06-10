@@ -218,15 +218,19 @@ class BaseModel(LightningModule, ABC):
         """Update hyper-parameters from the model."""
         if hasattr(self, "geo_encoder"):
             self.geo_encoder.update_configs(cfg["geo_encoder"])
-        if hasattr(self, "geo_adapter"):
+        if hasattr(self, "geo_adapter") and self.geo_adapter is not None:
             self.geo_adapter.cfg_dict = cfg["geo_adapter"]
 
         if hasattr(self, "text_encoder"):
             self.text_encoder.cfg_dict = cfg["text_encoder"]
-        if hasattr(self, "text_adapter"):
+        if hasattr(self, "text_adapter") and self.text_adapter is not None:
             self.text_adapter.cfg_dict = cfg["text_adapter"]
 
-        if self.prediction_head and cfg.get("prediction_head"):
+        if (
+            hasattr(self, "prediction_head")
+            and self.prediction_head
+            and cfg.get("prediction_head")
+        ):
             self.prediction_head.update_configs(cfg["prediction_head"])
 
     def on_save_checkpoint(self, checkpoint):
