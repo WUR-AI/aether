@@ -114,9 +114,12 @@ class TextAlignmentModel(BaseModel):
                 self.geo_encoder.add_projector(projected_dim=self.text_encoder.output_dim)
                 self.trainable_modules.append("geo_encoder.extra_projector")
 
+        print("------------------------")
+
+    def on_fit_start(self):
         # Configure contrastive retrieval evaluation
         self.setup_retrieval_evaluation(verbose=0)
-        print("------------------------")
+        print("Retrieval evaluation configured")
 
     def setup_retrieval_evaluation(
         self,
@@ -153,6 +156,7 @@ class TextAlignmentModel(BaseModel):
         with torch.inference_mode():
             self.concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
             self.concept_embeds = F.normalize(self.concept_embeds, dim=1)
+            self.concept_embeds = self.concept_embeds.to(self.device)
 
     @override
     def forward(
