@@ -59,3 +59,27 @@ def log_hyperparameters(object_dict: Dict[str, Any]) -> None:
     # send hparams to all loggers
     for logger in trainer.loggers:
         logger.log_hyperparams(hparams)
+
+
+def _group_keys(keys: list[str]) -> dict[str, list[str]]:
+    """Groups module names (keys)"""
+    grouped: dict[str, list[str]] = {}
+    for k in keys:
+        top = k.split(".", 1)[0] if "." in k else k
+        grouped.setdefault(top, []).append(k)
+    return grouped
+
+
+def log_model_loading(tag: str, result) -> None:
+    """Log missing/unexpected keys from `load_state_dict`."""
+    missing_keys, unexpected_keys = result
+    if missing_keys:
+        grouped = _group_keys(list(missing_keys))
+        summary = {k: len(v) for k, v in grouped.items()}
+        log.warning(f"[{tag}] Missing keys: {summary}")
+    if unexpected_keys:
+        grouped = _group_keys(list(unexpected_keys))
+        summary = {k: len(v) for k, v in grouped.items()}
+        log.warning(f"[{tag}] Unexpected keys: {summary}")
+    if not missing_keys and not unexpected_keys:
+        log.info(f"[{tag}] Module weights loaded successfully")

@@ -8,15 +8,13 @@ from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 class RRMSELoss(BaseLossFn):
     """Relative Root Mean Squared Error (RRMSE).
 
-    RRMSE = RMSE / mean(|labels|)
+    RRMSE = RMSE / mean(labels)
 
-    Normalises RMSE by the mean absolute value of the target, giving a
-    unit-free percentage error. This makes results comparable across crops
-    and regions with different absolute yield scales (e.g. t/ha ranges
-    differ significantly between maize in Zambia and rice in Rwanda).
+    Normalises RMSE by the mean absolute value of the target, giving a unit-free percentage error.
+    This makes results comparable across crops and regions with different absolute yield scales
+    (e.g. t/ha ranges differ significantly between maize in Zambia and rice in Rwanda).
 
-    Returns a fraction (e.g. 0.15 = 15 % error). Multiply by 100 for
-    percentage when reporting.
+    Returns a fraction (e.g. 0.15 = 15 % error). Multiply by 100 for percentage when reporting.
     """
 
     def __init__(self) -> None:
@@ -30,6 +28,7 @@ class RRMSELoss(BaseLossFn):
         pred: torch.Tensor,
         labels: torch.Tensor | None = None,
         batch: Dict[str, torch.Tensor] | None = None,
+        mode: str | None = None,
         **kwargs,
     ) -> torch.Tensor | Dict[str, torch.Tensor]:
 
@@ -39,6 +38,6 @@ class RRMSELoss(BaseLossFn):
         loss = rmse / (mean_abs + 1e-8)
 
         if "return_label" in kwargs:
-            return {self.name: loss}
+            return {f"{mode}_{self.name}": loss}
         else:
             return loss

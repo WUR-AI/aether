@@ -21,6 +21,9 @@ trainer:
 data:
   batch_size: 64
   dataset:
+    modalities:
+      tessera:
+        size: 3
     use_features: true
 
 logger:

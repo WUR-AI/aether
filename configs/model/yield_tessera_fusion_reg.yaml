@@ -22,7 +22,7 @@ geo_encoder:
         dropout_prob: 0.2
         geo_data_name: tabular
 
-  fusion_strategy: "concat"
+  fusion_strategy: "dynamic_gate"
 
 prediction_head:
   _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
@@ -32,8 +32,9 @@ prediction_head:
 
 # geo_encoder includes the tessera AverageEncoder + tabular branch; head is always trained.
 trainable_modules: [geo_encoder, prediction_head]
-# Disable L2 normalization before MLP regression to keep magnitude of features
+# Disable L2 unit-sphere projection (F.normalize) — regression needs full vector structure, not just direction
 normalize_features: false
+standardize_targets: true
 
 metrics: ${metrics}
 

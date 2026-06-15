@@ -29,13 +29,20 @@ class RSquared(BaseMetrics):
     def forward(
         self,
         pred: torch.Tensor,
+        mode: str | None = None,
         labels: torch.Tensor | None = None,
         batch: Dict[str, torch.Tensor] | None = None,
         **kwargs,
     ) -> Dict[str, torch.Tensor]:
-        labels = labels if labels is not None else batch.get("target")
-        mode = kwargs.get("mode", "train")
+        if mode not in _MODES:
+            raise ValueError(f"RSquared.forward: mode must be one of {_MODES}, got '{mode}'")
+        if labels is None:
+            labels = batch.get("target") if batch is not None else None
+        if labels is None:
+            raise ValueError(
+                "RSquared.forward: labels must be provided via `labels` or `batch['target']`"
+            )
 
         metric = self._r2[f"mode_{mode}"]
         metric.update(pred.squeeze(-1), labels.squeeze(-1))
-        return {self.name: metric}
+        return {f"{mode}_{self.name}": metric}

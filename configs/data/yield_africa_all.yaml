@@ -8,6 +8,7 @@ dataset:
   use_target_data: true
   use_features: true
   use_aux_data: none
+  csv_name: null
   seed: ${seed}
   cache_dir: ${paths.cache_dir}
   # Country/year filters — set to a list to restrict, null to include all.

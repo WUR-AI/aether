@@ -82,6 +82,8 @@ class YieldAfricaDataset(BaseDataset):
         cache_dir: str = None,
         mock: bool = False,
         use_features: bool = True,
+        use_country_features: bool = True,
+        csv_name: str = None,
         countries: List[str] | None = None,
         years: List[int] | None = None,
         exclude_countries: List[str] | None = None,
@@ -98,6 +100,7 @@ class YieldAfricaDataset(BaseDataset):
             implemented_mod={"coords", "tessera"},
             mock=mock,
             use_features=use_features,
+            csv_name=csv_name,
         )
 
         # Inject year and country one-hot columns as feat_* so that
@@ -111,8 +114,12 @@ class YieldAfricaDataset(BaseDataset):
             new_cols: Dict[str, Any] = {
                 "feat_year": (self.df["year"].astype(float) - _YEAR_MEAN) / _YEAR_STD
             }
-            for code in _ALL_COUNTRIES:
-                new_cols[f"feat_country_{code}"] = (self.df["country"] == code).astype(float)
+            # Country one-hots should be disabled for LOCO evaluation: the held-out
+            # country is unseen during training, so its one-hot is always 0 in train
+            # and always 1 at test time — a guaranteed distribution shift.
+            if use_country_features:
+                for code in _ALL_COUNTRIES:
+                    new_cols[f"feat_country_{code}"] = (self.df["country"] == code).astype(float)
 
             # Fourier harmonics of coordinates, normalised to the study-area extent.
             #
@@ -173,6 +180,19 @@ class YieldAfricaDataset(BaseDataset):
         # self.feat_names and self.tabular_dim.
         self.records = self.get_records()
 
+        # Drop records whose TESSERA tile is absent so the model is never
+        # trained or evaluated on zero-padded stand-ins.
+        if "tessera" in self.modalities:
+            before = len(self.records)
+            self.records = [r for r in self.records if os.path.exists(r["tessera_path"])]
+            dropped = before - len(self.records)
+            if dropped:
+                log.warning(
+                    "Dropped %d/%d records: TESSERA tile not found on disk.",
+                    dropped,
+                    before,
+                )
+
     def setup(self) -> None:
         """Check for requested modality data; warn if TESSERA tiles are absent.
 
@@ -190,7 +210,7 @@ class YieldAfricaDataset(BaseDataset):
                 log.warning(
                     "TESSERA tiles not found at %s. "
                     "Run src/data_preprocessing/yield_africa_tessera_preprocess.py "
-                    "to pre-fetch tiles. Missing tiles will fall back to zero tensors.",
+                    "to pre-fetch tiles. Records with missing tiles are excluded from the dataset.",
                     tessera_dir,
                 )
 
@@ -205,15 +225,7 @@ class YieldAfricaDataset(BaseDataset):
                     [row["lat"], row["lon"]], dtype=torch.float32
                 )
             elif modality == "tessera":
-                tile_path = row["tessera_path"]
-                if os.path.exists(tile_path):
-                    sample["eo"]["tessera"] = self.load_npy(tile_path)
-                else:
-                    size = self.modalities["tessera"].get("size", 9)
-                    log.debug("TESSERA tile missing: %s — using zero fallback.", tile_path)
-                    sample["eo"]["tessera"] = torch.zeros(
-                        _TESSERA_CHANNELS, size, size, dtype=torch.float32
-                    )
+                sample["eo"]["tessera"] = self.load_tessera(row["tessera_path"])
 
         if self.use_features and self.feat_names:
             sample["eo"]["tabular"] = torch.tensor(

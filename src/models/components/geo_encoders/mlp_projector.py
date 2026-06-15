@@ -25,9 +25,8 @@ class MLPProjector(BaseGeoEncoder):
         self.net: nn.Module | None = None
 
     @override
-    def setup(self) -> List[str]:
+    def _setup(self) -> List[str]:
         self.configure_nn()
-        print("Model setup with MLP projector")
         return ["net"]
 
     def set_input_dim(self, input_dim: int) -> None:
@@ -49,4 +48,7 @@ class MLPProjector(BaseGeoEncoder):
         self.net = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.net(x)
+        feats = self.net(x)
+        if self.extra_projector:
+            feats = self.extra_projector(feats)
+        return feats

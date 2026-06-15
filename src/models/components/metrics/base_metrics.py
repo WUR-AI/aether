@@ -12,6 +12,7 @@ class BaseMetrics(nn.Module, ABC):
     @abstractmethod
     def forward(
         self,
+        mode: str,
         pred: torch.Tensor,
         batch: Dict[str, torch.Tensor],
         **kwargs,

@@ -1,0 +1,25 @@
+defaults:
+  - _self_
+  - paths: ${oc.env:STORAGE_MODE,local}
+  - extras: default
+  - hydra: default
+
+# task name, determines output directory path
+task_name: "inference"
+tags: ["dev"]
+
+# If set, inference.py will load this merged checkpoint directly.
+#inference_ckpt_path: ${paths.log_dir}${task_name}/2026-04-07_12-56-16/inference_model.ckpt
+
+# If `inference_ckpt_path` is not set, stitch the inference model from:
+# - predictive ckpt (provides prediction_head weights)
+# - alignment ckpt (provides text_encoder weights + geo_encoder)
+predictive_ckpt_path: ${paths.log_dir}train/runs/2026-04-02_15-54-53/checkpoints/epoch_000.ckpt
+alignment_ckpt_path: ${paths.log_dir}train/runs/2026-04-02_15-40-03/checkpoints/epoch_000.ckpt
+
+# If set, inference.py will save a merged inference checkpoint you can reload with
+# `inference_ckpt_path`.
+save_inference_ckpt_path: ${paths.log_dir}${task_name}/${now:%Y-%m-%d}_${now:%H-%M-%S}/inference_model.ckpt
+#save_inference_ckpt_path: null
+
+training_order: ["alignment_model", "prediction_model"]
