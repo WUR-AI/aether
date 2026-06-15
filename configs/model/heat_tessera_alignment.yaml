@@ -1,0 +1,37 @@
+# Tessera-only alignment model for the Guatemala LST use case.
+# EO branch = average-pooled Tessera (your best regressor: Tessera avg, R2=0.733).
+# No fusion (fusion hurt in your experiments). CLIP text tower + GeoCLIP mlp stay frozen;
+# only the text projector, the auto-added geo projector, and the temperature train.
+_target_: src.models.text_alignment_model.TextAlignmentModel
+
+geo_encoder:
+  _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
+  geo_data_name: tessera        # averages the 10x10x128 tile -> 128-d vector
+
+text_encoder:
+  _target_: src.models.components.text_encoders.clip_text_encoder.ClipTextEncoder
+  hf_cache_dir: ${paths.huggingface_cache}
+
+# geo (128) != text (512); match_to_geo=false projects the GEO side up to 512.
+# _setup() auto-adds & trains geo_encoder.extra_projector.
+match_to_geo: false
+trainable_modules: [text_encoder.projector, loss_fn.log_temp]
+
+metrics: ${metrics}
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.0
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+
+loss_fn:
+  _target_: src.models.components.loss_fns.clip_loss.ClipLoss
+  temperature: 0.07
