@@ -195,7 +195,21 @@ class TextAlignmentModel(BaseModel):
             geo_feats, text_feats = feats[0], feats[1]
 
         # Get loss
-        loss = self.loss_fn(geo_feats, text_feats)
+        aux_values = batch["aux"].get("aux_standardized")
+        aux_ids_per_caption = batch.get("text_aux_ids")
+
+        if geo_feats.isnan().any():
+            print(geo_feats)
+            print(batch["name_loc"])
+            exit()
+
+        loss = self.loss_fn(
+            geo_feats,
+            text_feats,
+            mode=mode,
+            aux_values=aux_values,
+            aux_ids_per_caption=aux_ids_per_caption,
+        )
 
         # Get similarities
         with torch.no_grad():
