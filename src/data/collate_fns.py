@@ -49,4 +49,9 @@ def collate_fn(
     else:
         batch_collected["text"] = caption_builder.sample_multiple_or_all(batch_collected["aux"])
 
+    # If requested to return aux_ids, recompile stacks
+    if caption_builder.return_aux_ids:
+        batch_collected["text_aux_ids"] = batch_collected["text"][1]
+        batch_collected["text"] = batch_collected["text"][0]
+
     return batch_collected
