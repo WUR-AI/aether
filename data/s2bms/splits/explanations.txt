@@ -1,0 +1,11 @@
+split_indices_s2bms+s2bms-unlabelled-2026-06-02-0918.pth: sum of: original s2bms (with val and test subset for aef and tessera available tile union) and all unlabelled locations in the training split.
+
+split_indices_s2bms+s2bms-unlabelled-2026-06-11-15-23-51_union_aef_tsr_val_test.pth: subset of split_indices_s2bms+s2bms-unlabelled-2026-06-02-0918.pth where all train tiles are availble for aef
+
+split_indices_s2bms+s2bms-unlabelled-20260529_2026-05-29-1438.pth: all train/val/test unlabelled indices (not used, source data)
+
+split_indices_s2bms_2024-08-14-1459.pth: original S2BMS split (?,  not used, source data?)
+
+split_indices_s2bms_2024-08-14-1459_union_aef_tsr_val_test.pth: S2bms with val and test subset for aef and tessera available tile union
+
+split_indices_s2bms_2024-08-14-1459_union_aef_tsr_val_test_train.pth:  S2bms with val and test and train subset for aef and tessera available tile union (less tiles in the training, because tessera was missing some: use for tessera)
