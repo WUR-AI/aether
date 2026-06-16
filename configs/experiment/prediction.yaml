@@ -39,4 +39,9 @@ trainer:
   min_epochs: 1
   max_epochs: 100
 
-logger: none
+logger:
+  wandb:
+    tags: ${tags}
+    group: "predictive"
+  aim:
+    experiment: "predictive"
