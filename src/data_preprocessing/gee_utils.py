@@ -296,6 +296,7 @@ def download_gee_image(
     sentinel_month_end="09",
     collection_name="sentinel2",
     resize_image=True,
+    save_average_only=True,
 ):
     """Download a GEE image for given coordinates and save it locally.
 
@@ -314,6 +315,8 @@ def download_gee_image(
     assert type(path_save) and os.path.exists(
         path_save
     ), f"path_save must be a valid path, got {path_save}"
+    if save_average_only:
+        resize_image = True
     gsd_resolution = 10
     patch_size = (
         pixel_patch_size + 20
@@ -386,7 +389,12 @@ def download_gee_image(
         ), im_crop.shape
         if verbose:
             print("New size: ", im_crop.shape)
-        im_crop.rio.to_raster(filepath)
+        if save_average_only:
+            im_crop_mean = im_crop.mean(dim=("x", "y"), keepdims=True)
+            im_crop_mean.rio.to_raster(filepath, dtype="float32")
+        else:
+            im_crop.rio.to_raster(filepath, dtype="float32")
+
         im_gee = im_crop
 
     return im_gee, filepath
@@ -401,6 +409,7 @@ def download_list_coord(
     start_index=0,
     stop_index=None,
     resize_image=True,
+    save_average_only=False,
     list_collections=["sentinel2", "alphaearth"],
     verbose=0,
 ):
@@ -449,6 +458,7 @@ def download_list_coord(
                     verbose=verbose,
                     resize_image=resize_image,
                     collection_name=im_collection,
+                    save_average_only=save_average_only,
                 )
             except Exception as e:
                 print(f"Image {name}, {im_collection} could not be downloaded, error: {e}")
