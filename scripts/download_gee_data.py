@@ -9,6 +9,14 @@ from src.data_preprocessing.create_aux_data import get_aux_data_from_coords_list
 
 
 def main(start=0, stop=2000, content="alphaearth"):
+    """Download GEE data for a list of coordinates and save to disk. Either auxiliary data or
+    alphaearth data can be downloaded, depending on the value of `content`.
+
+    Args:
+        start (int): Starting index of the coordinates to process.
+        stop (int): Ending index of the coordinates to process.
+        content (str): Type of data to download. Must be either "aux_data" or "alphaearth".
+    """
     assert content in ["aux_data", "alphaearth"], f"{content} not recognised."
     path_csv = os.path.join(os.environ["DATA_DIR"], "s2bms/source/", "unlabelled_samples_10k.csv")
     assert os.path.exists(path_csv), f"CSV file with locations does not exist: {path_csv}"
@@ -42,11 +50,11 @@ def main(start=0, stop=2000, content="alphaearth"):
         _ = gu.download_list_coord(
             coord_list=coords_list,
             name_list=name_list,
-            pixel_patch_size=256,
+            pixel_patch_size=128,
             list_collections=["alphaearth"],
             name_group="aef-uk-unlabelled",
             save_average_only=True,
-            path_save=os.path.join(os.environ["DATA_DIR"], "s2bms/source/alphaearth_av/"),
+            path_save=os.path.join(os.environ["DATA_DIR"], "s2bms/source/alphaearth_av-128/"),
         )
 
 
