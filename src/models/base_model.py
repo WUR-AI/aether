@@ -45,7 +45,9 @@ class BaseModel(LightningModule, ABC):
         self.save_hyperparameters(
             ignore=[
                 "geo_encoder",
+                "geo_adapter",
                 "text_encoder",
+                "text_adapter",
                 "prediction_head",
                 "optimizer",
                 "scheduler",
@@ -269,17 +271,17 @@ class BaseModel(LightningModule, ABC):
             }
         )
 
-        if hasattr(self, "geo_encoder"):
+        if hasattr(self, "geo_encoder") and self.geo_encoder is not None:
             checkpoint["hyper_parameters"]["geo_encoder"] = self.geo_encoder.cfg_dict
-        if hasattr(self, "geo_adapter"):
+        if hasattr(self, "geo_adapter") and self.geo_adapter is not None:
             checkpoint["hyper_parameters"]["geo_adapter"] = self.geo_adapter.cfg_dict
 
-        if hasattr(self, "prediction_head"):
+        if hasattr(self, "prediction_head") and self.prediction_head is not None:
             checkpoint["hyper_parameters"]["prediction_head"] = self.prediction_head.cfg_dict
 
-        if hasattr(self, "text_encoder"):
+        if hasattr(self, "text_encoder") and self.text_encoder is not None:
             checkpoint["hyper_parameters"]["text_encoder"] = self.text_encoder.cfg_dict
-        if hasattr(self, "text_adapter"):
+        if hasattr(self, "text_adapter") and self.text_adapter is not None:
             checkpoint["hyper_parameters"]["text_adapter"] = self.text_adapter.cfg_dict
         return
 
