@@ -322,6 +322,12 @@ class BaseDataset(Dataset, ABC):
         print("\n\nSetting up AEF data...\n\n")
 
         dst_dir = os.path.join(self.data_dir, "eo/aef")
+        avail_files = os.listdir(dst_dir)
+        for i, rec in enumerate(self.records):
+            fname = os.path.basename(rec["aef_path"])
+            if fname not in avail_files:
+                self.records.pop(i)
+                print(f"No tile found for {fname} thus it will not be used.")
 
         # TODO aef retrieval?
         # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
