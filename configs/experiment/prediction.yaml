@@ -1,0 +1,42 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+defaults:
+  - override /model: s2bms_prediction
+  - override /data: s2bms_prediction
+  - override /metrics: s2bms_predictive
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+model:
+  geo_encoder:
+    _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
+    geo_data_name: coords
+  trainable_modules: [prediction_head]
+  prediction_head:
+    _target_: src.models.components.pred_heads.linear_pred_head.LinearPredictionHead
+
+data:
+  dataset:
+    modalities:
+      coords:
+    use_target_data: true
+    use_aux_data: false
+  caption_builder:
+  pin_memory: false
+  batch_size: 8
+  persistent_workers: false
+  saved_split_file_name: "s2bms_union_val_test.pth"
+
+tags: ["prediction", "geoclip_coords"]
+
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 100
+
+logger: none
