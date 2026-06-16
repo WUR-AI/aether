@@ -102,9 +102,9 @@ class TextAlignmentModel(BaseModel):
         if geo_branch_dim != text_branch_dim:
             if self.geo_adapter or self.text_adapter:
                 print(
-                    f"You opted to use: {'geo' if self.geo_adapter else '' and 'text' if self.text_adapter else ''} adapter(s)",
-                    "but you miss-configured output dimensions:"
-                    f"geo:{geo_branch_dim} vs text: {text_branch_dim}",
+                    f"You opted to use:{' geo' if self.geo_adapter else '' and ' text' if self.text_adapter else ''} adapter",
+                    "but you miss-configured output dimensions:\n"
+                    f"geo: {geo_branch_dim} vs text: {text_branch_dim}\n",
                     "Please try again.",
                 )
             elif self.match_to_geo:
