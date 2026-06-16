@@ -41,7 +41,7 @@ data:
   batch_size: 128
   persistent_workers: true
   prefetch_factor: 2
-  saved_split_file_name: "split_indices_s2bms_2024-08-14-1459_union_aef_tsr_val_test.pth"
+  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
 
 logger:
   wandb:
