@@ -2,7 +2,7 @@ import copy
 import os
 import time
 from functools import partial
-from typing import Any, Dict, List, Tuple
+from typing import Any, Tuple
 
 import numpy as np
 import pandas as pd
@@ -67,8 +67,6 @@ class BaseDataModule(LightningDataModule):
             self.caption_builder.sync_with_dataset(self.dataset)
             self.concept_configs = caption_builder.concepts
 
-        self.split_data()
-
     @property
     def tabular_dim(self):
         return self.dataset.tabular_dim
@@ -86,6 +84,7 @@ class BaseDataModule(LightningDataModule):
 
         # Set up the dataset (download requested modalities)
         self.dataset.setup()
+        self.split_data()
 
     @property
     def batch_size_per_device(self) -> None:
@@ -251,10 +250,19 @@ class BaseDataModule(LightningDataModule):
             if test_indices is not None and not isinstance(test_indices, pd.Series):
                 raise NotImplementedError("Expected a pd series of name_locs for data splits.")
 
-            train_indices = np.where(self.dataset.df["name_loc"].isin(train_indices))[0]
-            val_indices = np.where(self.dataset.df["name_loc"].isin(val_indices))[0]
+            ds_records_names = [i["name_loc"] for i in self.dataset.records]
+            records_name_to_idx = {name: idx for idx, name in enumerate(ds_records_names)}
+
+            train_indices = np.array(
+                [records_name_to_idx[n] for n in train_indices if n in records_name_to_idx]
+            )
+            val_indices = np.array(
+                [records_name_to_idx[n] for n in val_indices if n in records_name_to_idx]
+            )
             if test_indices is not None:
-                test_indices = np.where(self.dataset.df["name_loc"].isin(test_indices))[0]
+                test_indices = np.array(
+                    [records_name_to_idx[n] for n in test_indices if n in records_name_to_idx]
+                )
 
             print(f"Dataset was split using indices from file: {self.saved_split_file_path}")
         else:
@@ -264,13 +272,10 @@ class BaseDataModule(LightningDataModule):
 
         if split_data_from_inds:
             self.data_train = torch.utils.data.Subset(self.dataset, train_indices)
-            self.data_train.dataset.mode = "train"
             self.data_val = torch.utils.data.Subset(self.dataset, val_indices)
-            self.data_val.dataset.mode = "val"
 
             if test_indices is not None:
                 self.data_test = torch.utils.data.Subset(self.dataset, test_indices)
-                self.data_test.dataset.mode = "test"
             else:
                 self.data_test = None
 
