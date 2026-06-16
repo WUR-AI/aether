@@ -23,9 +23,17 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         data_dir: str,
         seed: int,
         n_captions_for_validation: int | str = "all",
+        return_aux_ids: bool = False,
+        stats_file: str | None = None,
     ) -> None:
         super().__init__(
-            templates_fname, concepts_fname, data_dir, seed, n_captions_for_validation
+            templates_fname,
+            concepts_fname,
+            data_dir,
+            seed,
+            n_captions_for_validation,
+            return_aux_ids,
+            stats_file,
         )
 
     @override
@@ -50,6 +58,20 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                     "description": description,
                     "units": units,
                 }
+
+        # If auxiliary value statistics are provided, make them into tensors
+        if self.stats:
+            max_id = len(aux_columns) - 1
+            means = torch.zeros(max_id + 1)
+            stds = torch.ones(max_id + 1)
+
+            for name, stats in self.stats.items():
+                idx = self.column_to_metadata_map["aux"][name]["id"]
+                means[idx] = stats["mean"]
+                stds[idx] = stats["std"]
+
+            self.means = means
+            self.stds = stds + 1e-8
 
         self.sync_concepts()
 
@@ -119,6 +141,9 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         template = self.templates[template_idx]
         tokens = self.tokens_in_template[template_idx]
         replacements = {}
+        if self.return_aux_ids:
+            ids = []
+
         for token in tokens:
             init_token = token
             if "top" in token:
@@ -132,6 +157,8 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                 )
 
             idx = values_dict["id"]
+            if self.return_aux_ids:
+                ids.append(idx)
             value = aux[idx].item()
 
             formatted_desc = values_dict["description"].lower() or ""
@@ -149,6 +176,8 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
             replacements[init_token] = formatted_desc
 
         template = self._fill(template, replacements)
+        if self.return_aux_ids:
+            return template, ids
         return template
 
 

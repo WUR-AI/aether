@@ -3,7 +3,7 @@ import os
 import random
 import re
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, final
+from typing import Any, Dict, List, Tuple, final
 
 import torch
 
@@ -19,6 +19,8 @@ class BaseCaptionBuilder(ABC):
         data_dir: str,
         seed: int,
         n_captions_for_validation: int | str = "all",
+        return_aux_ids: bool = False,
+        stats_file: str | None = None,
     ) -> None:
         """Interface of caption builder class for converting numerical auxiliary data values into
         textual descriptions from provided caption templates.
@@ -28,6 +30,8 @@ class BaseCaptionBuilder(ABC):
         :param data_dir: directory where data is stored.
         :param seed: random seed.
         :param n_captions_for_validation: number of captions to randomly sample for validation
+        :param return_aux_ids: whether to return auxiliary column ids.
+        :param stats_file: path to a json file with statistics of the aux cols (train split).
         """
 
         self.data_dir = data_dir
@@ -55,6 +59,11 @@ class BaseCaptionBuilder(ABC):
             )
         else:
             self.n = n_captions_for_validation
+
+        self.return_aux_ids = return_aux_ids
+
+        if stats_file:
+            self.stats = json.load(open(stats_file))
 
     @final
     def __len__(self):
@@ -106,48 +115,86 @@ class BaseCaptionBuilder(ABC):
         """Build caption text from template and row of auxiliary data."""
         pass
 
-    def random(self, aux_values) -> List[str]:
-        """Return a caption from a randomly sampled template for each data point."""
-        formatted_rows = []
+    def random(self, aux_values) -> Tuple[List[str], List[int] | None]:
+        """Return a caption per location from a randomly sampled template for each data point.
 
+        :param aux_values: a batch of auxiliary values to use for random sampling.
+        :return: a batch of text captions and optionally aux col ids used for each of the caption.
+        """
         batch_size = len(aux_values["aux"])
 
-        template_ids = random.choices(
-            range(len(self.templates)),
-            k=batch_size,
-        )
-        for (
-            i,
-            template_idx,
-        ) in enumerate(template_ids):
-            row_aux = aux_values["aux"][i]
-            row_top = aux_values.get("top")[i] if aux_values.get("top") else None
-            formatted_rows.append(
-                self._build_from_template(template_idx, aux=row_aux, top=row_top)
-            )
+        # Location captions holders
+        formatted_location_captions = []
 
-        return formatted_rows
+        # Ids of used aux col ids per template (location)
+        if self.return_aux_ids:
+            ids = []
 
-    def sample_multiple_or_all(self, aux_values):
-        """Return self.n captions from randomly sampled templates for each data point."""
-        formatted_rows = []
-        for i in range(0, len(aux_values["aux"])):
-            descriptions = []
+        # Sample templates
+        template_ids = random.choices(range(len(self.templates)), k=batch_size)
+        for i, template_idx in enumerate(template_ids):
+            # Get aux and top values per location
             row_aux = aux_values["aux"][i]
             row_top = aux_values.get("top")[i] if aux_values.get("top") else None
 
-            template_ids = random.choices(
-                range(len(self.templates)),
-                k=self.n,
-            )
-
-            for template_idx in template_ids:
-                descriptions.append(
-                    self._build_from_template(template_idx, aux=row_aux, top=row_top)
+            # Get filled in template for location
+            if self.return_aux_ids:
+                filled_template, template_ids = self._build_from_template(
+                    template_idx, aux=row_aux, top=row_top
                 )
-            formatted_rows.append(descriptions)
+                ids.append(template_ids)
+            else:
+                filled_template = self._build_from_template(template_idx, aux=row_aux, top=row_top)
+            formatted_location_captions.append(filled_template)
 
-        return formatted_rows
+        if self.return_aux_ids:
+            return formatted_location_captions, ids
+        return formatted_location_captions
+
+    def sample_multiple_or_all(self, aux_values) -> Tuple[List[str], List[int] | None]:
+        """Return self.n captions from randomly sampled templates for each data point.
+
+        :param aux_values: a batch of auxiliary values to use for random sampling.
+        :return: a batch of text captions and optionally aux col ids used for each of the caption.
+        """
+        batch_size = len(aux_values["aux"])
+
+        # Location captions holders
+        formatted_location_captions = []
+
+        # Ids of used aux col ids per template (location)
+        if self.return_aux_ids:
+            ids = []
+
+        for i in range(0, batch_size):
+            # Get aux and top values per location
+            row_aux = aux_values["aux"][i]
+            row_top = aux_values.get("top")[i] if aux_values.get("top") else None
+
+            # Sample templates
+            template_ids = random.choices(range(len(self.templates)), k=self.n)
+
+            # Get filled in templates for location
+            filled_in_location_templates = []
+            ids_per_location = []
+            for template_idx in template_ids:
+                if self.return_aux_ids:
+                    filled_template, template_ids = self._build_from_template(
+                        template_idx, aux=row_aux, top=row_top
+                    )
+                    ids_per_location.extend(filled_template)
+                else:
+                    filled_template = self._build_from_template(
+                        template_idx, aux=row_aux, top=row_top
+                    )
+                filled_in_location_templates.append(filled_template)
+
+            if self.return_aux_ids:
+                ids.append(template_ids)
+            formatted_location_captions.append(filled_in_location_templates)
+        if self.return_aux_ids:
+            return formatted_location_captions, ids
+        return formatted_location_captions
 
     def sync_concepts(self) -> List[str]:
         for concept in self.concepts:
