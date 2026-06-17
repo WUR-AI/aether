@@ -1,12 +1,6 @@
-import json
-import os
-
-import pandas as pd
-import pytest
 import torch
 
 from src.models.components.geo_encoders.geoclip import GeoClipCoordinateEncoder
-from src.models.components.pred_heads.base_pred_head import BasePredictionHead
 from src.models.components.pred_heads.linear_pred_head import LinearPredictionHead
 from src.models.components.pred_heads.mlp_pred_head import MLPPredictionHead
 from src.models.components.pred_heads.mlp_regression_head import (
@@ -18,6 +12,7 @@ from src.models.components.pred_heads.mlp_regression_head import (
 def test_pred_head_generic_properties(create_butterfly_dataset):
     """Test required properties of the prediction head class."""
     ds, dm = create_butterfly_dataset
+    dm.setup()
     batch = next(iter(dm.train_dataloader()))
     eo_encoder = GeoClipCoordinateEncoder()
     eo_encoder.setup()

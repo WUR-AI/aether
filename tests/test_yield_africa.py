@@ -282,6 +282,7 @@ def test_yield_africa_dataset_aux_shape(yield_africa_dataset_with_aux):
 
 def test_yield_africa_datamodule_split_sizes(yield_africa_datamodule):
     dm = yield_africa_datamodule
+    dm.setup()
     assert len(dm.data_train) == 7
     assert len(dm.data_val) == 2
     assert len(dm.data_test) == 1
@@ -323,6 +324,7 @@ def test_yield_africa_datamodule_split_deterministic(request, yield_africa_csv, 
         )
 
     dm1, dm2 = make_dm(), make_dm()
+    dm1.setup(), dm2.setup()
     assert dm1.data_train.indices == dm2.data_train.indices
     assert dm1.data_val.indices == dm2.data_val.indices
 

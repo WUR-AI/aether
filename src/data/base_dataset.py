@@ -10,7 +10,6 @@ import torch
 from torch.utils.data import Dataset
 
 from src.utils.data_utils import center_crop_npy
-from src.utils.errors import MissingDataError
 
 TORCH_DTYPES = {
     "float32": torch.float32,
@@ -262,19 +261,22 @@ class BaseDataset(Dataset, ABC):
 
         # If data does not exist or is empty → full download
         if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
-            os.makedirs(dst_dir, exist_ok=True)
+            if download_missing_tiles:
+                os.makedirs(dst_dir, exist_ok=True)
 
-            tessera_from_df(
-                self.df,
-                data_dir=dst_dir,
-                year=year,
-                tile_size=size,
-                cache_dir=self.cache_dir,
-            )
+                tessera_from_df(
+                    self.df,
+                    data_dir=dst_dir,
+                    year=year,
+                    tile_size=size,
+                    cache_dir=self.cache_dir,
+                )
 
-            # TODO: if we compile the dataset and use zenodo (or sth else) then change to pooch downloading/loading
-            # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
-            # or self.setup_tessera_from_pooch() <- per children class implementation
+                # TODO: if we compile the dataset and use zenodo (or sth else) then change to pooch downloading/loading
+                # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
+                # or self.setup_tessera_from_pooch() <- per children class implementation
+            else:
+                print("Please download the missing Tessera tiles...")
 
         # Download missing rows (if any)
         else:
@@ -306,8 +308,9 @@ class BaseDataset(Dataset, ABC):
                             continue
                         except Exception as e:
                             print(f"Tile for {fname} could not be retrieved. Error: {e}")
-                self.records.pop(i)
-                print(f"No tile found for {fname} thus it will not be used.")
+                    else:
+                        self.records.pop(i)
+                        print(f"No tile found for {fname} thus it will not be used.")
 
     @final
     def setup_aef(self) -> None:
@@ -319,6 +322,12 @@ class BaseDataset(Dataset, ABC):
         print("\n\nSetting up AEF data...\n\n")
 
         dst_dir = os.path.join(self.data_dir, "eo/aef")
+        avail_files = os.listdir(dst_dir)
+        for i, rec in enumerate(self.records):
+            fname = os.path.basename(rec["aef_path"])
+            if fname not in avail_files:
+                self.records.pop(i)
+                print(f"No tile found for {fname} thus it will not be used.")
 
         # TODO aef retrieval?
         # TODO: in case of zenodo use may need to be moved to UC dataset subclasses

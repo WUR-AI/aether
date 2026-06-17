@@ -1,8 +1,3 @@
-import json
-import os
-
-import pandas as pd
-import pytest
 import torch
 
 from src.models.components.geo_encoders.average_encoder import AverageEncoder
@@ -23,6 +18,7 @@ def test_geo_encoder_generic_properties(create_butterfly_dataset):
         "mlp_projector": MLPProjector,
     }
     ds, dm = create_butterfly_dataset
+    dm.setup()
     batch = next(iter(dm.train_dataloader()))
 
     for geo_encoder_name, geo_encoder_class in dict_geo_encoders.items():
