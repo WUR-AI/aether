@@ -30,7 +30,9 @@ class SoftContrastiveLoss(BaseLossFn):
         """Forward computation."""
 
         # Get target matrix
-        T = self._get_soft_target_matrix(aux_ids_per_caption, aux_values)
+        T = self._get_soft_target_matrix(
+            aux_values=aux_values, aux_ids_per_caption=aux_ids_per_caption
+        )
 
         # Normalize targets
         T_eo2text = T / T.sum(dim=1, keepdim=True)
