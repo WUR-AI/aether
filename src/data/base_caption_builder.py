@@ -62,8 +62,7 @@ class BaseCaptionBuilder(ABC):
 
         self.return_aux_ids = return_aux_ids
 
-        if stats_file:
-            self.stats = json.load(open(stats_file))
+        self.stats = json.load(open(stats_file)) if stats_file else None
 
     @final
     def __len__(self):
