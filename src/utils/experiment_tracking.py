@@ -12,6 +12,71 @@ EXPERIMENT_TRACKER_NAME = "experiment_tracker.csv"
 ENTITY = "aether_xai"
 
 
+def parse_data_name(run=None, cfg=None):
+    if cfg is None:
+        assert run is not None
+        data_dict = run.config["data"]["dataset"]["modalities"]
+    else:
+        data_dict = cfg["data"]["dataset"]["modalities"]
+
+    if len(data_dict) == 1:
+        k = list(data_dict.keys())[0]
+        if k == "coords":
+            if "GeoClip" in run.config["model"]["geo_encoder"]["_target_"]:
+                data_name = "geoclip"
+            else:
+                data_name = "satclip"
+        else:
+            ks = list(data_dict.keys())
+            ks_new = [
+                f"{k}{f'_{k.get('size')}' if isinstance(k, dict) and k.get('size') else ''}"
+                for k in ks
+            ]
+            data_name = "-".join(map(str, ks_new))
+
+        return data_name
+
+
+def compose_experiment_name(cfg: DictConfig) -> str:
+    """For alignment
+    (unlab_)(geo_encoder)_(eo_mod)_(geo_adapter)_(text_encoder)_(text_adapter)_(batch_size) # noqa:
+
+    RST306.
+    """
+
+    name = ""
+
+    # Unlabeled
+    if cfg.data.dataset.use_unlabelled_data:
+        name += "unlab_"  # noqa: RST306
+
+    # geo encoder
+    name += cfg.model.geo_encoder._target_.split(".")[-1]
+
+    # eo mod
+    name += "_" + parse_data_name(cfg=cfg)
+
+    # geo adapter
+    if cfg.model.get("geo_adapter") is not None:
+        name += "_" + cfg.model.geo_adapter._target_.split(".")[-1]
+
+    # text encoder
+    name += "_" + cfg.model.text_encoder._target_.split(".")[-1]
+
+    # text adapter
+    if cfg.model.get("text_adapter") is not None:
+        name += "_" + cfg.model.text_adapter._target_.split(".")[-1]
+
+    # batch size
+    name += f"_b-{cfg.data.batch_size}"
+
+    # extras for experiment identification
+    if cfg.get("experiment_name_extra"):
+        name += "_" + cfg.experiment_name_extra
+
+    return name
+
+
 def update_wandb_run_id(run_id, project_name, updates_dict):
     api = wandb.Api()
     entity = ENTITY
@@ -107,22 +172,7 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
                 if experiment is None:
                     experiment = run.config["experiment_name"]
                     run.summary.update({"experiment": experiment})
-
-                data_dict = run.config["data"]["dataset"]["modalities"]
-                if len(data_dict) == 1:
-                    k = list(data_dict.keys())[0]
-                    if k == "coords":
-                        if "GeoClip" in run.config["model"]["geo_encoder"]["_target_"]:
-                            data_name = "geoclip"
-                        else:
-                            data_name = "satclip"
-                    else:
-                        ks = list(data_dict.keys())
-                        ks_new = [
-                            f"{k}{f'_{k.get('size')}' if isinstance(k, dict) and k.get('size') else ''}"
-                            for k in ks
-                        ]
-                        data_name = "-".join(map(str, ks_new))
+                    data_name = parse_data_name(run=run)
                     run.summary.update({"data_used": data_name})
 
                 # Add missing experiments to the table

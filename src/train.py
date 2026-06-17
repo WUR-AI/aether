@@ -10,7 +10,7 @@ from lightning.pytorch.loggers import Logger, WandbLogger
 from omegaconf import DictConfig, OmegaConf
 
 from src.data.base_datamodule import BaseDataModule
-from src.utils.experiment_tracking import experiment_check
+from src.utils.experiment_tracking import compose_experiment_name, experiment_check
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 load_dotenv()
@@ -96,6 +96,8 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         log.info("Logging hyperparameters!")
         log_hyperparameters(object_dict)
         group = cfg.get("experiment_name", "null")
+        if group == "null":
+            compose_experiment_name(cfg)
         wandb_logger.log_metrics({"experiment": group})
 
     if cfg.get("train"):
