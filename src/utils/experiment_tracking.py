@@ -56,19 +56,26 @@ def compose_experiment_name(cfg: DictConfig) -> str:
     # eo mod
     name += "_" + parse_data_name(cfg=cfg)
 
-    # geo adapter
-    if cfg.model.get("geo_adapter") is not None:
-        name += "_" + cfg.model.geo_adapter._target_.split(".")[-1]
-
-    # text encoder
-    name += "_" + cfg.model.text_encoder._target_.split(".")[-1]
-
-    # text adapter
-    if cfg.model.get("text_adapter") is not None:
-        name += "_" + cfg.model.text_adapter._target_.split(".")[-1]
-
     # batch size
-    name += f"_b-{cfg.data.batch_size}"
+    if cfg.model._target_ == "src.models.text_alignment_model.TextAlignmentModel":
+        # geo adapter
+        if cfg.model.get("geo_adapter") is not None:
+            name += "_" + cfg.model.geo_adapter._target_.split(".")[-1]
+
+        # text encoder
+        if cfg.model.get("text_adapter") is not None:
+            name += "_" + cfg.model.text_encoder._target_.split(".")[-1]
+
+        # text adapter
+        if cfg.model.get("text_adapter") is not None:
+            name += "_" + cfg.model.text_adapter._target_.split(".")[-1]
+
+        # batch size
+        name += f"_b-{cfg.data.batch_size}"
+    else:
+        # prediction head
+        if cfg.model.get("prediction_head") is not None:
+            name += "_" + cfg.model.prediction_head._target_.split(".")[-1]
 
     # extras for experiment identification
     if cfg.get("experiment_name_extra"):
