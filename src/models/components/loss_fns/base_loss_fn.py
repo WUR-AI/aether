@@ -22,7 +22,6 @@ class BaseLossFn(nn.Module, ABC):
     ) -> torch.Tensor:
         pass
 
-    @abstractmethod
     def setup(self, **kwargs: Any) -> None:
         """Setup method for losses in case they need some parameters from the dataset (e.g., for
         standardisation in the soft contrastive loss."""
