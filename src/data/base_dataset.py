@@ -271,6 +271,7 @@ class BaseDataset(Dataset, ABC):
         size = self.modalities["tessera"].get(
             "size", KeyError('Missing parameter "size" for Tessera modality')
         )
+        version = self.modalities["tessera"].get("version") or "v1.0"
 
         # If data does not exist or is empty → full download
         if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
@@ -283,6 +284,7 @@ class BaseDataset(Dataset, ABC):
                     year=year,
                     tile_size=size,
                     cache_dir=self.cache_dir,
+                    version=version,
                 )
 
                 # TODO: if we compile the dataset and use zenodo (or sth else) then change to pooch downloading/loading
