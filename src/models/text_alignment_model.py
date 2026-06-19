@@ -195,7 +195,7 @@ class TextAlignmentModel(BaseModel):
             geo_feats, text_feats = feats[0], feats[1]
 
         # Get loss
-        aux_values = batch["aux"].get("aux_standardized")
+        aux_values = batch["aux"].get("aux")
         aux_ids_per_caption = batch.get("text_aux_ids")
 
         if geo_feats.isnan().any():

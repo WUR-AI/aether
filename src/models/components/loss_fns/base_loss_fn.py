@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Any, Dict
 
 import torch
 from torch import nn
@@ -20,4 +20,10 @@ class BaseLossFn(nn.Module, ABC):
         mode: str | None = None,
         **kwargs,
     ) -> torch.Tensor:
+        pass
+
+    @abstractmethod
+    def setup(self, **kwargs: Any) -> None:
+        """Setup method for losses in case they need some parameters from the dataset (e.g., for
+        standardisation in the soft contrastive loss."""
         pass

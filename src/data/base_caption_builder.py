@@ -20,7 +20,6 @@ class BaseCaptionBuilder(ABC):
         seed: int,
         n_captions_for_validation: int | str = "all",
         return_aux_ids: bool = False,
-        stats_file: str | None = None,
     ) -> None:
         """Interface of caption builder class for converting numerical auxiliary data values into
         textual descriptions from provided caption templates.
@@ -31,7 +30,6 @@ class BaseCaptionBuilder(ABC):
         :param seed: random seed.
         :param n_captions_for_validation: number of captions to randomly sample for validation
         :param return_aux_ids: whether to return auxiliary column ids.
-        :param stats_file: path to a json file with statistics of the aux cols (train split).
         """
 
         self.data_dir = data_dir
@@ -61,8 +59,6 @@ class BaseCaptionBuilder(ABC):
             self.n = n_captions_for_validation
 
         self.return_aux_ids = return_aux_ids
-
-        self.stats = json.load(open(stats_file)) if stats_file else None
 
     @final
     def __len__(self):
