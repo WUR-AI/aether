@@ -9,6 +9,10 @@ Changes vs original:
   - implemented_mod stays {"coords"} because tabular data arrives
     automatically through feat_* CSV columns, not through the modalities dict.
     This is documented explicitly below.
+  - Implemented an override for `setup_tessera` in `HeatKrakowDataset`:
+    setup_tessera inherited from `BaseDataset` where `self.records.pop(i)`
+    was mutating the list mid-iteration, caused it to skip every second
+    missing file and eventually trigger a PyTorch DataLoader `IndexError: list index out of range`.
   - Minor: __getitem__ guard tightened (tabular only added when feat_names exist
     and modality logic is cleaner).
 """
@@ -29,7 +33,7 @@ class HeatKrakowDataset(BaseDataset):
       - name_loc          : unique location identifier
       - lat, lon          : WGS84 coordinates
       - target_lst        : Land Surface Temperature [°C]
-      - feat_*             : tabular features (numeric + one-hot categorical)
+      - feat_*            : tabular features (numeric + one-hot categorical)
 
     Modality design note
     --------------------
@@ -118,3 +122,82 @@ class HeatKrakowDataset(BaseDataset):
                     sample["aux"][aux_cat] = [row[v] for v in vals]
 
         return sample
+
+    @override
+    def setup_tessera(self) -> None:
+        """Overridden setup_tessera to fix the list mutation bug."""
+        from src.data_preprocessing.tessera_embeds import (
+            get_tessera_embeds,
+            tessera_from_df,
+        )
+
+        print("\n\nSetting up Tessera data (Using Krakow Overridden Method)...\n\n")
+        download_missing_tiles = False
+
+        # Check if data is already available
+        dst_dir = os.path.join(self.data_dir, "eo/tessera")
+
+        year = self.modalities["tessera"].get(
+            "year", KeyError('Missing parameter "year" for Tessera modality')
+        )
+        size = self.modalities["tessera"].get(
+            "size", KeyError('Missing parameter "size" for Tessera modality')
+        )
+
+        # If data does not exist or is empty → full download
+        if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
+            os.makedirs(dst_dir, exist_ok=True)
+
+            tessera_from_df(
+                self.df,
+                data_dir=dst_dir,
+                year=year,
+                tile_size=size,
+                cache_dir=self.cache_dir,
+            )
+
+        # Download missing rows (if any)
+        else:
+            from geotessera import GeoTessera
+
+            print("Downloading missing Tessera tiles...")
+            print("[Warning]: it may download tessera tiles filled with 0a")
+
+            avail_files = os.listdir(dst_dir)
+            gt = None
+
+            # Create a safe list to collect valid records
+            valid_records = []
+
+            for rec in self.records:
+                fname = os.path.basename(rec["tessera_path"])
+
+                if fname in avail_files:
+                    # File exists locally, keep it
+                    valid_records.append(rec)
+                else:
+                    # File is missing
+                    if download_missing_tiles:
+                        print(f"Retrieving missing Tessera data: {fname}")
+                        gt = gt or GeoTessera(cache_dir=self.cache_dir)
+                        row = self.df[self.df["name_loc"] == rec["name_loc"]]
+                        lon, lat = row.lon.item(), row.lat.item()
+                        try:
+                            get_tessera_embeds(
+                                lon,
+                                lat,
+                                rec["name_loc"],
+                                year=year,
+                                save_dir=dst_dir,
+                                tile_size=size,
+                                tessera_con=gt,
+                            )
+                            valid_records.append(rec)
+                            continue
+                        except Exception as e:
+                            print(f"Tile for {fname} could not be retrieved. Error: {e}")
+
+                    print(f"No tile found for {fname} thus it will not be used.")
+
+            # Safely swap the filtered list in place
+            self.records = valid_records
