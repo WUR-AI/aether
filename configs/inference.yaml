@@ -35,7 +35,7 @@ data:
         path: ${paths.data_dir}/s2bms/eo/avr_aef_128.csv
         enable_nans: true
 
-    use_target_data: false
+    use_target_data: true
     use_aux_data: "all"
     dtype: float32
     return_name_loc: true
