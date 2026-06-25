@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List, override
+from typing import Any, Dict, override
 
 import numpy as np
 import pooch
@@ -23,6 +23,7 @@ class ButterflyDataset(BaseDataset):
         cache_dir: str = None,
         mock: bool = False,
         dtype: str = "float32",
+        return_name_loc: bool = False,
     ) -> None:
         """A dataset implementation for the Butterfly diversity use case.
 
@@ -40,7 +41,7 @@ class ButterflyDataset(BaseDataset):
 
         assert not (
             use_unlabelled_data and use_target_data
-        ), "Joint use of unlabelled and target data is not supported."
+        ), "Joint use of unlabelled and target data is not supported yet."
         if use_unlabelled_data:
             dataset_name = ["s2bms", "s2bms-unlabelled-20260529"]
         else:
@@ -54,9 +55,10 @@ class ButterflyDataset(BaseDataset):
             dataset_name=dataset_name,
             seed=seed,
             cache_dir=cache_dir,
-            implemented_mod={"s2", "tessera", "coords", "aef"},
+            implemented_mod={"s2", "tessera", "coords", "aef", "aef_avr", "tessera_avr"},
             mock=mock,
             dtype=dtype,
+            return_name_loc=return_name_loc,
         )
 
     def setup(self):
@@ -192,6 +194,16 @@ class ButterflyDataset(BaseDataset):
                 formatted_row["eo"][modality] = self.load_tessera(row["tessera_path"])
             elif modality == "aef":
                 formatted_row["eo"][modality] = self.load_aef(row["aef_path"])
+            elif modality == "aef_avr":
+                formatted_row["eo"][modality] = torch.tensor(
+                    [row[f"emb_{i}"] for i in range(64)],
+                    dtype=getattr(torch, self.modalities["aef_avr"].get("dtype")),
+                )
+            elif modality == "tessera_avr":
+                formatted_row["eo"][modality] = torch.tensor(
+                    [row[f"emb_{i}"] for i in range(128)],
+                    dtype=getattr(torch, self.modalities["tessera_avr"].get("dtype")),
+                )
 
         if self.use_target_data:
             formatted_row["target"] = torch.tensor(
@@ -207,6 +219,9 @@ class ButterflyDataset(BaseDataset):
                     )
                 else:
                     formatted_row["aux"][aux_cat] = [row[v] for v in vals]
+
+        if self.return_name_loc:
+            formatted_row["name_loc"] = row["name_loc"]
 
         return formatted_row
 

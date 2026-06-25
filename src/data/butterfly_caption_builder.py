@@ -1,12 +1,11 @@
 import os
-from typing import Any, List, override
+from typing import List, override
 
 import pandas as pd
 import torch
 
 from src.data.base_caption_builder import (
     BaseCaptionBuilder,
-    get_adjective_for_percentage,
     sample_adjective_for_percentage,
 )
 from src.data.base_dataset import BaseDataset
@@ -18,9 +17,24 @@ from src.data_preprocessing.data_utils import (
 
 class ButterflyCaptionBuilder(BaseCaptionBuilder):
     def __init__(
-        self, templates_fname: str, concepts_fname: str, data_dir: str, seed: int
+        self,
+        templates_fname: str,
+        concepts_fname: str,
+        data_dir: str,
+        seed: int,
+        n_captions_for_validation: int | str = "all",
+        return_aux_ids: bool = False,
+        stats_file: str | None = None,
     ) -> None:
-        super().__init__(templates_fname, concepts_fname, data_dir, seed)
+        super().__init__(
+            templates_fname,
+            concepts_fname,
+            data_dir,
+            seed,
+            n_captions_for_validation,
+            return_aux_ids,
+            stats_file,
+        )
 
     @override
     def sync_with_dataset(self, dataset: BaseDataset) -> None:
@@ -44,6 +58,20 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                     "description": description,
                     "units": units,
                 }
+
+        # If auxiliary value statistics are provided, make them into tensors
+        if self.stats:
+            max_id = len(aux_columns) - 1
+            means = torch.zeros(max_id + 1)
+            stds = torch.ones(max_id + 1)
+
+            for name, stats in self.stats.items():
+                idx = self.column_to_metadata_map["aux"][name]["id"]
+                means[idx] = stats["mean"]
+                stds[idx] = stats["std"]
+
+            self.means = means
+            self.stds = stds + 1e-8
 
         self.sync_concepts()
 
@@ -113,6 +141,9 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         template = self.templates[template_idx]
         tokens = self.tokens_in_template[template_idx]
         replacements = {}
+        if self.return_aux_ids:
+            ids = []
+
         for token in tokens:
             init_token = token
             if "top" in token:
@@ -126,6 +157,8 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                 )
 
             idx = values_dict["id"]
+            if self.return_aux_ids:
+                ids.append(idx)
             value = aux[idx].item()
 
             formatted_desc = values_dict["description"].lower() or ""
@@ -143,6 +176,8 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
             replacements[init_token] = formatted_desc
 
         template = self._fill(template, replacements)
+        if self.return_aux_ids:
+            return template, ids
         return template
 
 

@@ -1,5 +1,3 @@
-from typing import Dict, List, override
-
 import hydra
 import torch
 
@@ -19,18 +17,28 @@ def adopt_encoder(ckpt_path: str) -> BaseGeoEncoder:
     # Get skeleton
     geo_config = ckpt["hyper_parameters"].get("geo_encoder")
     encoder: BaseGeoEncoder = hydra.utils.instantiate(geo_config)
+
     print("---Adopted encoder------")
+    encoder.adopted = True
     encoder.setup()
     encoder.cfg_dict = geo_config
-    print("------------------------")
+    encoder.cfg_dict.update(
+        {
+            "adopted": True,
+            "save_weights": bool(
+                "geo_encoder" in "".join(ckpt["hyper_parameters"].get("trainable_modules", []))
+            ),
+        }
+    )
 
     # Load in the weights
     state_dict = {
-        k.replace("geo_encoder.", ""): v
+        k.replace("geo_encoder.", "", 1): v
         for k, v in ckpt["state_dict"].items()
         if "geo_encoder." in k
     }
     res = encoder.load_state_dict(state_dict, strict=False)
-    log_model_loading("geo_encoder_ckpt", res)
+    log_model_loading("geo_encoder_ckpt", res, True)
+    print("------------------------")
 
     return encoder

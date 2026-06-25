@@ -3,23 +3,35 @@ import os
 import random
 import re
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, final
+from typing import Any, Dict, List, Tuple, final
 
 import torch
 
 from src.data.base_dataset import BaseDataset
+from src.utils.errors import IllegalArgumentCombination
 
 
 class BaseCaptionBuilder(ABC):
     def __init__(
-        self, templates_fname: str, concepts_fname: str, data_dir: str, seed: int
+        self,
+        templates_fname: str,
+        concepts_fname: str,
+        data_dir: str,
+        seed: int,
+        n_captions_for_validation: int | str = "all",
+        return_aux_ids: bool = False,
+        stats_file: str | None = None,
     ) -> None:
         """Interface of caption builder class for converting numerical auxiliary data values into
         textual descriptions from provided caption templates.
 
         :param templates_fname: path to a json file with caption templates.
+        :param concepts_fname: path to a json file with concepts.
         :param data_dir: directory where data is stored.
         :param seed: random seed.
+        :param n_captions_for_validation: number of captions to randomly sample for validation
+        :param return_aux_ids: whether to return auxiliary column ids.
+        :param stats_file: path to a json file with statistics of the aux cols (train split).
         """
 
         self.data_dir = data_dir
@@ -38,6 +50,19 @@ class BaseCaptionBuilder(ABC):
         self.column_to_metadata_map: Dict[str] | None = None
         self.seed = seed
         random.seed(self.seed)
+
+        if n_captions_for_validation == "all":
+            self.n = self.__len__
+        elif n_captions_for_validation > len(self):
+            raise IllegalArgumentCombination(
+                f"Requested {n_captions_for_validation} captions exceeds template dictionary size"
+            )
+        else:
+            self.n = n_captions_for_validation
+
+        self.return_aux_ids = return_aux_ids
+
+        self.stats = json.load(open(stats_file)) if stats_file else None
 
     @final
     def __len__(self):
@@ -89,43 +114,86 @@ class BaseCaptionBuilder(ABC):
         """Build caption text from template and row of auxiliary data."""
         pass
 
-    def random(self, aux_values) -> List[str]:
-        """Return a caption from a randomly sampled template for each data point."""
-        formatted_rows = []
+    def random(self, aux_values) -> Tuple[List[str], List[int] | None]:
+        """Return a caption per location from a randomly sampled template for each data point.
 
+        :param aux_values: a batch of auxiliary values to use for random sampling.
+        :return: a batch of text captions and optionally aux col ids used for each of the caption.
+        """
         batch_size = len(aux_values["aux"])
 
-        template_ids = random.choices(
-            range(len(self.templates)),
-            k=batch_size,
-        )
-        for (
-            i,
-            template_idx,
-        ) in enumerate(template_ids):
-            row_aux = aux_values["aux"][i]
-            row_top = aux_values.get("top")[i] if aux_values.get("top") else None
-            formatted_rows.append(
-                self._build_from_template(template_idx, aux=row_aux, top=row_top)
-            )
+        # Location captions holders
+        formatted_location_captions = []
 
-        return formatted_rows
+        # Ids of used aux col ids per template (location)
+        if self.return_aux_ids:
+            ids = []
 
-    def all(self, aux_values) -> List[str]:
-        """Return a list of captions from all available templates."""
-        formatted_rows = []
-        for i in range(0, len(aux_values["aux"])):
-            descriptions = []
+        # Sample templates
+        template_ids = random.choices(range(len(self.templates)), k=batch_size)
+        for i, template_idx in enumerate(template_ids):
+            # Get aux and top values per location
             row_aux = aux_values["aux"][i]
             row_top = aux_values.get("top")[i] if aux_values.get("top") else None
 
-            for template_idx in range(0, len(self)):
-                descriptions.append(
-                    self._build_from_template(template_idx, aux=row_aux, top=row_top)
+            # Get filled in template for location
+            if self.return_aux_ids:
+                filled_template, template_ids = self._build_from_template(
+                    template_idx, aux=row_aux, top=row_top
                 )
-            formatted_rows.append(descriptions)
+                ids.append(template_ids)
+            else:
+                filled_template = self._build_from_template(template_idx, aux=row_aux, top=row_top)
+            formatted_location_captions.append(filled_template)
 
-        return formatted_rows
+        if self.return_aux_ids:
+            return formatted_location_captions, ids
+        return formatted_location_captions
+
+    def sample_multiple_or_all(self, aux_values) -> Tuple[List[str], List[int] | None]:
+        """Return self.n captions from randomly sampled templates for each data point.
+
+        :param aux_values: a batch of auxiliary values to use for random sampling.
+        :return: a batch of text captions and optionally aux col ids used for each of the caption.
+        """
+        batch_size = len(aux_values["aux"])
+
+        # Location captions holders
+        formatted_location_captions = []
+
+        # Ids of used aux col ids per template (location)
+        if self.return_aux_ids:
+            ids = []
+
+        for i in range(0, batch_size):
+            # Get aux and top values per location
+            row_aux = aux_values["aux"][i]
+            row_top = aux_values.get("top")[i] if aux_values.get("top") else None
+
+            # Sample templates
+            template_ids = random.choices(range(len(self.templates)), k=self.n)
+
+            # Get filled in templates for location
+            filled_in_location_templates = []
+            ids_per_location = []
+            for template_idx in template_ids:
+                if self.return_aux_ids:
+                    filled_template, template_ids = self._build_from_template(
+                        template_idx, aux=row_aux, top=row_top
+                    )
+                    ids_per_location.extend(filled_template)
+                else:
+                    filled_template = self._build_from_template(
+                        template_idx, aux=row_aux, top=row_top
+                    )
+                filled_in_location_templates.append(filled_template)
+
+            if self.return_aux_ids:
+                ids.append(template_ids)
+            formatted_location_captions.append(filled_in_location_templates)
+        if self.return_aux_ids:
+            return formatted_location_captions, ids
+        return formatted_location_captions
 
     def sync_concepts(self) -> List[str]:
         for concept in self.concepts:
@@ -169,24 +237,25 @@ def get_adjective_for_percentage(value: float) -> str:
     else:
         return "almost entirely"
 
+
 def sample_adjective_for_percentage(percent: float) -> str:
     """Convert a percentage (0-100) to a descriptive adjective, randomly sampled from synonyms."""
     if not 0 <= percent <= 100:
         raise ValueError(f"Percentage must be between 0 and 100, got {percent}")
 
     synonyms = {
-        "none":         ["none", "zero", "absent", "nonexistent"],
-        "negligible":   ["negligible", "trivial", "trace", "barely any", "scarcely any"],
-        "minimal":      ["minimal", "tiny", "very little", "marginal", "meager"],
-        "slight":       ["slight", "small", "modest", "limited", "faint"],
-        "some":         ["some", "a bit of", "a portion of", "partial", "a measure of"],
-        "moderate":     ["moderate", "fair", "reasonable", "middling", "decent"],
+        "none": ["none", "zero", "absent", "nonexistent"],
+        "negligible": ["negligible", "trivial", "trace", "barely any", "scarcely any"],
+        "minimal": ["minimal", "tiny", "very little", "marginal", "meager"],
+        "slight": ["slight", "small", "modest", "limited", "faint"],
+        "some": ["some", "a bit of", "a portion of", "partial", "a measure of"],
+        "moderate": ["moderate", "fair", "reasonable", "middling", "decent"],
         "considerable": ["considerable", "notable", "meaningful", "appreciable", "marked"],
-        "substantial":  ["substantial", "solid", "sizable", "hefty", "goodly"],
-        "significant":  ["significant", "large", "strong", "pronounced", "prominent"],
-        "major":        ["major", "great", "high", "intense", "serious"],
-        "extensive":    ["extensive", "vast", "sweeping", "far-reaching", "immense"],
-        "complete":     ["complete", "total", "full", "entire", "absolute"],
+        "substantial": ["substantial", "solid", "sizable", "hefty", "goodly"],
+        "significant": ["significant", "large", "strong", "pronounced", "prominent"],
+        "major": ["major", "great", "high", "intense", "serious"],
+        "extensive": ["extensive", "vast", "sweeping", "far-reaching", "immense"],
+        "complete": ["complete", "total", "full", "entire", "absolute"],
     }
 
     if percent == 0:
