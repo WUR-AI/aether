@@ -1,4 +1,6 @@
+import copy
 import os
+import time
 from functools import partial
 from typing import Any, Dict, List, Tuple
 
@@ -6,6 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 from lightning import LightningDataModule
+from sklearn.cluster import DBSCAN
 from sklearn.model_selection import GroupShuffleSplit
 from torch.utils.data import DataLoader, random_split
 
@@ -41,13 +44,15 @@ class BaseDataModule(LightningDataModule):
         :param num_workers: number of workers for dataloader
         :param pin_memory: pin memory for dataloader
         :param dataset_name: dataset name
-        :param split_mode: data split mode: random/from_file
+        :param split_mode: data split mode: random/spatial_clusters/spatial_grid/from_file
         :param save_split: if to save split file
         :param saved_split_file_name: file name to save split file
         :param caption_builder: instance of BaseCaptionBuilder for generating textual captions
-        :param spatial_split_distance_m: grid cell size in metres when split_mode is
-            'spatial_clusters'. Samples within the same cell are kept together and assigned to the
-            same split. Default 1000 m.
+        :param spatial_split_distance_m: distance in metres used for spatial splitting. When
+            split_mode is 'spatial_clusters', this is the DBSCAN eps (max distance between samples
+            for them to be considered part of the same cluster). When split_mode is 'spatial_grid',
+            this is the grid cell size; samples within the same cell are kept together and assigned
+            to the same split. Default 1000 m.
         """
         super().__init__()
         self.save_hyperparameters(logger=False)
@@ -119,6 +124,112 @@ class BaseDataModule(LightningDataModule):
                 }
 
         elif self.hparams.split_mode == "spatial_clusters":
+            min_dist = self.hparams.spatial_split_distance_m
+            # Use records (not df): records is already filtered (e.g. missing tiles
+            # dropped), so len(records) <= len(df). Indices must be into records
+            # because __getitem__ and __len__ both operate on self.records.
+            # lat/lon come from df (always present) keyed by name_loc so the
+            # coordinate array stays aligned with records regardless of modalities.
+            records = self.dataset.records
+            _nl_to_coords = dict(
+                zip(
+                    self.dataset.df["name_loc"],
+                    zip(self.dataset.df["lat"], self.dataset.df["lon"]),
+                )
+            )
+            coords = np.array(
+                [
+                    [_nl_to_coords[r["name_loc"]][0] for r in records],
+                    [_nl_to_coords[r["name_loc"]][1] for r in records],
+                ]
+            ).T
+            n = len(coords)
+            print(
+                f"Splitting {n} samples into spatial clusters "
+                f"(eps={min_dist / 1000:.1f} km, haversine, n_jobs=-1)..."
+            )
+            # Convert (lat, lon) degrees to radians for sklearn's haversine metric.
+            # haversine returns arc length on the unit sphere, so eps must be in radians.
+            _EARTH_RADIUS_M = 6_371_000
+            coords_rad = np.radians(coords)
+            eps_rad = min_dist / _EARTH_RADIUS_M
+            t0 = time.time()
+            clustering = DBSCAN(
+                eps=eps_rad,
+                metric="haversine",
+                algorithm="ball_tree",
+                min_samples=2,
+                n_jobs=-1,
+            ).fit(coords_rad)
+            print(f"DBSCAN done in {time.time() - t0:.1f}s. Creating splits...")
+            # Non-clustered points are labeled -1. Change to new cluster label.
+            clusters = copy.deepcopy(clustering.labels_)
+            new_cl = np.max(clusters) + 1
+            for i, cl in enumerate(clusters):
+                if cl == -1:
+                    clusters[i] = new_cl
+                    new_cl += 1
+
+            gss = GroupShuffleSplit(
+                n_splits=1,
+                test_size=self.hparams.train_val_test_split[2],
+                random_state=self.hparams.seed,
+            )
+            train_val_indices, test_indices = next(
+                gss.split(np.arange(len(coords)), groups=clusters)
+            )
+            gss_2 = GroupShuffleSplit(
+                n_splits=1,
+                test_size=(
+                    self.hparams.train_val_test_split[1]
+                    / (self.hparams.train_val_test_split[0] + self.hparams.train_val_test_split[1])
+                ),
+                random_state=self.hparams.seed,
+            )
+            tmp_train_indices, tmp_val_indices = next(
+                gss_2.split(train_val_indices, groups=clusters[train_val_indices])
+            )
+            train_indices = train_val_indices[tmp_train_indices]
+            val_indices = train_val_indices[tmp_val_indices]
+            clusters_train = clusters[train_indices]
+            clusters_val = clusters[val_indices]
+            clusters_test = clusters[test_indices]
+            # assert no overlap in indices:
+            assert len(np.intersect1d(train_indices, val_indices)) == 0, np.intersect1d(
+                train_indices, val_indices
+            )
+            assert len(np.intersect1d(train_indices, test_indices)) == 0, np.intersect1d(
+                train_indices, test_indices
+            )
+            assert len(np.intersect1d(val_indices, test_indices)) == 0, np.intersect1d(
+                val_indices, test_indices
+            )
+
+            # assert no overlap in clusters:
+            assert len(np.intersect1d(clusters_train, clusters_val)) == 0, np.intersect1d(
+                clusters_train, clusters_val
+            )
+            assert len(np.intersect1d(clusters_train, clusters_test)) == 0, np.intersect1d(
+                clusters_train, clusters_test
+            )
+            assert len(np.intersect1d(clusters_val, clusters_test)) == 0, np.intersect1d(
+                clusters_val, clusters_test
+            )
+
+            print(
+                f"Created {len(train_indices)} train, {len(val_indices)} val, {len(test_indices)} "
+                f"test indices using DBSCAN spatial clustering with {min_dist} m minimum "
+                f"distance between clusters."
+            )
+            if self.hparams.save_split:
+                split_indices = {
+                    "train_indices": pd.Series([records[i]["name_loc"] for i in train_indices]),
+                    "val_indices": pd.Series([records[i]["name_loc"] for i in val_indices]),
+                    "test_indices": pd.Series([records[i]["name_loc"] for i in test_indices]),
+                    "clusters": clusters,
+                }
+
+        elif self.hparams.split_mode == "spatial_grid":
             min_dist = self.hparams.spatial_split_distance_m
             # Use records (not df): records is already filtered (e.g. missing tiles
             # dropped), so len(records) <= len(df). Indices must be into records
