@@ -1,0 +1,42 @@
+# @package _global_
+# Ablation config I — tessera + tessera_prev, gated fusion, no tabular features.
+#
+# Mirrors config D but removes all tabular features. A single learned scalar weight
+# per branch is shared across all samples (global gate). The gate must decide the
+# relative importance of year-Y vs. year-Y−1 embeddings without any soil/climate
+# context. The RMSE gap (I − D) quantifies the tabular contribution in the global-gate
+# setting; comparing I vs H shows whether a global gate adds value over concat when
+# only spatial embeddings are available.
+#
+# Requires: ABLATION_SPLIT — set saved_split_file_name to the file saved by config A.
+
+defaults:
+  - override /model: yield_tessera_dual_no_tab_fusion_reg
+  - override /data: yield_africa_tessera_dual_KEN
+  - override /metrics: yield_africa_regression
+
+tags: ["yield_africa", "tessera_ablation", "KEN", "config_I"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 150
+
+data:
+  batch_size: 64
+  split_mode: from_file
+  saved_split_file_name: split_indices_2026-04-27-1644.pth1
+  dataset:
+    use_features: false
+
+model:
+  geo_encoder:
+    fusion_strategy: "gated"
+
+logger:
+  wandb:
+    name: "ablation_I_gated_no_tab"
+    tags: ${tags}
+    group: "ablation_dual_tessera_KEN"
+  aim:
+    experiment: "yield_africa_ablation"

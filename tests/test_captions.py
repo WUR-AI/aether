@@ -49,6 +49,7 @@ def test_datamodule_uses_collate_when_aux_data(request, sample_csv, tmp_path):
         num_workers=0,
         pin_memory=False,
     )
+    dm.setup()
 
     batch = next(iter(dm.train_dataloader()))
     assert "text" in batch

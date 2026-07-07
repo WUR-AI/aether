@@ -1,0 +1,30 @@
+defaults:
+  - yield_africa_tessera # inherit all base fields, then override below
+  - _self_
+
+# Dual-year tessera data config.
+# Extends yield_africa_tessera by adding tessera_prev (year Y-1 embedding)
+# for cross-year growing-season fusion.
+#
+# Prerequisites:
+#   1. Rename existing tiles to year-suffixed naming (once):
+#        python src/data_preprocessing/yield_africa_tessera_rename.py \
+#            --data_dir <data_dir> --no-dry-run
+#   2. Pre-fetch year-1 tiles:
+#        python src/data_preprocessing/yield_africa_tessera_preprocess.py \
+#            --data_dir <data_dir> --include-prev-year
+#
+# Use with: configs/model/yield_tessera_dual_fusion_reg.yaml
+
+dataset:
+  require_prev_year_tessera: true
+  modalities:
+    tessera:
+      # size must match the tile_size used when running the preprocessing script.
+      # Default: 9 pixels (set by yield_africa_tessera_preprocess.py --tile_size).
+      size: 9
+      format: npy
+    tessera_prev:
+      # year Y-1 embedding; fetched via --include-prev-year preprocessing flag.
+      size: 9
+      format: npy

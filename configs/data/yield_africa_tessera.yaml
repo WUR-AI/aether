@@ -27,6 +27,7 @@ num_workers: 0
 pin_memory: false
 
 split_mode: "random"
+saved_split_file_name: null
 train_val_test_split: [0.7, 0.15, 0.15]
 save_split: false
 seed: ${seed}

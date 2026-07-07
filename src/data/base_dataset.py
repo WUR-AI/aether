@@ -5,11 +5,19 @@ from typing import Any, Dict, List, final
 
 import numpy as np
 import pandas as pd
+import rasterio
 import torch
 from torch.utils.data import Dataset
 
-import src.data_preprocessing.data_utils as du
 from src.utils.data_utils import center_crop_npy
+
+TORCH_DTYPES = {
+    "float32": torch.float32,
+    "float64": torch.float64,
+    "int32": torch.int32,
+    "int64": torch.int64,
+    "bfloat16": torch.bfloat16,
+}
 
 
 class BaseDataset(Dataset, ABC):
@@ -19,7 +27,7 @@ class BaseDataset(Dataset, ABC):
         modalities: dict,
         use_target_data: bool = True,
         use_aux_data: Dict[str, List[str] | str] | str | None = None,
-        dataset_name: str = "BaseDataset",
+        dataset_name: str | List[str] = "BaseDataset",
         seed: int = 12345,
         mode: str = "train",
         cache_dir: str = None,
@@ -27,6 +35,7 @@ class BaseDataset(Dataset, ABC):
         mock: bool = False,
         use_features: bool = True,
         csv_name: str = None,
+        dtype: str = "float32",
     ) -> None:
         """Interface for any use case dataset.
 
@@ -50,32 +59,58 @@ class BaseDataset(Dataset, ABC):
         :param implemented_mod: implemented modalities for each dataset
         :param mock: whether to mock csv file
         :param use_features: if tabular feat_* columns should be included. Default True.
+        :param dtype: global dtype (used if not specified for each modality individually), also used for aux, target
         """
 
         if mock:
             dataset_name = "mock"
 
+        # Dtype
+        assert dtype in TORCH_DTYPES.keys()
+        self.dtype: str = TORCH_DTYPES[dtype]
+
         # Modalities
         self.implemented_mod = implemented_mod
         self.modalities: dict = modalities
-        for mod in self.modalities.keys():
+
+        # Check modalities and set dtypes
+        for mod, configs in self.modalities.items():
             if mod not in self.implemented_mod:
                 raise ValueError(f"{mod} not in implemented modalities.")
-        # more precise dataset name (with modalities)
-        self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
+
+            if configs is not None:
+                m_dtype = configs.get("dtype", dtype)
+                self.modalities[mod]["dtype"] = m_dtype
+                print(f"Dtype of {mod} set to {m_dtype}")
+            else:
+                m_dtype = dtype
+                self.modalities[mod] = {"dtype": m_dtype}
 
         # Set data attributes
         self.registry_path = os.path.join(data_dir, "registry.txt")
-        self.data_dir = os.path.join(data_dir, dataset_name)
+        if type(dataset_name) is str:
+            dataset_name = [dataset_name]
+        if "unlabel" in dataset_name[0]:
+            dataset_dirname = dataset_name[0].split("-unlabel")[0]
+        else:
+            dataset_dirname = dataset_name[0]
+        self.data_dir = os.path.join(data_dir, dataset_dirname)
         self.cache_dir = cache_dir or os.path.join(data_dir, "cache")
-        for d in [self.data_dir, self.cache_dir]:
+        for d in [self.cache_dir]:
             os.makedirs(d, exist_ok=True)
 
         # Read model ready csv df
-        csv_filename = csv_name or f"model_ready_{dataset_name}.csv"
-        path_csv = os.path.join(self.data_dir, csv_filename)
-        assert os.path.exists(path_csv), f"{path_csv} does not exist."
-        self.df: pd.DataFrame = pd.read_csv(path_csv)
+        for i_ds, ds in enumerate(dataset_name):
+            csv_filename = csv_name or f"model_ready_{ds}.csv"
+            path_csv = os.path.join(self.data_dir, csv_filename)
+            assert os.path.exists(
+                path_csv
+            ), f"{path_csv} does not exist. (Expecting {ds} to exist in {self.data_dir})"
+            tmp_df: pd.DataFrame = pd.read_csv(path_csv)
+            if i_ds == 0:
+                self.df = tmp_df
+            else:
+                self.df = pd.concat([self.df, tmp_df], ignore_index=True)
 
         # Other attributes or placeholders
         self.pooch_cli = None
@@ -102,6 +137,10 @@ class BaseDataset(Dataset, ABC):
         else:
             self.use_aux_data = None
 
+        # More precise dataset name (with modalities)
+        if isinstance(dataset_name, list):
+            dataset_name = "+".join(dataset_name)
+        self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
         self.mode: str = mode  # 'train', 'val', 'test'
         self.records: dict[str, Any] = self.get_records()
 
@@ -202,13 +241,16 @@ class BaseDataset(Dataset, ABC):
         Right now retrieval is through GeoTessera API
         """
 
-        print("\n\nSetting up Tessera data...\n\n")
-        from geotessera import GeoTessera
-
         from src.data_preprocessing.tessera_embeds import (
             get_tessera_embeds,
             tessera_from_df,
         )
+
+        print("\n\nSetting up Tessera data...\n\n")
+        download_missing_tiles = False
+
+        # Check if data is already available
+        dst_dir = os.path.join(self.data_dir, "eo/tessera")
 
         year = self.modalities["tessera"].get(
             "year", KeyError('Missing parameter "year" for Tessera modality')
@@ -217,45 +259,58 @@ class BaseDataset(Dataset, ABC):
             "size", KeyError('Missing parameter "size" for Tessera modality')
         )
 
-        # Check if data is already available
-        dst_dir = os.path.join(self.data_dir, "eo/tessera")
-
         # If data does not exist or is empty → full download
         if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
-            os.makedirs(dst_dir, exist_ok=True)
+            if download_missing_tiles:
+                os.makedirs(dst_dir, exist_ok=True)
 
-            tessera_from_df(
-                self.df,
-                data_dir=dst_dir,
-                year=year,
-                tile_size=size,
-                cache_dir=self.cache_dir,
-            )
+                tessera_from_df(
+                    self.df,
+                    data_dir=dst_dir,
+                    year=year,
+                    tile_size=size,
+                    cache_dir=self.cache_dir,
+                )
 
-            # TODO: if we compile the dataset and use zenodo (or sth else) then change to pooch downloading/loading
-            # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
-            # or self.setup_tessera_from_pooch() <- per children class implementation
+                # TODO: if we compile the dataset and use zenodo (or sth else) then change to pooch downloading/loading
+                # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
+                # or self.setup_tessera_from_pooch() <- per children class implementation
+            else:
+                print("Please download the missing Tessera tiles...")
 
+        # Download missing rows (if any)
         else:
-            # Download missing rows (if any)
+            from geotessera import GeoTessera
+
+            print("Downloading missing Tessera tiles...")
+            print("[Warning]: it may download tessera tiles filled with 0a")
+
             avail_files = os.listdir(dst_dir)
             gt = None
-            for rec in self.records:
+            for i, rec in enumerate(self.records):
                 fname = os.path.basename(rec["tessera_path"])
                 if fname not in avail_files:
-                    print(f"Retrieving missing Tessera data: {fname}")
-                    gt = gt or GeoTessera(cache_dir=self.cache_dir)
-                    row = self.df[self.df["name_loc"] == rec["name_loc"]]
-                    lon, lat = row.lon.item(), row.lat.item()
-                    get_tessera_embeds(
-                        lon,
-                        lat,
-                        rec["name_loc"],
-                        year=year,
-                        save_dir=dst_dir,
-                        tile_size=size,
-                        tessera_con=gt,
-                    )
+                    if download_missing_tiles:
+                        print(f"Retrieving missing Tessera data: {fname}")
+                        gt = gt or GeoTessera(cache_dir=self.cache_dir)
+                        row = self.df[self.df["name_loc"] == rec["name_loc"]]
+                        lon, lat = row.lon.item(), row.lat.item()
+                        try:
+                            get_tessera_embeds(
+                                lon,
+                                lat,
+                                rec["name_loc"],
+                                year=year,
+                                save_dir=dst_dir,
+                                tile_size=size,
+                                tessera_con=gt,
+                            )
+                            continue
+                        except Exception as e:
+                            print(f"Tile for {fname} could not be retrieved. Error: {e}")
+                    else:
+                        self.records.pop(i)
+                        print(f"No tile found for {fname} thus it will not be used.")
 
     @final
     def setup_aef(self) -> None:
@@ -267,6 +322,12 @@ class BaseDataset(Dataset, ABC):
         print("\n\nSetting up AEF data...\n\n")
 
         dst_dir = os.path.join(self.data_dir, "eo/aef")
+        avail_files = os.listdir(dst_dir)
+        for i, rec in enumerate(self.records):
+            fname = os.path.basename(rec["aef_path"])
+            if fname not in avail_files:
+                self.records.pop(i)
+                print(f"No tile found for {fname} thus it will not be used.")
 
         # TODO aef retrieval?
         # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
@@ -288,35 +349,84 @@ class BaseDataset(Dataset, ABC):
         self.pooch_cli.load_registry(self.registry_path)
 
     @final
-    def load_npy(self, filepath: str) -> torch.Tensor:
+    def load_npy(self, filepath: str, dtype: np.dtype) -> np.ndarray:
         """Loads numpy array from file as a tensor."""
-        im = np.load(filepath).transpose(2, 0, 1)
-        return torch.from_numpy(im).float()
+        arr = np.load(filepath).transpose(2, 0, 1)
+        if arr.dtype != np.dtype(dtype):
+            arr = arr.astype(dtype=dtype, copy=False)
+
+        return arr
+
+    @final
+    def load_tiff(self, tiff_file_path: str, dtype: np.dtype) -> np.ndarray:
+        """Load tiff file as np array of a specified dtype."""
+
+        with rasterio.open(tiff_file_path) as f:
+            im = f.read()
+            assert isinstance(im, np.ndarray)
+            if im.dtype != np.dtype(dtype):
+                im = im.astype(dtype=dtype, copy=False)
+        return im
 
     @final
     def load_aef(self, filepath: str):
         """Loads AEF data from file as a tensor."""
 
-        im = du.load_tiff(filepath, datatype="np")
+        # Modality settings
         size = self.modalities["aef"]["size"]
-        if im.shape[1] != size:
-            im = center_crop_npy(im, (64, size, size))
-        if np.isinf(im).any():
-            im = np.clip(im, a_min=-0.5, a_max=0.5)
-        # TODO any normalisation needed
+        dtype = self.modalities["aef"].get("dtype")
+        format = self.modalities["aef"].get("format", "npy")
+        dtype, is_bfloat16 = self.resolve_dtype(dtype)
 
-        return torch.tensor(im).float()
+        if format in "tif":
+            im = self.load_tiff(filepath, np.dtype(dtype))
+        else:
+            im = self.load_npy(filepath, np.dtype(dtype))
+
+        if im.shape[-2:] != (size, size):
+            im = center_crop_npy(im, (64, size, size))
+
+        # Scan for inf values and clip them (in memory)
+        if self.modalities["aef"].get("enable_nans", False):
+            if np.isinf(im).any():
+                im[np.isinf(im)] = np.nan
+        else:
+            np.clip(im, -0.5, 0.5, out=im)
+            # TODO any other normalisation needed
+
+        tensor = torch.from_numpy(im)
+        if is_bfloat16:
+            tensor = tensor.to(torch.bfloat16)
+        return tensor
 
     @final
     def load_tessera(self, filepath: str) -> torch.Tensor:
         """Loads."""
         size = self.modalities["tessera"]["size"]
-        arr = self.load_npy(filepath)
-        if arr.size()[1] < size:
-            raise ValueError(
-                f"Requested tile size {size} is larger than actual available tile size {arr.size()[1]}"
-            )
-        elif arr.size()[1] != size:
+        dtype = self.modalities["tessera"]["dtype"]
+        dtype, is_bfloat16 = self.resolve_dtype(dtype)
+
+        arr = self.load_npy(filepath, np.dtype(dtype))
+
+        if arr.shape[-2:] != (size, size):
             arr = center_crop_npy(arr, (128, size, size))
+
+        if self.modalities["tessera"].get("enable_nans", False):
+            # Nans are 0 across all 128 channels
+            mask = np.all(arr == 0, axis=0)
+            arr[mask] = torch.nan
         # TODO any normalisation needed
-        return arr
+
+        tensor = torch.from_numpy(arr)
+        if is_bfloat16:
+            tensor = tensor.to(torch.bfloat16)
+        return tensor
+
+    @staticmethod
+    def resolve_dtype(dtype_str: str):
+        """Resolve dtype from string into numpy dtype and return flag for mixed precision dtype in
+        tensors."""
+        is_bfloat16 = dtype_str == "bfloat16"
+        np_dtype = np.float32 if is_bfloat16 else np.dtype(dtype_str)
+
+        return np_dtype, is_bfloat16

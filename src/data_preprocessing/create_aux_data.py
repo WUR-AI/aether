@@ -1,6 +1,10 @@
 import os
 import sys
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -70,6 +74,7 @@ def get_aux_data_from_coords_list(
     if save_file:
         save_path = os.path.join(save_folder, save_filename)
         assert os.path.exists(save_folder), f"Save folder does not exist: {save_folder}"
+        assert not os.path.exists(save_path), f"Save file already exists: {save_path}"
         save_every_n = 100  # save every n samples to avoid data loss
         print(f"Will save auxiliary data to {save_path} every {save_every_n} samples")
     else:
@@ -80,6 +85,9 @@ def get_aux_data_from_coords_list(
         desc="Collecting auxiliary data",
     ) as pbar:
         for i_coords, coords in enumerate(coords_list):
+            assert (
+                type(coords) in [tuple, list] and len(coords) == 2
+            ), f"Coordinates must be a tuple or list of (lon, lat), got type {type(coords)} with value {coords}"
             try:
                 result = get_aux_data_from_coords(coords, patch_size=patch_size)
                 result_keys = list(result.keys())

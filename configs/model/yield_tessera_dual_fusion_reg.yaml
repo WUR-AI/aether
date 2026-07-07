@@ -1,0 +1,39 @@
+defaults:
+  - yield_tessera_fusion_reg # inherit prediction_head, optimizer, scheduler, loss_fn
+  - _self_
+
+# Three-branch encoder: tessera (year Y) + tessera_prev (year Y-1) + tabular.
+# The dynamic gate learns per-sample weights across all three branches, allowing
+# it to down-weight tessera_prev for single-year growing seasons and amplify it
+# for cross-year seasons (e.g. Oct-Mar in Rwanda, Tanzania, Kenya).
+#
+# EncoderWrapper auto-scales the gate MLP hidden dim with n_branches * output_dim,
+# so no changes are needed to the fusion implementation.
+#
+# Use with: configs/data/yield_africa_tessera_dual.yaml
+
+geo_encoder:
+  _target_: src.models.components.geo_encoders.encoder_wrapper.EncoderWrapper
+
+  encoder_branches:
+    - encoder:
+        _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
+        geo_data_name: tessera
+      projector:
+        _target_: src.models.components.geo_encoders.mlp_projector.MLPProjector
+        nn_layers: 1
+        output_dim: 256
+    - encoder:
+        _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
+        geo_data_name: tessera_prev
+      projector:
+        _target_: src.models.components.geo_encoders.mlp_projector.MLPProjector
+        nn_layers: 1
+        output_dim: 256
+    - encoder:
+        _target_: src.models.components.geo_encoders.tabular_encoder.TabularEncoder
+        output_dim: 256
+        dropout_prob: 0.2
+        geo_data_name: tabular
+
+  fusion_strategy: "dynamic_gate"

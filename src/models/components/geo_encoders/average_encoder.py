@@ -36,10 +36,10 @@ class AverageEncoder(BaseGeoEncoder):
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Data forward pass through the encoder."""
         tile = batch.get("eo", {}).get(self.geo_data_name)
-        # nanmean so that masked/nodata pixels (NaN from rasterio merge fill) are
-        # excluded from the spatial average rather than poisoning the whole channel.
-        # nan_to_num handles the edge case where an entire channel is masked (all
-        # pixels NaN), which nanmean would otherwise return as NaN.
+        # NaNs vs 0s are specified in dataset configs and returned from BaseDataset class.
+        # nanmean excludes masked/nodata pixels from the spatial average; nan_to_num
+        # handles the edge case where an entire channel is masked (all pixels NaN),
+        # which nanmean would otherwise return as NaN.
         feats = self.geo_encoder(torch.nan_to_num(tile.nanmean(dim=(-2, -1)), nan=0.0))
         if self.extra_projector:
             feats = self.extra_projector(feats)
@@ -48,3 +48,7 @@ class AverageEncoder(BaseGeoEncoder):
     @property
     def device(self):
         return
+
+    @property
+    def dtype(self):
+        return torch.float32

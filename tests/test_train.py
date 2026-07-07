@@ -88,6 +88,8 @@ def test_train_resume(tmp_path: Path, cfg_train: DictConfig) -> None:
     """
     with open_dict(cfg_train):
         cfg_train.trainer.max_epochs = 1
+        cfg_train.callbacks.model_checkpoint.save_last = True
+        cfg_train.callbacks.model_checkpoint.dirpath = cfg_train.paths.output_dir + "/checkpoints"
 
     HydraConfig().set_config(cfg_train)
     metric_dict_1, _ = train(cfg_train)
