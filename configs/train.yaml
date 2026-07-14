@@ -43,6 +43,8 @@ train: True
 # lightning chooses best weights based on the metric specified in checkpoint callback
 test: True
 
+validate: True
+
 # simply provide checkpoint path to resume training
 ckpt_path: null
 
