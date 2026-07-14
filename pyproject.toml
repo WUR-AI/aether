@@ -50,6 +50,7 @@ create-data = [
 
 visualisation = [
     "folium>=0.20.0",
+    "seaborn>=0.13.2",
 ]
 
 [tool.pytest.ini_options]

@@ -45,7 +45,9 @@ class BaseModel(LightningModule, ABC):
         self.save_hyperparameters(
             ignore=[
                 "geo_encoder",
+                "geo_adapter",
                 "text_encoder",
+                "text_adapter",
                 "prediction_head",
                 "optimizer",
                 "scheduler",
@@ -78,7 +80,7 @@ class BaseModel(LightningModule, ABC):
         """Updates model based data-bound configurations (through datamodule), This method is
         called after trainer is initialized and datamodule is available."""
         if self.setup_flag:
-            print(f"Model {self.__str__()} is already set up!")
+            print("Model is already set up!")
             return
 
         # If trainer is attached get num_classes and tabular_dim from datamodule (data-dependent)
@@ -104,8 +106,11 @@ class BaseModel(LightningModule, ABC):
     @final
     def full_freezer(self):
         """Freeze the whole network."""
+        print("--------Frozen--------")
         for name, param in self.named_parameters():
             param.requires_grad = False
+        print("Full model")
+        print("------------------------")
 
         for name, module in self.named_modules():
             module.eval()
@@ -215,12 +220,20 @@ class BaseModel(LightningModule, ABC):
         """Update hyper-parameters from the model."""
         if hasattr(self, "geo_encoder"):
             self.geo_encoder.update_configs(cfg["geo_encoder"])
+        if hasattr(self, "geo_adapter") and self.geo_adapter is not None:
+            self.geo_adapter.cfg_dict = cfg["geo_adapter"]
 
         if hasattr(self, "text_encoder"):
             self.text_encoder.cfg_dict = cfg["text_encoder"]
+        if hasattr(self, "text_adapter") and self.text_adapter is not None:
+            self.text_adapter.cfg_dict = cfg["text_adapter"]
 
-        if hasattr(self, "prediction_head"):
-            self.prediction_head.cfg_dict = cfg["prediction_head"]
+        if (
+            hasattr(self, "prediction_head")
+            and self.prediction_head
+            and cfg.get("prediction_head")
+        ):
+            self.prediction_head.update_configs(cfg["prediction_head"])
 
     def on_save_checkpoint(self, checkpoint):
         """Save checkpoint.
@@ -258,13 +271,18 @@ class BaseModel(LightningModule, ABC):
             }
         )
 
-        if hasattr(self, "geo_encoder"):
+        if hasattr(self, "geo_encoder") and self.geo_encoder is not None:
             checkpoint["hyper_parameters"]["geo_encoder"] = self.geo_encoder.cfg_dict
-        if hasattr(self, "prediction_head"):
-            checkpoint["hyper_parameters"]["prediction_head"] = self.prediction_head.cfg_dict
-        if hasattr(self, "text_encoder"):
-            checkpoint["hyper_parameters"]["text_encoder"] = self.text_encoder.cfg_dict
+        if hasattr(self, "geo_adapter") and self.geo_adapter is not None:
+            checkpoint["hyper_parameters"]["geo_adapter"] = self.geo_adapter.cfg_dict
 
+        if hasattr(self, "prediction_head") and self.prediction_head is not None:
+            checkpoint["hyper_parameters"]["prediction_head"] = self.prediction_head.cfg_dict
+
+        if hasattr(self, "text_encoder") and self.text_encoder is not None:
+            checkpoint["hyper_parameters"]["text_encoder"] = self.text_encoder.cfg_dict
+        if hasattr(self, "text_adapter") and self.text_adapter is not None:
+            checkpoint["hyper_parameters"]["text_adapter"] = self.text_adapter.cfg_dict
         return
 
     def on_load_checkpoint(self, checkpoint):
