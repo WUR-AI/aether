@@ -16,8 +16,8 @@ seed: 12345
 # If `inference_ckpt_path` is not set, stitch the inference model from:
 # - predictive ckpt (provides prediction_head weights)
 # - alignment ckpt (provides text_encoder weights + geo_encoder)
-predictive_ckpt_path: ${paths.checkpoint_root}/s2bms_prediction_ckpt/1cti8qah_epoch_037.ckpt
-alignment_ckpt_path: ${paths.checkpoint_root}/s2bms_alignment_ckpt/dmts2wpm_epoch_097.ckpt
+predictive_ckpt_path: ${paths.log_dir}train/runs/1cti8qah_epoch_037.ckpt
+alignment_ckpt_path: ${paths.log_dir}train/runs/n5cz3s9b_epoch_023.ckpt
 
 # If set, inference.py will save a merged inference checkpoint you can reload with
 # `inference_ckpt_path`.
