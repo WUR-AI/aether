@@ -32,10 +32,6 @@ def collate_fn(
         batch_collected["aux"] = {
             k: smart_stack([item["aux"][k] for item in batch]) for k in batch[0]["aux"].keys()
         }
-        if caption_builder.stats is not None:
-            batch_collected["aux"]["aux_standardized"] = (
-                batch_collected["aux"]["aux"] - caption_builder.means
-            ) / caption_builder.stds
 
     if batch[0].get("target") is not None:
         batch_collected["target"] = smart_stack([item["target"] for item in batch])

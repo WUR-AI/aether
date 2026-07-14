@@ -88,6 +88,9 @@ class BaseModel(LightningModule, ABC):
             self.num_classes = self.trainer.datamodule.num_classes
             self.tabular_dim = self.trainer.datamodule.tabular_dim
 
+        # set up loss if needed
+        self.loss_fn.setup(datamodule=self.trainer.datamodule, device=self.device)
+
         # Per model logic of setting up
         self._setup(stage)
         self.setup_flag = True
