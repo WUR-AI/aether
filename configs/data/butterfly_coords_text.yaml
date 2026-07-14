@@ -24,5 +24,5 @@ num_workers: 8
 pin_memory: true
 split_mode: "from_file"
 save_split: false
-saved_split_file_name: "split_indices_s2bms_2024-08-14-1459.pth"
+saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
 seed: ${seed}

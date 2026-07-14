@@ -10,7 +10,7 @@ from lightning.pytorch.loggers import Logger, WandbLogger
 from omegaconf import DictConfig, OmegaConf
 
 from src.data.base_datamodule import BaseDataModule
-from src.utils.experiment_tracking import experiment_check
+from src.utils.experiment_tracking import compose_experiment_name, experiment_check
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 load_dotenv()
@@ -96,6 +96,8 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         log.info("Logging hyperparameters!")
         log_hyperparameters(object_dict)
         group = cfg.get("experiment_name", "null")
+        if group == "null":
+            compose_experiment_name(cfg)
         wandb_logger.log_metrics({"experiment": group})
 
     if cfg.get("train"):
@@ -118,10 +120,14 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
                     else:
                         data_name = "satclip"
                 else:
-                    data_name = f"{k}_{data_dict[k]['size']}"
+                    data_name = f"{k}_{data_dict[k].get('size', '')}"
             else:
                 ks = list(data_dict.keys())
-                data_name = str("".join([f'{k}_{data_dict[k].get("size", "")}' for k in ks]))
+                ks_new = [
+                    f"{k}{f'_{k.get('size')}' if isinstance(k, dict) and k.get('size') else ''}"
+                    for k in ks
+                ]
+                data_name = "-".join(map(str, ks_new))
 
             # Log details to wandb
             wandb_logger.log_metrics(
@@ -135,7 +141,25 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
 
     train_metrics = trainer.callback_metrics
 
-    if cfg.get("test"):
+    if cfg.get("validate") and wandb_logger is not None:
+        # Run validation with the best ckpt
+        log.info("Validating the best ckpt!")
+        ckpt_path = trainer.checkpoint_callback.best_model_path
+        if ckpt_path == "":
+            log.warning("Best ckpt not found! Using current weights for testing...")
+            ckpt_path = None
+
+        trainer.validate(
+            model=model,
+            datamodule=datamodule,
+            ckpt_path=ckpt_path,
+            weights_only=False,
+        )
+
+        val_metrics = trainer.callback_metrics
+        wandb_logger.log_metrics({f"best_val_{k}": v for k, v in val_metrics.items()})
+
+    if cfg.get("test") and wandb_logger is not None:
         log.info("Starting testing!")
         ckpt_path = trainer.checkpoint_callback.best_model_path
         if ckpt_path == "":

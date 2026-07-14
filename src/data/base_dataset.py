@@ -9,8 +9,8 @@ import rasterio
 import torch
 from torch.utils.data import Dataset
 
+from src.data_preprocessing.tessera_embeds import NoTileError, PartialTileError
 from src.utils.data_utils import center_crop_npy
-from src.utils.errors import MissingDataError
 
 TORCH_DTYPES = {
     "float32": torch.float32,
@@ -37,6 +37,7 @@ class BaseDataset(Dataset, ABC):
         use_features: bool = True,
         csv_name: str = None,
         dtype: str = "float32",
+        return_name_loc: bool = False,
     ) -> None:
         """Interface for any use case dataset.
 
@@ -144,6 +145,7 @@ class BaseDataset(Dataset, ABC):
         self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
         self.mode: str = mode  # 'train', 'val', 'test'
         self.records: dict[str, Any] = self.get_records()
+        self.return_name_loc: bool = return_name_loc
 
     @final
     def get_records(self) -> dict[str, Any]:
@@ -157,6 +159,16 @@ class BaseDataset(Dataset, ABC):
         for modality, params in self.modalities.items():
             if modality == "coords":
                 columns.extend(["lat", "lon"])
+            elif modality in ["aef_avr", "tessera_avr"]:
+                df = pd.read_csv(params.get("path", KeyError))
+                df["name_loc"] = df["name_loc"].astype(str)
+
+                self.df["name_loc"] = self.df["name_loc"].astype(str)
+
+                self.df = self.df.merge(df, on="name_loc", how="left")
+
+                max_no = 128 if modality == "tessera_avr" else 64
+                columns.extend([f"emb_{i}" for i in range(0, max_no)])
             else:
                 # Add paths
                 self.add_modality_paths_to_df(
@@ -259,22 +271,27 @@ class BaseDataset(Dataset, ABC):
         size = self.modalities["tessera"].get(
             "size", KeyError('Missing parameter "size" for Tessera modality')
         )
+        version = self.modalities["tessera"].get("version") or "v1.0"
 
         # If data does not exist or is empty → full download
         if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
-            os.makedirs(dst_dir, exist_ok=True)
+            if download_missing_tiles:
+                os.makedirs(dst_dir, exist_ok=True)
 
-            tessera_from_df(
-                self.df,
-                data_dir=dst_dir,
-                year=year,
-                tile_size=size,
-                cache_dir=self.cache_dir,
-            )
+                tessera_from_df(
+                    self.df,
+                    data_dir=dst_dir,
+                    year=year,
+                    tile_size=size,
+                    cache_dir=self.cache_dir,
+                    version=version,
+                )
 
-            # TODO: if we compile the dataset and use zenodo (or sth else) then change to pooch downloading/loading
-            # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
-            # or self.setup_tessera_from_pooch() <- per children class implementation
+                # TODO: if we compile the dataset and use zenodo (or sth else) then change to pooch downloading/loading
+                # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
+                # or self.setup_tessera_from_pooch() <- per children class implementation
+            else:
+                print("Please download the missing Tessera tiles...")
 
         # Download missing rows (if any)
         else:
@@ -304,10 +321,11 @@ class BaseDataset(Dataset, ABC):
                                 tessera_con=gt,
                             )
                             continue
-                        except Exception as e:
+                        except NoTileError or PartialTileError as e:
                             print(f"Tile for {fname} could not be retrieved. Error: {e}")
-                self.records.pop(i)
-                print(f"No tile found for {fname} thus it will not be used.")
+                    else:
+                        self.records.pop(i)
+                        print(f"No tile found for {fname} thus it will not be used.")
 
     @final
     def setup_aef(self) -> None:
@@ -319,6 +337,12 @@ class BaseDataset(Dataset, ABC):
         print("\n\nSetting up AEF data...\n\n")
 
         dst_dir = os.path.join(self.data_dir, "eo/aef")
+        avail_files = os.listdir(dst_dir)
+        for i, rec in enumerate(self.records):
+            fname = os.path.basename(rec["aef_path"])
+            if fname not in avail_files:
+                self.records.pop(i)
+                print(f"No tile found for {fname} thus it will not be used.")
 
         # TODO aef retrieval?
         # TODO: in case of zenodo use may need to be moved to UC dataset subclasses

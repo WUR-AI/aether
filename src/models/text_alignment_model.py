@@ -1,6 +1,5 @@
 from typing import Dict, Tuple, override
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -11,9 +10,8 @@ from src.models.components.metrics.contrastive_validation import (
     RetrievalContrastiveValidation,
 )
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
-from src.models.components.text_encoders.base_text_encoder import (
-    BaseTextEncoder,
-)
+from src.models.components.projectors_adapters.base_encoder import BaseEncoder
+from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
 
 
 class TextAlignmentModel(BaseModel):
@@ -26,6 +24,8 @@ class TextAlignmentModel(BaseModel):
         scheduler: torch.optim.lr_scheduler,
         loss_fn: BaseLossFn,
         metrics: MetricsWrapper,
+        geo_adapter: BaseEncoder | None = None,
+        text_adapter: BaseEncoder | None = None,
         num_classes: int | None = None,
         tabular_dim: int | None = None,
         ks: list[int] | None = [5, 10, 15],
@@ -46,6 +46,7 @@ class TextAlignmentModel(BaseModel):
         :param match_to_geo: whether to match dimensions of text encoder to geo_encoder or visa-
             versa
         """
+
         super().__init__(
             trainable_modules=trainable_modules,
             geo_encoder=geo_encoder,
@@ -59,6 +60,8 @@ class TextAlignmentModel(BaseModel):
             tabular_dim=tabular_dim,
         )
 
+        self.geo_adapter = geo_adapter
+        self.text_adapter = text_adapter
         # Metrics
         self.ks = ks
         self.log_kwargs = dict(on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
@@ -76,21 +79,47 @@ class TextAlignmentModel(BaseModel):
         # Set up encoders and missing adapters/projectors
         print("-------Model------------")
         new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup() or []]
+
+        if self.geo_adapter:
+            self.geo_adapter.set_input_dim(self.geo_encoder.output_dim)
+            new_modules.extend([f"geo_adapter.{i}" for i in self.geo_adapter.setup() or []])
+
         new_modules.extend([f"text_encoder.{i}" for i in self.text_encoder.setup() or []])
+        if self.text_adapter:
+            self.text_adapter.set_input_dim(self.text_encoder.input_dim)
+            new_modules.extend([f"text_adapter.{i}" for i in self.text_adapter.setup() or []])
+
         self.trainable_modules.extend(new_modules)
 
         # Extra projector for text encoder if eo and text dim not match
-        if self.geo_encoder.output_dim != self.text_encoder.output_dim:
-            if self.match_to_geo:
+        geo_branch_dim = (
+            self.geo_adapter.output_dim if self.geo_adapter else self.geo_encoder.output_dim
+        )
+        text_branch_dim = (
+            self.text_adapter.output_dim if self.text_adapter else self.text_encoder.output_dim
+        )
+
+        if geo_branch_dim != text_branch_dim:
+            if self.geo_adapter or self.text_adapter:
+                print(
+                    f"You opted to use:{' geo' if self.geo_adapter else '' and ' text' if self.text_adapter else ''} adapter",
+                    "but you miss-configured output dimensions:\n"
+                    f"geo: {geo_branch_dim} vs text: {text_branch_dim}\n",
+                    "Please try again.",
+                )
+            elif self.match_to_geo:
                 self.text_encoder.add_projector(projected_dim=self.geo_encoder.output_dim)
                 self.trainable_modules.append("text_encoder.extra_projector")
             else:
                 self.geo_encoder.add_projector(projected_dim=self.text_encoder.output_dim)
                 self.trainable_modules.append("geo_encoder.extra_projector")
 
+        print("------------------------")
+
+    def on_fit_start(self):
         # Configure contrastive retrieval evaluation
         self.setup_retrieval_evaluation(verbose=0)
-        print("------------------------")
+        print("Retrieval evaluation configured")
 
     def setup_retrieval_evaluation(
         self,
@@ -124,8 +153,10 @@ class TextAlignmentModel(BaseModel):
                 return
 
         # Encode concepts if text branch is frozen
-        with torch.no_grad():
+        with torch.inference_mode():
             self.concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
+            self.concept_embeds = F.normalize(self.concept_embeds, dim=1)
+            self.concept_embeds = self.concept_embeds.to(self.device)
 
     @override
     def forward(
@@ -137,7 +168,11 @@ class TextAlignmentModel(BaseModel):
 
         # Embed modalities
         geo_feats = self.geo_encoder(batch)
+        if self.geo_adapter:
+            geo_feats = self.geo_adapter(geo_feats)
         text_feats = self.text_encoder(batch, mode)
+        if self.text_adapter:
+            text_feats = self.text_adapter(text_feats)
 
         # Change dtype of geo data if it does not match text dtype
         if geo_feats.dtype != text_feats.dtype:
@@ -160,7 +195,21 @@ class TextAlignmentModel(BaseModel):
             geo_feats, text_feats = feats[0], feats[1]
 
         # Get loss
-        loss = self.loss_fn(geo_feats, text_feats)
+        aux_values = batch["aux"].get("aux")
+        aux_ids_per_caption = batch.get("text_aux_ids")
+
+        if geo_feats.isnan().any():
+            print(geo_feats)
+            print(batch["name_loc"])
+            exit()
+
+        loss = self.loss_fn(
+            geo_feats,
+            text_feats,
+            mode=mode,
+            aux_values=aux_values,
+            aux_ids_per_caption=aux_ids_per_caption,
+        )
 
         # Get similarities
         with torch.no_grad():
@@ -185,10 +234,12 @@ class TextAlignmentModel(BaseModel):
         self.log_dict(metrics, batch_size=local_batch_size, **self.log_kwargs)
 
         if mode in ["val", "test"]:
+            aux = batch.get("aux", {}).get("aux")
             self.outputs_epoch_memory.append(
                 {
-                    "geo_feats": geo_feats.detach(),
-                    "aux_vals": batch.get("aux", {}).get("aux").detach(),
+                    # Store on CPU to avoid holding the whole epoch on GPU.
+                    "geo_feats": geo_feats.detach().cpu(),
+                    "aux_vals": aux.detach().cpu() if aux is not None else None,
                 }
             )
 
@@ -198,8 +249,11 @@ class TextAlignmentModel(BaseModel):
 
         # Combine batches
         geo_feats = torch.cat([x["geo_feats"] for x in self.outputs_epoch_memory], dim=0)
+        geo_feats = geo_feats.to(self.device, non_blocking=True)
 
-        aux_vals = torch.cat([x["aux_vals"] for x in self.outputs_epoch_memory], dim=0)
+        aux_vals = torch.cat([x["aux_vals"] for x in self.outputs_epoch_memory], dim=0).to(
+            self.device, non_blocking=True
+        )
 
         # Rank on similarity
         similarity = self.concept_similarities(geo_feats)
@@ -247,23 +301,34 @@ class TextAlignmentModel(BaseModel):
         return self._on_epoch_end("test")
 
     def concept_similarities(self, geo_embeds, concept=None) -> torch.Tensor:
+        device_type = geo_embeds.device.type
+        is_bf16 = self.trainer.precision == "bf16-mixed" and device_type == "cuda"
+
         # Get concept embeddings
         if concept is not None:
             # If only one concept is provided
             if isinstance(concept, str):
                 concept = [concept]
-            with torch.no_grad():
-                concept_embeds = self.text_encoder({"text": concept}, mode="train")
+
+            with torch.inference_mode():
+                with torch.autocast(
+                    device_type=device_type, dtype=torch.bfloat16, enabled=is_bf16
+                ):
+                    concept_embeds = self.text_encoder({"text": concept}, mode="train")
+            concept_embeds = F.normalize(concept_embeds, dim=1)
 
         elif self.concept_embeds is not None:
             concept_embeds = self.concept_embeds
         else:
-            with torch.no_grad():
-                concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
+            with torch.inference_mode():
+                with torch.autocast(
+                    device_type=device_type, dtype=torch.bfloat16, enabled=is_bf16
+                ):
+                    concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
+            concept_embeds = F.normalize(concept_embeds, dim=1)
 
         # Similarity
         geo_embeds = F.normalize(geo_embeds, dim=1)
-        concept_embeds = F.normalize(concept_embeds, dim=1)
         similarity_matrix = concept_embeds @ geo_embeds.T
 
         return similarity_matrix
