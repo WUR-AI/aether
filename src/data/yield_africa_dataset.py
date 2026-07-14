@@ -52,9 +52,12 @@ class YieldAfricaDataset(BaseDataset):
 
     Modality design note
     --------------------
-    `implemented_mod = {"coords"}` because tabular features live directly in
-    the model-ready CSV and are picked up via the `feat_` column prefix.
-    They do NOT need to be listed in `modalities`.
+    Tabular features live directly in the model-ready CSV and are picked up
+    via the `feat_` column prefix.  They do NOT need to be listed in
+    `modalities`.  Implemented spatial modalities: ``coords``, ``tessera``
+    (year-Y embedding), ``tessera_prev`` (year-Y−1 embedding for dual-year
+    fusion).  Adding ``tessera_prev`` to modalities activates dual-year
+    loading; single-year runs are unaffected.
 
     In addition to the CSV feat_* columns, the following features are injected:
       - ``feat_year``            : normalised year (zero-mean, unit-std)
@@ -88,6 +91,7 @@ class YieldAfricaDataset(BaseDataset):
         years: List[int] | None = None,
         exclude_countries: List[str] | None = None,
         exclude_years: List[int] | None = None,
+        require_prev_year_tessera: bool = True,
     ) -> None:
         super().__init__(
             data_dir=data_dir,
@@ -97,11 +101,12 @@ class YieldAfricaDataset(BaseDataset):
             dataset_name="yield_africa",
             seed=seed,
             cache_dir=cache_dir,
-            implemented_mod={"coords", "tessera"},
+            implemented_mod={"coords", "tessera", "tessera_prev"},
             mock=mock,
             use_features=use_features,
             csv_name=csv_name,
         )
+        self.require_prev_year_tessera = require_prev_year_tessera
 
         # Inject year and country one-hot columns as feat_* so that
         # get_records() picks them up automatically.  Build all new columns in
@@ -144,6 +149,23 @@ class YieldAfricaDataset(BaseDataset):
 
             self.df = pd.concat([self.df, pd.DataFrame(new_cols, index=self.df.index)], axis=1)
 
+        # Build a cross-year tessera path index from the full unfiltered df.
+        # Must happen before the country/year filter below so that year-Y records
+        # can resolve year-Y−1 paths even when those rows are excluded by a
+        # years= filter.  Keys: (lat_rounded, lon_rounded, year) → path.
+        if "tessera_prev" in self.modalities:
+            _tessera_dir_full = os.path.join(self.data_dir, "eo", "tessera")
+            _year_path_index: dict[tuple[float, float, int], str] = {}
+            _name_loc_coords: dict[str, tuple[float, float, int]] = {}
+            for _, _r in self.df.iterrows():
+                _lat_r = round(float(_r["lat"]), 6)
+                _lon_r = round(float(_r["lon"]), 6)
+                _year_r = int(_r["year"])
+                _year_path_index[(_lat_r, _lon_r, _year_r)] = os.path.join(
+                    _tessera_dir_full, f"tessera_{_r['name_loc']}_{_year_r}.npy"
+                )
+                _name_loc_coords[_r["name_loc"]] = (_lat_r, _lon_r, _year_r)
+
         # Apply country/year filters to self.df and rebuild records.
         # BaseDataset.__init__ has already loaded the CSV; filtering here avoids
         # touching BaseDataset and keeps the logic use-case specific.
@@ -180,6 +202,21 @@ class YieldAfricaDataset(BaseDataset):
         # self.feat_names and self.tabular_dim.
         self.records = self.get_records()
 
+        # Rewrite tessera paths to the year-suffixed convention
+        # (tessera_{name_loc}_{year}.npy).  BaseDataset.add_modality_paths_to_df()
+        # generates paths without a year; this override is local to
+        # YieldAfricaDataset and leaves BaseDataset unchanged.
+        if "tessera" in self.modalities:
+            _tessera_dir = os.path.join(self.data_dir, "eo", "tessera")
+            _name_loc_to_year: dict[str, int] = dict(
+                zip(self.df["name_loc"], self.df["year"].astype(int))
+            )
+            for rec in self.records:
+                year = _name_loc_to_year[rec["name_loc"]]
+                rec["tessera_path"] = os.path.join(
+                    _tessera_dir, f"tessera_{rec['name_loc']}_{year}.npy"
+                )
+
         # Drop records whose TESSERA tile is absent so the model is never
         # trained or evaluated on zero-padded stand-ins.
         if "tessera" in self.modalities:
@@ -193,6 +230,38 @@ class YieldAfricaDataset(BaseDataset):
                     before,
                 )
 
+        # Resolve tessera_prev_path for each record using the cross-year index.
+        # Records whose year-1 tile is absent are dropped when
+        # require_prev_year_tessera=True (default), or retained with
+        # tessera_prev_path=None when False.
+        if "tessera_prev" in self.modalities:
+            resolved = []
+            for rec in self.records:
+                lat_r, lon_r, year_r = _name_loc_coords[rec["name_loc"]]
+                key = (lat_r, lon_r, year_r - 1)
+                prev_path = _year_path_index.get(key)
+                if prev_path is not None and os.path.exists(prev_path):
+                    resolved.append({**rec, "tessera_prev_path": prev_path})
+                else:
+                    # Fall back to synthetic tile produced by --include-prev-year:
+                    # tessera_{name_loc}_prev_{year-1}.npy
+                    synth_path = os.path.join(
+                        _tessera_dir_full,
+                        f"tessera_{rec['name_loc']}_prev_{year_r - 1}.npy",
+                    )
+                    if os.path.exists(synth_path):
+                        resolved.append({**rec, "tessera_prev_path": synth_path})
+                    elif not self.require_prev_year_tessera:
+                        resolved.append({**rec, "tessera_prev_path": None})
+            dropped = len(self.records) - len(resolved)
+            if dropped:
+                log.warning(
+                    "Dropped %d/%d records: no year-1 TESSERA tile found.",
+                    dropped,
+                    len(self.records),
+                )
+            self.records = resolved
+
     def setup(self) -> None:
         """Check for requested modality data; warn if TESSERA tiles are absent.
 
@@ -204,13 +273,14 @@ class YieldAfricaDataset(BaseDataset):
         single fixed year for bulk download, which is incompatible with the
         multi-year nature of this dataset.
         """
-        if "tessera" in self.modalities:
+        if "tessera" in self.modalities or "tessera_prev" in self.modalities:
             tessera_dir = os.path.join(self.data_dir, "eo", "tessera")
             if not os.path.exists(tessera_dir) or len(os.listdir(tessera_dir)) == 0:
                 log.warning(
                     "TESSERA tiles not found at %s. "
                     "Run src/data_preprocessing/yield_africa_tessera_preprocess.py "
-                    "to pre-fetch tiles. Records with missing tiles are excluded from the dataset.",
+                    "to pre-fetch tiles. For tessera_prev, also pass --include-prev-year. "
+                    "Records with missing tiles are excluded from the dataset.",
                     tessera_dir,
                 )
 
@@ -226,6 +296,9 @@ class YieldAfricaDataset(BaseDataset):
                 )
             elif modality == "tessera":
                 sample["eo"]["tessera"] = self.load_tessera(row["tessera_path"])
+            elif modality == "tessera_prev":
+                if row.get("tessera_prev_path") is not None:
+                    sample["eo"]["tessera_prev"] = self.load_tessera(row["tessera_prev_path"])
 
         if self.use_features and self.feat_names:
             sample["eo"]["tabular"] = torch.tensor(
