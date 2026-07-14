@@ -33,7 +33,7 @@ dependencies = [
     "peft>=0.18.1",
     "llm2vec",
     "setuptools<81",
-    "geotessera>=0.8.0",
+    "geotessera>=0.9.0",
     "ipykernel>=7.2.0",
     "xgboost>=3.2.0",
     "albumentations",
@@ -44,7 +44,7 @@ dependencies = [
 create-data = [
     "geemap>=0.36.6",
     "pipreqs>=0.5.0",
-    "earthaccess>=0.11.0",
+#    "earthaccess>=0.11.0", #updated geotessera is incompatible with this one
     "pyhdf>=0.11.4",
 ]
 

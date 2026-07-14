@@ -130,6 +130,7 @@ def get_tessera_embeds(
     save_dir: str,
     tile_size: int,
     tessera_con: GeoTessera | None,
+    version: str,
     padding: int = 100,
     save_tif=False,
 ) -> None:
@@ -236,7 +237,15 @@ def get_tessera_embeds(
         if padding > 500:
             raise NoTileError(f"Padding {padding} > 500")
         return get_tessera_embeds(
-            lon, lat, name_loc, year, save_dir, tile_size, tessera_con, padding=padding + 100
+            lon,
+            lat,
+            name_loc,
+            year,
+            save_dir,
+            tile_size,
+            tessera_con,
+            padding=padding + 100,
+            version=version,
         )
 
     crop = mosaic[row_min:row_max, col_min:col_max, :]
@@ -276,7 +285,14 @@ def get_tessera_embeds(
 
     # Log its metadata
     meta_df = pd.DataFrame(
-        {"id": [name_loc], "year": [year], "lon": [lon], "lat": [lat], "crs": [utm_crs]}
+        {
+            "id": [name_loc],
+            "year": [year],
+            "lon": [lon],
+            "lat": [lat],
+            "crs": [utm_crs],
+            "version": [version],
+        },
     )
 
     meta_file = f"{save_dir}/meta.csv"
@@ -298,6 +314,7 @@ def tessera_from_df(
     tile_size: int = 256,
     cache_dir: str = "temp/",
     logs_dir: str = "logs",
+    version="v1",
 ) -> None:
     """Obtains Tessera embeddings from a CSV file for each (lon, lat).
 
@@ -306,19 +323,29 @@ def tessera_from_df(
     :param year: year for the embeddings
     :param tile_size: tile size in meters
     :param cache_dir: path to cache directory
+    :param version: version of the tessera dataset
     :return: None
     """
-
+    assert version in ["v1", "v1.1"]
+    dataset_var = {"v1.1": "cambridge", "1.1": "cambridge", "1.0": "vultr", "v1.0": "vultr"}[
+        version
+    ]
     # Tessera connection
     cache_dir = os.path.join(cache_dir, "tessera")
-    gt = GeoTessera(cache_dir=cache_dir, embeddings_dir=cache_dir, dataset_version="v1")
-
+    gt = GeoTessera(
+        cache_dir=cache_dir,
+        embeddings_dir=cache_dir,
+        dataset_version=version,
+        dataset_variant=dataset_var,
+    )
     # Iter each coord
     n = len(model_ready_df)
     for i, row in model_ready_df.iterrows():
         print(f"{i}/{n}")
         try:
-            get_tessera_embeds(row.lon, row.lat, row.name_loc, year, f"{data_dir}/", tile_size, gt)
+            get_tessera_embeds(
+                row.lon, row.lat, row.name_loc, year, f"{data_dir}/", tile_size, gt, version
+            )
         except Exception as e:
             if isinstance(e, NoTileError):
                 path = os.path.join(logs_dir, "tessera_skipped.txt")
@@ -389,24 +416,29 @@ def inspect_np_arr_as_tiff(
 
 
 if __name__ == "__main__":
-    os.chdir("../..")
+    # os.chdir("../..")
 
     print(os.getcwd())
 
     # df = pd.read_csv("data/heat_guatemala/model_ready_heat_guatemala.csv")
     # df = pd.read_csv("/lustre/backup/SHARED/AIN/aether/data/s2bms/model_ready_s2bms.csv")
     df = pd.read_csv("data/s2bms/model_ready_s2bms.csv")
-    # df.sort_values(by="name_loc", inplace=True, ascending=False)
+
+    # df = pd.read_csv("data/s2bms/model_ready_s2bms-unlabelled-20260529.csv")
+    # df = df[df.split == "train"]
+    df.sort_values(by="name_loc", inplace=True, ascending=False)
+    df.reset_index(drop=True, inplace=True)
+
     if os.path.exists("logs/tessera_skipped.txt"):
         with open(os.path.join("logs", "tessera_skipped.txt")) as f:
             skipped = set(f.read().splitlines())
         df = df[~df.name_loc.isin(skipped)]
-    # df.sort_values('name_loc', ascending=False, inplace=True)
 
     tessera_from_df(
         df,
         "data/s2bms/eo/tessera",
-        year=2024,
+        year=2019,
         tile_size=256,
         cache_dir="data/cache",
+        version="v1.1",
     )
