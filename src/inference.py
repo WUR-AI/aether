@@ -17,6 +17,8 @@ import os
 if os.environ.get("TOKENIZERS_PARALLELISM") is None:
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+DEVICE = "mps"
+
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="inference.yaml")
 def main(cfg: DictConfig) -> Optional[float]:
@@ -36,7 +38,7 @@ def main(cfg: DictConfig) -> Optional[float]:
     # Otherwise merge model from two checkpoints
     else:
         model = merge_inference_model(cfg, save_ckpt=True)
-    model.to("mps")
+    model.to(DEVICE)
 
     # TODO: do what you need with the inference model
     if cfg.data:
@@ -50,7 +52,7 @@ def main(cfg: DictConfig) -> Optional[float]:
 
         # per location (batching uses location text generation)
         for d in datamodule.data_train:
-            b = {"eo": {"aef_avr": d["eo"]["aef_avr"].unsqueeze(0).to("mps")}}
+            b = {"eo": {"aef_avr": d["eo"]["aef_avr"].unsqueeze(0).to(DEVICE)}}
             geo_embeds, pred = model.forward_geo(b)
             # TODO: do what you need with the inference model
 
