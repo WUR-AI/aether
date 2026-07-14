@@ -21,9 +21,10 @@ class BCELoss(BaseLossFn):
         mode: str | None = None,
         **kwargs,
     ) -> torch.Tensor or Dict[str, torch.Tensor]:
+        """Forward pass to get BCE loss."""
 
         labels = labels if labels is not None else batch.get("target")
-        loss = self.criterion(pred, labels)
+        loss = self.criterion(pred, labels.to(pred.dtype))
 
         if "return_label" in kwargs:
             return {f"{mode}_{self.name}": loss}

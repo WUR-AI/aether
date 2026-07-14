@@ -36,10 +36,18 @@ def collate_fn(
     if batch[0].get("target") is not None:
         batch_collected["target"] = smart_stack([item["target"] for item in batch])
 
+    if batch[0].get("name_loc") is not None:
+        batch_collected["name_loc"] = smart_stack([item["name_loc"] for item in batch])
+
     # convert aux into captions
     if mode == "train":
         batch_collected["text"] = caption_builder.random(batch_collected["aux"])
     else:
-        batch_collected["text"] = caption_builder.all(batch_collected["aux"])
+        batch_collected["text"] = caption_builder.sample_multiple_or_all(batch_collected["aux"])
+
+    # If requested to return aux_ids, recompile stacks
+    if caption_builder.return_aux_ids:
+        batch_collected["text_aux_ids"] = batch_collected["text"][1]
+        batch_collected["text"] = batch_collected["text"][0]
 
     return batch_collected

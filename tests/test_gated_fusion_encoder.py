@@ -15,6 +15,7 @@ from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
 from src.models.components.geo_encoders.encoder_wrapper import EncoderWrapper
 from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
 
+
 # ---------------------------------------------------------------------------
 # Minimal stub encoder for testing — outputs a fixed-size embedding.
 # ---------------------------------------------------------------------------
@@ -137,7 +138,7 @@ def test_with_tabular_encoder():
 
     Both branches projected to the same output_dim (32) via per-branch projectors.
     """
-    from src.models.components.geo_encoders.mlp_projector import MLPProjector
+    from src.models.components.projectors_adapters.mlp_projector import MLPProjector
 
     tabular_dim = 23
     tab_enc = TabularEncoder(output_dim=32)

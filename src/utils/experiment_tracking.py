@@ -1,6 +1,5 @@
 import os
 import re
-import shutil
 from pathlib import Path
 
 import pandas as pd
@@ -11,6 +10,92 @@ from omegaconf import DictConfig
 PROJECTS = ["s2bms_prediction", "s2bms_alignment"]  # Important to keep updating!
 EXPERIMENT_TRACKER_NAME = "experiment_tracker.csv"
 ENTITY = "aether_xai"
+
+
+def parse_data_name(run=None, cfg=None):
+    if cfg is None:
+        assert run is not None
+        data_dict = run.config["data"]["dataset"]["modalities"]
+    else:
+        data_dict = cfg["data"]["dataset"]["modalities"]
+
+    if len(data_dict) == 1:
+        k = list(data_dict.keys())[0]
+        if k == "coords":
+            if "GeoClip" in run.config["model"]["geo_encoder"]["_target_"]:
+                data_name = "geoclip"
+            else:
+                data_name = "satclip"
+        else:
+            ks = list(data_dict.keys())
+            ks_new = [
+                f"{k}{f'_{k.get('size')}' if isinstance(k, dict) and k.get('size') else ''}"
+                for k in ks
+            ]
+            data_name = "-".join(map(str, ks_new))
+
+        return data_name
+
+
+def compose_experiment_name(cfg: DictConfig) -> str:
+    """For alignment
+    (unlab_)(geo_encoder)_(eo_mod)_(geo_adapter)_(text_encoder)_(text_adapter)_(batch_size) # noqa:
+
+    RST306.
+    """
+
+    name = ""
+
+    # Unlabeled
+    if cfg.data.dataset.use_unlabelled_data:
+        name += "unlab_"  # noqa: RST306
+
+    # geo encoder
+    name += cfg.model.geo_encoder._target_.split(".")[-1]
+
+    # eo mod
+    name += "_" + parse_data_name(cfg=cfg)
+
+    # batch size
+    if cfg.model._target_ == "src.models.text_alignment_model.TextAlignmentModel":
+        # geo adapter
+        if cfg.model.get("geo_adapter") is not None:
+            name += "_" + cfg.model.geo_adapter._target_.split(".")[-1]
+
+        # text encoder
+        if cfg.model.get("text_adapter") is not None:
+            name += "_" + cfg.model.text_encoder._target_.split(".")[-1]
+
+        # text adapter
+        if cfg.model.get("text_adapter") is not None:
+            name += "_" + cfg.model.text_adapter._target_.split(".")[-1]
+
+        # batch size
+        name += f"_b-{cfg.data.batch_size}"
+    else:
+        # prediction head
+        if cfg.model.get("prediction_head") is not None:
+            name += "_" + cfg.model.prediction_head._target_.split(".")[-1]
+
+    # extras for experiment identification
+    if cfg.get("experiment_name_extra"):
+        name += "_" + cfg.experiment_name_extra
+
+    return name
+
+
+def update_wandb_run_id(run_id, project_name, updates_dict):
+    api = wandb.Api()
+    entity = ENTITY
+
+    run = api.run(f"{entity}/{project_name}/{run_id}")
+
+    # Update the config
+    for key, value in updates_dict.items():
+        run.config[key] = value
+
+    run.config.save()
+    print(f"Successfully updated run {run_id}")
 
 
 def experiment_check(cfg: DictConfig):
@@ -40,6 +125,7 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
     # Get existing experiment table
     df, df_path = open_experiment_df(cfg)
     ids = list(df.run_id) if len(df) > 0 else []
+    df_len = len(df)
 
     # Connect to wandb api
     api = wandb.Api()
@@ -79,9 +165,10 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
                 if best_val_loss is None:
                     if len(results) > 0:
                         loss_per_epoch = results.groupby("epoch")["val_loss"].mean()
-                        if best_epoch != loss_per_epoch.idxmin():
-                            raise ValueError()
-                        best_val_loss = loss_per_epoch.min().item()
+                        if best_epoch:
+                            best_val_loss = loss_per_epoch[best_epoch]
+                        else:
+                            best_val_loss = loss_per_epoch.min().item()
                         run.summary.update({"best_val_loss": best_val_loss})
                 if project == "s2bms_prediction" and best_val_mse_loss is None:
                     mse_loss_per_epoch = results.groupby("epoch")["val_mse_loss"].mean()
@@ -92,17 +179,7 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
                 if experiment is None:
                     experiment = run.config["experiment_name"]
                     run.summary.update({"experiment": experiment})
-
-                data_dict = run.config["data"]["dataset"]["modalities"]
-                if len(data_dict) == 1:
-                    k = list(data_dict.keys())[0]
-                    if k == "coords":
-                        if "GeoClip" in run.config["model"]["geo_encoder"]["_target_"]:
-                            data_name = "geoclip"
-                        else:
-                            data_name = "satclip"
-                    else:
-                        data_name = f"{k}_{data_dict[k]['size']}"
+                    data_name = parse_data_name(run=run)
                     run.summary.update({"data_used": data_name})
 
                 # Add missing experiments to the table
@@ -119,8 +196,11 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
                 )
 
     # Return experiment df
-    if len(df) > 0:
+    if df_len - len(df) > 0:
         print(f"Saved {len(runs_list)} runs to {df_path}.")
+        return df
+    if len(df) > 0:
+        print("No runs updated.")
         return df
     else:
         print("No runs found.")
@@ -209,6 +289,6 @@ def clean_local_ckpts(cfg: DictConfig, df: pd.DataFrame) -> None:
         if str(local_ckpt) not in keep:
             print(f"Do you want to remove {local_ckpt}? (y/n)")
             answer = input()
-            if answer != "y":
-                shutil.rmtree(local_ckpt)
+            if answer == "y":
+                os.remove(str(local_ckpt))
                 print(f"Removed {local_ckpt}.")
