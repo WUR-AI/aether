@@ -1,12 +1,11 @@
 import os
-from typing import Any, List, override
+from typing import List, override
 
 import pandas as pd
 import torch
 
 from src.data.base_caption_builder import (
     BaseCaptionBuilder,
-    get_adjective_for_percentage,
     sample_adjective_for_percentage,
 )
 from src.data.base_dataset import BaseDataset
@@ -18,9 +17,22 @@ from src.data_preprocessing.data_utils import (
 
 class ButterflyCaptionBuilder(BaseCaptionBuilder):
     def __init__(
-        self, templates_fname: str, concepts_fname: str, data_dir: str, seed: int
+        self,
+        templates_fname: str,
+        concepts_fname: str,
+        data_dir: str,
+        seed: int,
+        n_captions_for_validation: int | str = "all",
+        return_aux_ids: bool = False,
     ) -> None:
-        super().__init__(templates_fname, concepts_fname, data_dir, seed)
+        super().__init__(
+            templates_fname,
+            concepts_fname,
+            data_dir,
+            seed,
+            n_captions_for_validation,
+            return_aux_ids,
+        )
 
     @override
     def sync_with_dataset(self, dataset: BaseDataset) -> None:
@@ -44,7 +56,6 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                     "description": description,
                     "units": units,
                 }
-
         self.sync_concepts()
 
     def get_corine_column_keys(self):
@@ -113,6 +124,9 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         template = self.templates[template_idx]
         tokens = self.tokens_in_template[template_idx]
         replacements = {}
+        if self.return_aux_ids:
+            ids = []
+
         for token in tokens:
             init_token = token
             if "top" in token:
@@ -126,6 +140,8 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                 )
 
             idx = values_dict["id"]
+            if self.return_aux_ids:
+                ids.append(idx)
             value = aux[idx].item()
 
             formatted_desc = values_dict["description"].lower() or ""
@@ -143,6 +159,8 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
             replacements[init_token] = formatted_desc
 
         template = self._fill(template, replacements)
+        if self.return_aux_ids:
+            return template, ids
         return template
 
 

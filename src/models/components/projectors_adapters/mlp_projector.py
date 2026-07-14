@@ -3,10 +3,10 @@ from typing import List, override
 import torch
 from torch import nn
 
-from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
+from src.models.components.projectors_adapters.base_encoder import BaseEncoder
 
 
-class MLPProjector(BaseGeoEncoder):
+class MLPProjector(BaseEncoder):
     def __init__(
         self,
         output_dim: int,
@@ -29,9 +29,6 @@ class MLPProjector(BaseGeoEncoder):
         self.configure_nn()
         return ["net"]
 
-    def set_input_dim(self, input_dim: int) -> None:
-        self.input_dim = input_dim
-
     def configure_nn(self) -> None:
         """Configure the MLP network."""
         assert self.input_dim is not None, "input_dim must be defined"
@@ -49,6 +46,4 @@ class MLPProjector(BaseGeoEncoder):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         feats = self.net(x)
-        if self.extra_projector:
-            feats = self.extra_projector(feats)
         return feats

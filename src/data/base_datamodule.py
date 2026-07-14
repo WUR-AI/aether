@@ -2,7 +2,7 @@ import copy
 import os
 import time
 from functools import partial
-from typing import Any, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -69,6 +69,7 @@ class BaseDataModule(LightningDataModule):
             self.caption_builder = caption_builder
             self.caption_builder.sync_with_dataset(self.dataset)
             self.concept_configs = caption_builder.concepts
+        self._setup_flag = False
 
     @property
     def tabular_dim(self):
@@ -85,9 +86,11 @@ class BaseDataModule(LightningDataModule):
         Called by model trainer (trainer.fit()).
         """
 
-        # Set up the dataset (download requested modalities)
-        self.dataset.setup()
-        self.split_data()
+        if not self._setup_flag:
+            # Set up the dataset (download requested modalities)
+            self.dataset.setup()
+            self.split_data()
+            self._setup_flag = True
 
     @property
     def batch_size_per_device(self) -> None:
@@ -397,10 +400,13 @@ class BaseDataModule(LightningDataModule):
 
         if split_data_from_inds:
             self.data_train = torch.utils.data.Subset(self.dataset, train_indices)
+            print(f"Train dataset split size: {len(self.data_train)}")
             self.data_val = torch.utils.data.Subset(self.dataset, val_indices)
+            print(f"Validate dataset split size: {len(self.data_val)}")
 
             if test_indices is not None:
                 self.data_test = torch.utils.data.Subset(self.dataset, test_indices)
+                print(f"Test dataset split size: {len(self.data_test)}")
             else:
                 self.data_test = None
 

@@ -3,7 +3,6 @@ import torch
 from src.models.components.geo_encoders.average_encoder import AverageEncoder
 from src.models.components.geo_encoders.cnn_encoder import CNNEncoder
 from src.models.components.geo_encoders.geoclip import GeoClipCoordinateEncoder
-from src.models.components.geo_encoders.mlp_projector import MLPProjector
 from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
 
 
@@ -15,16 +14,13 @@ def test_geo_encoder_generic_properties(create_butterfly_dataset):
         "cnn": CNNEncoder,
         "average": AverageEncoder,
         "tabular": TabularEncoder,
-        "mlp_projector": MLPProjector,
     }
     ds, dm = create_butterfly_dataset
     dm.setup()
     batch = next(iter(dm.train_dataloader()))
 
     for geo_encoder_name, geo_encoder_class in dict_geo_encoders.items():
-        if geo_encoder_class is MLPProjector:
-            geo_encoder = geo_encoder_class(output_dim=64, input_dim=128)
-        elif geo_encoder_class is TabularEncoder:
+        if geo_encoder_class is TabularEncoder:
             geo_encoder = geo_encoder_class(output_dim=64, input_dim=128, hidden_dim=128)
         else:
             geo_encoder = geo_encoder_class()

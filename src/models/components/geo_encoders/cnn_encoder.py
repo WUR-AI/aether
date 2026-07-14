@@ -3,16 +3,13 @@ from typing import Dict, List, override
 import torch
 import torchvision.models as models
 from torch import nn
-from torchgeo.models import resnet50, ResNet50_Weights, ResNet18_Weights, resnet18
+from torchgeo.models import ResNet18_Weights, ResNet50_Weights, resnet18, resnet50
 
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
 from src.utils.errors import IllegalArgumentCombination
 
-RN_DIM = {
-    18 : 512,
-    34: 512,
-    50: 2048
-}
+RN_DIM = {18: 512, 34: 512, 50: 2048}
+
 
 class CNNEncoder(BaseGeoEncoder):
     """Convolutional neural network EO encoder. Adapted from PECL.
@@ -41,7 +38,12 @@ class CNNEncoder(BaseGeoEncoder):
             assert resnet_version in [18, 34, 50], f"Unsupported resnet version: {resnet_version}"
             self.resnet_version = resnet_version
 
-            assert pretrained_cnn in ["imagenet", "IMAGENET1K_V1", 'SSL4EO_RGB_MOCO', None], f"Unsupported pretrained_cnn: {pretrained_cnn}"
+            assert pretrained_cnn in [
+                "imagenet",
+                "IMAGENET1K_V1",
+                "SSL4EO_RGB_MOCO",
+                None,
+            ], f"Unsupported pretrained_cnn: {pretrained_cnn}"
             self.pretrained_cnn = pretrained_cnn
 
             self.output_dim = RN_DIM[resnet_version]
@@ -52,7 +54,9 @@ class CNNEncoder(BaseGeoEncoder):
         self.geo_data_name = geo_data_name
 
         self.set_n_input_bands(input_n_bands)
-        assert (self.input_n_bands >= 3 and type(self.input_n_bands) is int), f"input_n_bands must be int >=3, got {self.input_n_bands}"
+        assert (
+            self.input_n_bands >= 3 and type(self.input_n_bands) is int
+        ), f"input_n_bands must be int >=3, got {self.input_n_bands}"
 
     def set_n_input_bands(self, n_bands: int | None = None) -> None:
         """Sets number of input bands based on geo_data_name if n_bands is None.
@@ -77,6 +81,7 @@ class CNNEncoder(BaseGeoEncoder):
     @override
     def _setup(self) -> List[str]:
         """Gets backbone model given configuration stored in self.
+
         :return: backbone model
         """
         trainable_modules = []
@@ -87,7 +92,9 @@ class CNNEncoder(BaseGeoEncoder):
                 if self.resnet_version == 18:
                     self.geo_encoder = resnet18(weights=ResNet18_Weights.SENTINEL2_RGB_MOCO)
                 elif self.resnet_version == 34:
-                    raise IllegalArgumentCombination('SSL4EO_RGB_MOCO weights are not available for RN-34')
+                    raise IllegalArgumentCombination(
+                        "SSL4EO_RGB_MOCO weights are not available for RN-34"
+                    )
                 else:
                     self.geo_encoder = resnet50(weights=ResNet50_Weights.SENTINEL2_RGB_MOCO)
             # Imagenet
@@ -123,7 +130,7 @@ class CNNEncoder(BaseGeoEncoder):
                             self.geo_encoder.conv1.weight[:, i, :, :] = weight[:, i % 3, :, :]
 
                 # Ensure replaced layer is not frozen
-                trainable_modules.append('geo_encoder.conv1')
+                trainable_modules.append("geo_encoder.conv1")
 
             # I think for features fc often is replaced with identity?
             self.geo_encoder.fc = nn.Identity()
@@ -145,8 +152,10 @@ class CNNEncoder(BaseGeoEncoder):
         :param batch: input batch
         :return: extracted features
         """
-        eo_data = batch.get("eo", KeyError(f"Batch must contain batch['eo']"))
-        eo_data = eo_data.get(self.geo_data_name,  KeyError(f"Batch must contain batch['eo']['{self.geo_data_name}']"))
+        eo_data = batch.get("eo", KeyError("Batch must contain batch['eo']"))
+        eo_data = eo_data.get(
+            self.geo_data_name, KeyError(f"Batch must contain batch['eo']['{self.geo_data_name}']")
+        )
         dtype = self.dtype
 
         if eo_data.dtype != dtype:

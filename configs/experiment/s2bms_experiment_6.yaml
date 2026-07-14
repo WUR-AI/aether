@@ -34,7 +34,7 @@ data:
   caption_builder:
   num_workers: 14
   batch_size: 128
-  saved_split_file_name: "split_indices_s2bms_2024-08-14-1459_union_aef_tsr_val_test.pth"
+  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
 
 logger:
   wandb:
