@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import rasterio
 import torch
+from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import Dataset
 
 from src.data_preprocessing.tessera_embeds import NoTileError, PartialTileError
@@ -122,20 +123,25 @@ class BaseDataset(Dataset, ABC):
         self.use_target_data = use_target_data
         self.use_features = use_features
 
-        if use_aux_data is None or use_aux_data == "all":
+        if isinstance(use_aux_data, DictConfig):
+            use_aux_data = OmegaConf.to_container(use_aux_data, resolve=True)
+
+        if use_aux_data is None:
+            self.use_aux_data = None
+
+        elif use_aux_data == "all":
             self.use_aux_data = {
                 "aux": {
                     "pattern": "^aux_(?!.*top).*",
-                    #     'columns' : []
                 },
                 "top": {
                     "pattern": "^aux_.*top.*",
-                    #     'columns' : []
                 },
             }
 
-        elif type(use_aux_data) is dict:
+        elif isinstance(use_aux_data, dict):
             self.use_aux_data = use_aux_data
+
         else:
             self.use_aux_data = None
 
@@ -297,35 +303,52 @@ class BaseDataset(Dataset, ABC):
         else:
             from geotessera import GeoTessera
 
+            print("Checking missing Tessera tiles...")
+            avail_files = set(os.listdir(dst_dir))
+            gt = None
+            kept_records = []
+            missing_files = []
+
+            for rec in self.records:
+                fname = os.path.basename(rec["tessera_path"])
+
+                if fname in avail_files:
+                    kept_records.append(rec)
+                    continue
+
+                if download_missing_tiles:
+                    print(f"Retrieving missing Tessera data: {fname}")
+                    gt = gt or GeoTessera(cache_dir=self.cache_dir)
+                    row = self.df[self.df["name_loc"] == rec["name_loc"]]
+                    lon, lat = row.lon.item(), row.lat.item()
+
+                    try:
+                        get_tessera_embeds(
+                            lon,
+                            lat,
+                            rec["name_loc"],
+                            year=year,
+                            save_dir=dst_dir,
+                            tile_size=size,
+                            tessera_con=gt,
+                        )
+                        if os.path.exists(rec["tessera_path"]):
+                            kept_records.append(rec)
+                            avail_files.add(fname)
+                            continue
+                    except NoTileError or PartialTileError as e:
+                        print(f"Tile for {fname} could not be retrieved. Error: {e}")
+                else:
+                    # self.records.pop(i)
+                    print(f"No tile found for {fname} thus it will not be used.")
+
+            self.records = kept_records
+
+            if missing_files:
+                print(f"Dropped {len(missing_files)} records with missing Tessera tiles.")
+
             print("Downloading missing Tessera tiles...")
             print("[Warning]: it may download tessera tiles filled with 0a")
-
-            avail_files = os.listdir(dst_dir)
-            gt = None
-            for i, rec in enumerate(self.records):
-                fname = os.path.basename(rec["tessera_path"])
-                if fname not in avail_files:
-                    if download_missing_tiles:
-                        print(f"Retrieving missing Tessera data: {fname}")
-                        gt = gt or GeoTessera(cache_dir=self.cache_dir)
-                        row = self.df[self.df["name_loc"] == rec["name_loc"]]
-                        lon, lat = row.lon.item(), row.lat.item()
-                        try:
-                            get_tessera_embeds(
-                                lon,
-                                lat,
-                                rec["name_loc"],
-                                year=year,
-                                save_dir=dst_dir,
-                                tile_size=size,
-                                tessera_con=gt,
-                            )
-                            continue
-                        except NoTileError or PartialTileError as e:
-                            print(f"Tile for {fname} could not be retrieved. Error: {e}")
-                    else:
-                        self.records.pop(i)
-                        print(f"No tile found for {fname} thus it will not be used.")
 
     @final
     def setup_aef(self) -> None:
