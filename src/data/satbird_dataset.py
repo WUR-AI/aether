@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, override
+from typing import Any, override
 
 import torch
 from rasterio import open as ropen
@@ -14,12 +14,15 @@ class SatBirdDataset(BaseDataset):
         self,
         data_dir: str,
         modalities: dict,
-        use_target_data: bool,
-        seed: int,
-        use_aux_data: Dict[str, Any] | str = "all",
+        use_target_data: bool = True,
+        use_aux_data: Any = None,
+        use_features: bool = False,
+        seed: int = 12345,
         study_site: str = "Kenya",
         cache_dir: str = None,
         mock: bool = False,
+        dtype: str = "float32",
+        return_name_loc: bool = False,
     ):
         """A dataset implementation for the Butterfly diversity use case.
 
@@ -46,6 +49,9 @@ class SatBirdDataset(BaseDataset):
             cache_dir=cache_dir,
             implemented_mod={"coords", "s2", "s2rgb", "tessera"},
             mock=mock,
+            dtype=dtype,
+            use_features=use_features,
+            return_name_loc=return_name_loc,
         )
 
     @override
@@ -99,8 +105,7 @@ class SatBirdDataset(BaseDataset):
                 s2 = v2.CenterCrop(self.modalities[modality].get("size", 256))(s2)
                 formatted_row["eo"][modality] = s2
             elif modality == "tessera":
-                formatted_row["eo"][modality] = self.load_npy(row["tessera_path"])
-                # TODO any normalisation needed
+                formatted_row["eo"][modality] = self.load_tessera(row["tessera_path"])
 
         if self.use_target_data:
             formatted_row["target"] = torch.tensor(
@@ -116,6 +121,14 @@ class SatBirdDataset(BaseDataset):
                     )
                 else:
                     formatted_row["aux"][aux_cat] = [row[v] for v in vals]
+
+        if self.use_features and self.feat_names:
+            formatted_row["eo"]["tabular"] = torch.tensor(
+                [row[k] for k in self.feat_names], dtype=torch.float32
+            )
+
+        if self.return_name_loc:
+            formatted_row["name_loc"] = row["name_loc"]
 
         return formatted_row
 
