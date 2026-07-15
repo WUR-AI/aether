@@ -76,8 +76,7 @@ class BaseDataset(Dataset, ABC):
 
             if configs is not None:
                 m_dtype = configs.get("dtype", dtype)
-                self.modalities[mod]["dtype"] = m_dtype
-                print(f"Dtype of {mod} set to {m_dtype}")
+                self.modalities[mod]["dtype"] = m_dtype # Overwrite if dtype was not specified
                 log.info(f"Dtype of {mod} set to {m_dtype}")
             else:
                 m_dtype = dtype
