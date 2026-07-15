@@ -106,26 +106,30 @@ class BaseDataset(Dataset, ABC):
         self.use_features = use_features
 
         if isinstance(use_aux_data, DictConfig):
-            use_aux_data = OmegaConf.to_container(use_aux_data, resolve=True)
-
-        if use_aux_data is None:
-            self.use_aux_data = None
-
+            self.use_aux_data = OmegaConf.to_container(use_aux_data, resolve=True)
         elif use_aux_data == "all":
             self.use_aux_data = {
                 "aux": {
                     "pattern": "^aux_(?!.*top).*",
+                    #     'columns' : []
                 },
                 "top": {
                     "pattern": "^aux_.*top.*",
+                    #     'columns' : []
                 },
             }
-
-        elif isinstance(use_aux_data, dict):
-            self.use_aux_data = use_aux_data
-
         else:
             self.use_aux_data = None
+
+        if isinstance(use_features, DictConfig):
+            self.use_features = OmegaConf.to_container(use_features, resolve=True)
+        elif use_features is True or use_features == "all":
+            self.use_features = {
+                    "pattern": "^feat_.*",
+                    #     'columns' : []
+            }
+        else:
+            self.use_features = None
 
         # More precise dataset name (with modalities)
         if isinstance(dataset_name, list):
@@ -167,7 +171,7 @@ class BaseDataset(Dataset, ABC):
                 )
                 columns.append(f"{modality}_path")
 
-        # Include targets TODO: this could be moved under geo-modalities
+        # Include targets
         if self.use_target_data:
             self.target_names = [c for c in self.df.columns if "target_" in c]
             columns.extend(self.target_names)
@@ -189,9 +193,18 @@ class BaseDataset(Dataset, ABC):
 
         # Include tabular features
         if self.use_features:
-            self.feat_names = [c for c in self.df.columns if c.startswith("feat_")]
-            columns.extend(self.feat_names)
-            self.tabular_dim = len(self.feat_names)
+            if "pattern" in self.use_features:
+                pattern = re.compile(self.use_features["pattern"])
+                feat_names = [x for x in self.df.columns if pattern.match(x)]
+            else:
+                feat_names = self.use_features.get(
+                    "columns",
+                    ValueError('use_features should have "pattern" or "columns" defined'),
+                )
+            self.feat_names = feat_names
+            columns.extend(feat_names)
+
+            self.tabular_dim = len(self.feat_names)# drop any duplicates
 
         return self.df.loc[:, columns].to_dict("records")
 
