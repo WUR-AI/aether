@@ -43,22 +43,24 @@ class ButterflyDataset(BaseDataset):
             use_unlabelled_data and use_target_data
         ), "Joint use of unlabelled and target data is not supported yet."
         if use_unlabelled_data:
-            dataset_name = ["s2bms", "s2bms-unlabelled-20260529"]
+            # csv_name = 'model_ready_s2bms-unlabelled-20260529.csv'
+            csv_name = "model_ready_s2bms-unlabelled-merged.csv"
         else:
-            dataset_name = "s2bms"
+            csv_name = "model_ready_s2bms.csv"
 
         super().__init__(
             data_dir=data_dir,
             modalities=modalities,
             use_target_data=use_target_data,
             use_aux_data=use_aux_data,
-            dataset_name=dataset_name,
+            dataset_name="s2bms",
             seed=seed,
             cache_dir=cache_dir,
             implemented_mod={"s2", "tessera", "coords", "aef", "aef_avr", "tessera_avr"},
             mock=mock,
             dtype=dtype,
             return_name_loc=return_name_loc,
+            csv_name=csv_name,
         )
 
     def setup(self):
