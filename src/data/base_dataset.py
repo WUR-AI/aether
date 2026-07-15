@@ -125,8 +125,8 @@ class BaseDataset(Dataset, ABC):
             self.use_features = OmegaConf.to_container(use_features, resolve=True)
         elif use_features is True or use_features == "all":
             self.use_features = {
-                    "pattern": "^feat_.*",
-                    #     'columns' : []
+                "pattern": "^feat_.*",
+                #     'columns' : []
             }
         else:
             self.use_features = None
@@ -198,7 +198,7 @@ class BaseDataset(Dataset, ABC):
             self.feat_names = feat_names
             columns.extend(feat_names)
 
-            self.tabular_dim = len(self.feat_names)# drop any duplicates
+            self.tabular_dim = len(self.feat_names)  # drop any duplicates
 
         return list(set(columns))
 
@@ -217,12 +217,12 @@ class BaseDataset(Dataset, ABC):
 
     @final
     def setup(self) -> None:
-        """Setups the whole dataset, makes available data of requested modalities
-        and filters out records for any location missing any modality data,"""
+        """Setups the whole dataset, makes available data of requested modalities and filters out
+        records for any location missing any modality data,"""
         if not self._setup_flag:
-            self._setup() # to be implemented for each UC
+            self._setup()  # to be implemented for each UC
 
-            self.records= self.get_records()
+            self.records = self.get_records()
             self._setup_flag = True
 
     @final
@@ -233,7 +233,9 @@ class BaseDataset(Dataset, ABC):
         :param extension: file extension
         :return: None
         """
-        assert extension in ['tif', 'npy'], MissingConfigurationError(f'Please specify a file extension for {modality}')
+        assert extension in ["tif", "npy"], MissingConfigurationError(
+            f"Please specify a file extension for {modality}"
+        )
         # Directory path
         path = f"{self.data_dir}/eo/{modality}/"
 
@@ -275,6 +277,7 @@ class BaseDataset(Dataset, ABC):
         # If data does not exist or is empty → full download
         if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
             from src.data_preprocessing.tessera_embeds import tessera_from_df
+
             if download_missing_tiles:
                 os.makedirs(dst_dir, exist_ok=True)
 
@@ -287,33 +290,41 @@ class BaseDataset(Dataset, ABC):
                     version=version,
                 )
                 if self._ignore_single_missing_data_points:
-                    mask = self.df['tessera_path'].apply(lambda p: os.path.basename(p) in avail_files)
+                    mask = self.df["tessera_path"].apply(
+                        lambda p: os.path.basename(p) in avail_files
+                    )
                     self.df = self.df[mask]
-                    log.info(f"Dropped {(~mask).sum()} locations because they had missing tessera tiles.")
+                    log.info(
+                        f"Dropped {(~mask).sum()} locations because they had missing tessera tiles."
+                    )
                 else:
                     raise MissingDataError(
-                        "Please download the missing Tessera tiles from src/data_preprocessing/tessera_embeds")
+                        "Please download the missing Tessera tiles from src/data_preprocessing/tessera_embeds"
+                    )
 
                 # TODO: if we compile the dataset and use zenodo (or sth else) then change to pooch downloading/loading
                 # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
                 # or self.setup_tessera_from_pooch() <- per children class implementation
             else:
-                raise MissingDataError("Please download the Tessera tiles from src/data_preprocessing/tessera_embeds")
+                raise MissingDataError(
+                    "Please download the Tessera tiles from src/data_preprocessing/tessera_embeds"
+                )
 
         # Download missing rows (if any)
         else:
             log.info("Checking missing Tessera tiles...")
             avail_files = set(os.listdir(dst_dir))
-            mask = self.df['tessera_path'].apply(lambda p: os.path.basename(p) in avail_files)
+            mask = self.df["tessera_path"].apply(lambda p: os.path.basename(p) in avail_files)
             if mask.all():
-                return # all data is available
+                return  # all data is available
             if download_missing_tiles:
                 log.warning("May download tessera tiles filled with 0a")
+                from geotessera import GeoTessera
+
                 from src.data_preprocessing.tessera_embeds import (
                     get_tessera_embeds,
-                    tessera_from_df
+                    tessera_from_df,
                 )
-                from geotessera import GeoTessera
 
                 gt = GeoTessera(cache_dir=self.cache_dir)
 
@@ -338,15 +349,21 @@ class BaseDataset(Dataset, ABC):
                             log.info(f"Tile for {fname} could not be retrieved. Error: {e}")
                         else:
                             raise e
-                mask = self.df['tessera_path'].apply(lambda p: os.path.basename(p) in avail_files)
+                mask = self.df["tessera_path"].apply(lambda p: os.path.basename(p) in avail_files)
                 self.df = self.df[mask]
-                log.info(f"Dropped {(~mask).sum()} locations because they had missing tessera tiles.")
+                log.info(
+                    f"Dropped {(~mask).sum()} locations because they had missing tessera tiles."
+                )
 
             elif self._ignore_single_missing_data_points:
                 self.df = self.df[mask]
-                log.info(f"Dropped {(~mask).sum()} locations because they had missing tessera tiles.")
+                log.info(
+                    f"Dropped {(~mask).sum()} locations because they had missing tessera tiles."
+                )
             else:
-                raise MissingDataError("Please download the missing Tessera tiles from src/data_preprocessing/tessera_embeds")
+                raise MissingDataError(
+                    "Please download the missing Tessera tiles from src/data_preprocessing/tessera_embeds"
+                )
 
     @final
     def setup_aef(self) -> None:
@@ -360,7 +377,7 @@ class BaseDataset(Dataset, ABC):
         dst_dir = os.path.join(self.data_dir, "eo/aef")
         avail_files = os.listdir(dst_dir)
 
-        mask = self.df['aef_path'].apply(lambda p: os.path.basename(p) in avail_files)
+        mask = self.df["aef_path"].apply(lambda p: os.path.basename(p) in avail_files)
 
         if mask.all():
             return
@@ -368,7 +385,9 @@ class BaseDataset(Dataset, ABC):
             self.df = self.df[mask]
             log.info(f"Dropped {(~mask).sum()} locations because they had missing aef tiles.")
         else:
-            raise MissingDataError(f"Missing aef data for {len(self.df[mask].name_loc)} locations. \n Please download the missing aef tiles")
+            raise MissingDataError(
+                f"Missing aef data for {len(self.df[mask].name_loc)} locations. \n Please download the missing aef tiles"
+            )
 
         # TODO aef retrieval?
         # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
@@ -471,3 +490,33 @@ class BaseDataset(Dataset, ABC):
         np_dtype = np.float32 if is_bfloat16 else np.dtype(dtype_str)
 
         return np_dtype, is_bfloat16
+
+    def setup_embeds(self, modality):
+        params = self.modalities[modality]
+        dtype = getattr(torch, self.modalities[modality].get("dtype"))
+
+        path = params.get("path", KeyError(f"Please specify {modality} path to csv file"))
+        assert os.path.exists(path), FileNotFoundError(f"{path} does not exist.")
+        df = pd.read_csv(path)
+
+        # Filter out locations without data for embeddings
+        common = set(df["name_loc"]) & set(self.df["name_loc"])
+        df = df[df["name_loc"].isin(common)]
+        df.drop(columns=["Unnamed: 0"], inplace=True, errors="ignore")
+        self.df = self.df[self.df["name_loc"].isin(common)]
+
+        if modality == "aef_avr":
+            emb_cols = [f"emb_{i}" for i in range(64)]
+        else:
+            emb_cols = [f"emb_{i}" for i in range(128)]
+
+        lookup_values = df[emb_cols].to_numpy()
+        lookup = {
+            name_loc: torch.tensor(lookup_values[i], dtype=dtype)
+            for i, name_loc in enumerate(df["name_loc"])
+        }
+
+        if modality == "aef_avr":
+            self.aef_avr = lookup
+        else:
+            self.tessera_avr = lookup
