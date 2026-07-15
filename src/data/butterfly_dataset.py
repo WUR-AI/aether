@@ -68,8 +68,8 @@ class ButterflyDataset(BaseDataset):
             csv_name=csv_name,
         )
 
-    def setup(self):
-        """Setups the whole dataset, makes available data of requested modalities."""
+1    def _setup(self):
+        """Setups the whole dataset, makes available data of requested modalities and filters out records for any location missing any modality data."""
 
         # Set up each requested modality
         for mod in self.modalities.keys():
@@ -83,6 +83,8 @@ class ButterflyDataset(BaseDataset):
                 self.setup_tessera()
             elif mod == "aef":
                 self.setup_aef()
+            elif mod in ["aef_avr", "tessera_avr"]:
+                self.setup_embeds(mod)
 
     def setup_s2bms(self) -> None:
         """Prepares (downloads, renames and moves) data from S2BMS study."""
@@ -202,15 +204,9 @@ class ButterflyDataset(BaseDataset):
             elif modality == "aef":
                 formatted_row["eo"][modality] = self.load_aef(row["aef_path"])
             elif modality == "aef_avr":
-                formatted_row["eo"][modality] = torch.tensor(
-                    [row[f"emb_{i}"] for i in range(64)],
-                    dtype=getattr(torch, self.modalities["aef_avr"].get("dtype")),
-                )
+                formatted_row["eo"][modality] = self.aef_avr[row["name_loc"]]
             elif modality == "tessera_avr":
-                formatted_row["eo"][modality] = torch.tensor(
-                    [row[f"emb_{i}"] for i in range(128)],
-                    dtype=getattr(torch, self.modalities["tessera_avr"].get("dtype")),
-                )
+                formatted_row["eo"][modality] = self.tessera_avr[row["name_loc"]]
 
         if self.use_target_data:
             formatted_row["target"] = torch.tensor(
