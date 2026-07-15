@@ -1,8 +1,9 @@
 import copy
+import logging
 import os
 import time
 from functools import partial
-from typing import Any, Dict, List, Tuple
+from typing import Any, Tuple
 
 import numpy as np
 import pandas as pd
@@ -16,8 +17,9 @@ from src.data.base_caption_builder import BaseCaptionBuilder
 from src.data.base_dataset import BaseDataset
 from src.data.collate_fns import collate_fn
 from src.data_preprocessing.data_utils import create_timestamp
-from src.utils.errors import IllegalArgumentCombination
+from src.utils.errors import IllegalArgumentCombination, MissingDataError
 
+log = logging.getLogger(__name__)
 
 class BaseDataModule(LightningDataModule):
     def __init__(
@@ -120,7 +122,7 @@ class BaseDataModule(LightningDataModule):
                 generator=torch.Generator().manual_seed(self.hparams.seed),
             )
             split_data_from_inds = False  # already split data
-            print(
+            log.info(
                 f"Dataset was randomly split with proportions: {self.hparams.train_val_test_split}"
             )
             if self.hparams.save_split:
@@ -166,7 +168,7 @@ class BaseDataModule(LightningDataModule):
                 ]
             ).T
             n = len(coords)
-            print(
+            log.info(
                 f"Splitting {n} samples into spatial clusters "
                 f"(eps={min_dist / 1000:.1f} km, haversine, n_jobs=-1)..."
             )
@@ -183,7 +185,7 @@ class BaseDataModule(LightningDataModule):
                 min_samples=2,
                 n_jobs=-1,
             ).fit(coords_rad)
-            print(f"DBSCAN done in {time.time() - t0:.1f}s. Creating splits...")
+            log.info(f"DBSCAN done in {time.time() - t0:.1f}s. Creating splits...")
             # Non-clustered points are labeled -1. Change to new cluster label.
             clusters = copy.deepcopy(clustering.labels_)
             new_cl = np.max(clusters) + 1
@@ -238,7 +240,7 @@ class BaseDataModule(LightningDataModule):
                 clusters_val, clusters_test
             )
 
-            print(
+            log.info(
                 f"Created {len(train_indices)} train, {len(val_indices)} val, {len(test_indices)} "
                 f"test indices using DBSCAN spatial clustering with {min_dist} m minimum "
                 f"distance between clusters."
@@ -286,7 +288,7 @@ class BaseDataModule(LightningDataModule):
             ).astype(np.int64)
             _, clusters = np.unique(grid_ids, return_inverse=True)
             n_clusters = int(clusters.max()) + 1
-            print(
+            log.info(
                 f"Splitting {n} samples into {n_clusters} spatial grid cells "
                 f"(cell size ≈ {min_dist / 1000:.0f} km). Creating splits..."
             )
@@ -337,7 +339,7 @@ class BaseDataModule(LightningDataModule):
                 clusters_val, clusters_test
             )
 
-            print(
+            log.info(
                 f"Created {len(train_indices)} train, {len(val_indices)} val, "
                 f"{len(test_indices)} test indices across {n_clusters} spatial grid cells "
                 f"(cell size ≈ {min_dist / 1000:.0f} km)."
@@ -392,7 +394,7 @@ class BaseDataModule(LightningDataModule):
                     [records_name_to_idx[n] for n in test_indices if n in records_name_to_idx]
                 )
 
-            print(f"Dataset was split using indices from file: {self.saved_split_file_path}")
+            log.info(f"Dataset was split using indices from file: {self.saved_split_file_path}")
         else:
             raise NotImplementedError(
                 f"{self.hparams.train_val_test_split} split mode not implemented."
@@ -400,13 +402,13 @@ class BaseDataModule(LightningDataModule):
 
         if split_data_from_inds:
             self.data_train = torch.utils.data.Subset(self.dataset, train_indices)
-            print(f"Train dataset split size: {len(self.data_train)}")
+            log.info(f"Train dataset split size: {len(self.data_train)}")
             self.data_val = torch.utils.data.Subset(self.dataset, val_indices)
-            print(f"Validate dataset split size: {len(self.data_val)}")
+            log.info(f"Validate dataset split size: {len(self.data_val)}")
 
             if test_indices is not None:
                 self.data_test = torch.utils.data.Subset(self.dataset, test_indices)
-                print(f"Test dataset split size: {len(self.data_test)}")
+                log.info(f"Test dataset split size: {len(self.data_test)}")
             else:
                 self.data_test = None
 
@@ -490,7 +492,7 @@ class BaseDataModule(LightningDataModule):
                 f"split_indices_{self.hparams.dataset_name}_{timestamp}.pth",
             ),
         )
-        print(f"Saved split indices to split_indices_{self.hparams.dataset_name}_{timestamp}.pth")
+        log.info(f"Saved split indices to split_indices_{self.hparams.dataset_name}_{timestamp}.pth")
 
     def load_split_indices(self, filepath: str = None) -> dict:
         """Load split indices from a file."""
@@ -578,24 +580,24 @@ class BaseDataModule(LightningDataModule):
                     ]
 
                     if verbose:
-                        print(
+                        log.info(
                             f"Concept '{self.concept_names[i_c]}' in {dataset_name} set: is_max={c['is_max']}, saved theta_k={theta_k:.6f}, saved baseline={self.dynamic_k_baselines[dataset_name][c_name]}%)"
                         )
 
             else:
-                print(
-                    f"WARNING: No saved thresholds and baselines found for some or all concepts for {dataset_name}, computing new ones. This may take a while..."
+                log.warning(
+                    f"No saved thresholds and baselines found for some or all concepts for {dataset_name}, computing new ones. This may take a while..."
                 )
-                print(
+                log.info(
                     "To speed up this computation, make sure to run this method with a dataloader that has only the coordinates and aux data (no other EO data)."
                 )
                 new_thresholds_computed = True
                 if save_newly_computed_threshold:
-                    print(
+                    log.info(
                         "The threshold values will be written to a new concept configs file if they are computed anew."
                     )
                 else:
-                    print(
+                    log.info(
                         "Consider setting save_newly_computed_threshold=True to store the computed thresholds and avoid recomputation in the future."
                     )
                 # Iterate through dataset once to get aux values for all concepts (to avoid multiple iterations if multiple concepts). Best done with coords only dataset for speed!
@@ -631,7 +633,7 @@ class BaseDataModule(LightningDataModule):
 
                     if n_baseline_max < n_baseline_min:
                         if not c.get("is_max", True):
-                            print(
+                            log.info(
                                 f"Concept {c_name} has n_baseline_max < n_baseline_min but is_max is False. Therefore it will NOT be used/stored. Please check the concept configs or the computed theta_k for this concept."
                             )
                             if i_c not in list_concept_ids_drop:
@@ -640,7 +642,7 @@ class BaseDataModule(LightningDataModule):
                         _is_max = True
                     else:
                         if c.get("is_max", False):
-                            print(
+                            log.info(
                                 f"Concept {c_name} has n_baseline_max >= n_baseline_min but is_max is True. Therefore it will NOT be used/stored. Please check the concept configs or the computed theta_k for this concept."
                             )
                             if i_c not in list_concept_ids_drop:
@@ -648,7 +650,7 @@ class BaseDataModule(LightningDataModule):
                         n_baseline = n_baseline_min
                         _is_max = False
                     if "is_max" not in c:
-                        print(
+                        log.info(
                             f"Concept {c_name} does not have 'is_max' specified. Setting is_max to {_is_max} based on whether n_baseline_max ({n_baseline_max}) is smaller than n_baseline_min ({n_baseline_min})."
                         )
                         self.concept_configs[i_c]["is_max"] = _is_max
@@ -668,7 +670,7 @@ class BaseDataModule(LightningDataModule):
                             )
 
                     if verbose:
-                        print(
+                        log.info(
                             f"Concept '{self.concept_names[i_c]}' in {dataset_name} set: is_max={c['is_max']}, original theta_k={self.concept_configs[i_c]['theta_k']:.6f}, new theta_k={theta_k:.6f}, baseline={n_baseline}/{n_ds} ({n_baseline / n_ds * 100:.1f}%)"
                         )
                     self.dynamic_k_baselines[dataset_name][c_name] = n_baseline / n_ds * 100
@@ -677,7 +679,7 @@ class BaseDataModule(LightningDataModule):
                     )
 
                 if len(list_concept_ids_drop) > 0 and dataset_name == "test":
-                    print(
+                    log.info(
                         f"Dropping concepts with ids {list_concept_ids_drop} and names {[self.concept_names[i] for i in list_concept_ids_drop]} from evaluation due to mismatch between is_max and whether n_baseline_max or n_baseline_min is smaller."
                     )
                     self.concept_configs = [
@@ -803,7 +805,7 @@ class BaseDataModule(LightningDataModule):
             x = np.arange(len(vals)) / len(vals)
             y = vals
             if x[0] == x[-1]:  # all values are the same
-                print(
+                log.info(
                     "All values are the same, returning the value itself as elbow point.", vals[0]
                 )
                 return vals[0]
