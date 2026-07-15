@@ -13,14 +13,6 @@ from torch.utils.data import Dataset
 from src.data_preprocessing.tessera_embeds import NoTileError, PartialTileError
 from src.utils.data_utils import center_crop_npy
 
-TORCH_DTYPES = {
-    "float32": torch.float32,
-    "float64": torch.float64,
-    "int32": torch.int32,
-    "int64": torch.int64,
-    "bfloat16": torch.bfloat16,
-}
-
 
 class BaseDataset(Dataset, ABC):
     def __init__(
@@ -67,8 +59,8 @@ class BaseDataset(Dataset, ABC):
             dataset_name = "mock"
 
         # Dtype
-        assert dtype in TORCH_DTYPES.keys()
-        self.dtype: str = TORCH_DTYPES[dtype]
+        assert getattr(torch, dtype), KeyError(f"Requested dtype {dtype} is not supported.")
+        self.dtype: str = getattr(torch, dtype)
 
         # Modalities
         self.implemented_mod = implemented_mod
