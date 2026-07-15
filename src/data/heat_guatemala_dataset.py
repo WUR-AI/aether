@@ -65,7 +65,7 @@ class HeatGuatemalaDataset(BaseDataset):
     # Required overrides
     # ------------------------------------------------------------------
 
-    def setup(self) -> None:
+    def _setup(self) -> None:
         """No files to download / prepare for this dataset."""
         # Set up each requested modality
         for mod in self.modalities.keys():

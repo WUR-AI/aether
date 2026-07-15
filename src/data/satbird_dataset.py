@@ -49,7 +49,7 @@ class SatBirdDataset(BaseDataset):
         )
 
     @override
-    def setup(self):
+    def _setup(self):
         """Setups the whole dataset, makes available data of requested modalities."""
 
         # Set up each requested modality

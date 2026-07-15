@@ -189,6 +189,7 @@ class YieldAfricaDataset(BaseDataset):
         # dicts with resolved column-name lists), so reset it from the original
         # parameter before calling it a second time.
         self.configure_use_aux(use_aux_data)
+        self.get_columns()
 
         # Always rebuild so feat_year / feat_country_* are reflected in
         # self.feat_names and self.tabular_dim.
