@@ -68,8 +68,9 @@ class ButterflyDataset(BaseDataset):
             csv_name=csv_name,
         )
 
-1    def _setup(self):
-        """Setups the whole dataset, makes available data of requested modalities and filters out records for any location missing any modality data."""
+    def _setup(self):
+        """Setups the whole dataset, makes available data of requested modalities and filters out
+        records for any location missing any modality data."""
 
         # Set up each requested modality
         for mod in self.modalities.keys():
@@ -113,14 +114,17 @@ class ButterflyDataset(BaseDataset):
                 f.writelines("Containing 4 channel S2 256x256px imagery.\n")
                 # TODO: add more
 
+        # Check for missing files
+        avail_files = os.listdir(dst_dir)
+
+        mask = self.df["s2_path"].apply(lambda p: os.path.basename(p) in avail_files)
+
+        if (~mask).any() and self._ignore_single_missing_data_points:
+            self.df = self.df[mask]
+            log.info(f"Dropped {(~mask).sum()} locations because they had missing s2 tiles.")
         else:
-            # Check for missing files
-            avail_files = os.listdir(dst_dir)
-            for rec in self.records:
-                fname = os.path.basename(rec["s2_path"])
-                if fname not in avail_files:
-                    raise FileNotFoundError(f"Missing S2 data: {fname}")
-                # TODO potentially handle single missing files with GEE API?
+            raise FileNotFoundError(f"Missing S2 data for {len(self.df[mask].name_loc)} locations")
+            # TODO potentially handle single missing files with GEE API?
 
     def init_norm_stats(self, means: list[float] = None, stds: list[float] = None):
         """Initializes normalization statistics for the original S2BMS dataset."""
@@ -224,7 +228,7 @@ class ButterflyDataset(BaseDataset):
                     formatted_row["aux"][aux_cat] = [row[v] for v in vals]
 
         if self.use_features and self.feat_names:
-            sample["eo"]["tabular"] = torch.tensor(
+            formatted_row["eo"]["tabular"] = torch.tensor(
                 [row[k] for k in self.feat_names], dtype=torch.float32
             )
 
