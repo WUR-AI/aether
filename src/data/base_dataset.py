@@ -137,7 +137,7 @@ class BaseDataset(Dataset, ABC):
             self.use_aux_data = OmegaConf.to_container(use_aux_data, resolve=True)
         elif isinstance(use_aux_data, dict):
             self.use_aux_data = use_aux_data
-        elif use_aux_data == "all":
+        elif use_aux_data is True or use_aux_data == "all":
             self.use_aux_data = {
                 "aux": {
                     "pattern": "^aux_(?!.*top).*",
@@ -232,6 +232,9 @@ class BaseDataset(Dataset, ABC):
 
             self.records = self.get_records()
             self._setup_flag = True
+
+    def _setup(self):
+        pass
 
     @final
     def add_modality_paths_to_df(self, modality: str, extension: str) -> None:
