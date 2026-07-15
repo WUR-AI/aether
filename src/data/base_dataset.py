@@ -17,6 +17,7 @@ from src.utils.errors import MissingConfigurationError, MissingDataError
 
 log = logging.getLogger(__name__)
 
+
 class BaseDataset(Dataset, ABC):
     def __init__(
         self,
@@ -67,7 +68,7 @@ class BaseDataset(Dataset, ABC):
 
         # Modalities
         self.implemented_mod = implemented_mod
-        self.modalities: dict = modalities
+        self.modalities = modalities
 
         # Check modalities and set dtypes
         for mod, configs in self.modalities.items():
@@ -76,7 +77,7 @@ class BaseDataset(Dataset, ABC):
 
             if configs is not None:
                 m_dtype = configs.get("dtype", dtype)
-                self.modalities[mod]["dtype"] = m_dtype # Overwrite if dtype was not specified
+                self.modalities[mod]["dtype"] = m_dtype  # Overwrite if dtype was not specified
                 log.info(f"Dtype of {mod} set to {m_dtype}")
             else:
                 m_dtype = dtype
@@ -84,29 +85,17 @@ class BaseDataset(Dataset, ABC):
 
         # Set data attributes
         self.registry_path = os.path.join(data_dir, "registry.txt")
-        if type(dataset_name) is str:
-            dataset_name = [dataset_name]
-        if "unlabel" in dataset_name[0]:
-            dataset_dirname = dataset_name[0].split("-unlabel")[0]
-        else:
-            dataset_dirname = dataset_name[0]
-        self.data_dir = os.path.join(data_dir, dataset_dirname)
+        self.data_dir = os.path.join(data_dir, dataset_name)
         self.cache_dir = cache_dir or os.path.join(data_dir, "cache")
-        for d in [self.cache_dir]:
-            os.makedirs(d, exist_ok=True)
+        os.makedirs(self.cache_dir, exist_ok=True)
 
         # Read model ready csv df
-        for i_ds, ds in enumerate(dataset_name):
-            csv_filename = csv_name or f"model_ready_{ds}.csv"
-            path_csv = os.path.join(self.data_dir, csv_filename)
-            assert os.path.exists(
-                path_csv
-            ), f"{path_csv} does not exist. (Expecting {ds} to exist in {self.data_dir})"
-            tmp_df: pd.DataFrame = pd.read_csv(path_csv)
-            if i_ds == 0:
-                self.df = tmp_df
-            else:
-                self.df = pd.concat([self.df, tmp_df], ignore_index=True)
+        csv_filename = csv_name or f"model_ready_{dataset_name}.csv"
+        path_csv = os.path.join(self.data_dir, csv_filename)
+        assert os.path.exists(
+            path_csv
+        ), f"{path_csv} does not exist. (Expecting {csv_filename} to exist in {self.data_dir})"
+        self.df = pd.read_csv(path_csv)
 
         # Other attributes or placeholders
         self.pooch_cli = None
