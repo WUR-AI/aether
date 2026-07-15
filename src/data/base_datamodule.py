@@ -88,7 +88,7 @@ class BaseDataModule(LightningDataModule):
         """
 
         if not self._setup_flag:
-            if self.caption_builder is not None:
+            if self.use_collate_fn:
                 self.caption_builder.sync_with_dataset(self.dataset)
                 self.concept_configs = self.caption_builder.concepts
 
