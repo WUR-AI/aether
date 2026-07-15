@@ -31,7 +31,6 @@ class BaseDataset(Dataset, ABC):
         use_aux_data: Dict[str, List[str] | str] | str | None = None,
         dataset_name: str | List[str] = "BaseDataset",
         seed: int = 12345,
-        mode: str = "train",
         cache_dir: str = None,
         implemented_mod: set[str] = None,
         mock: bool = False,
@@ -57,7 +56,6 @@ class BaseDataset(Dataset, ABC):
         :param use_aux_data: if auxiliary values should be returned
         :param dataset_name: dataset name
         :param seed: random seed
-        :param mode: train/val/test mode of the dataset
         :param cache_dir: directory to save cached data
         :param implemented_mod: implemented modalities for each dataset
         :param mock: whether to mock csv file
@@ -149,7 +147,7 @@ class BaseDataset(Dataset, ABC):
         if isinstance(dataset_name, list):
             dataset_name = "+".join(dataset_name)
         self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
-        self.mode: str = mode  # 'train', 'val', 'test'
+
         self.records: dict[str, Any] = self.get_records()
         self.return_name_loc: bool = return_name_loc
 
