@@ -165,9 +165,7 @@ class BaseDataset(Dataset, ABC):
                 # Add paths
                 self.add_modality_paths_to_df(
                     modality,
-                    params.get(
-                        "format", KeyError(f"{modality} modality is missing format parameter")
-                    ),
+                    params.get("format"),
                 )
                 columns.append(f"{modality}_path")
 
@@ -231,6 +229,7 @@ class BaseDataset(Dataset, ABC):
         :param extension: file extension
         :return: None
         """
+        assert extension in ['tif', 'npy'], MissingConfigurationError(f'Please specify a file extension for {modality}')
         # Directory path
         path = f"{self.data_dir}/eo/{modality}/"
 
