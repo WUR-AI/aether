@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Any, Dict, override
 
@@ -9,6 +10,8 @@ from src.data.base_dataset import TORCH_DTYPES, BaseDataset
 from src.data_preprocessing.renaming_utils import rename_s2bms
 from src.utils.data_utils import center_crop_npy
 from src.utils.errors import IllegalArgumentCombination
+
+log = logging.getLogger(__name__)
 
 
 class ButterflyDataset(BaseDataset):
@@ -81,7 +84,7 @@ class ButterflyDataset(BaseDataset):
 
     def setup_s2bms(self) -> None:
         """Prepares (downloads, renames and moves) data from S2BMS study."""
-        print("\n\nSetting up S2BMS data...\n\n")
+        log.info("Setting up S2BMS data...")
 
         # Check if data is already available
         dst_dir = os.path.join(self.data_dir, "eo/s2")
