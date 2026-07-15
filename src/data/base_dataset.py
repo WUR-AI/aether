@@ -258,11 +258,6 @@ class BaseDataset(Dataset, ABC):
         Right now retrieval is through GeoTessera API
         """
 
-        from src.data_preprocessing.tessera_embeds import (
-            get_tessera_embeds,
-            tessera_from_df,
-        )
-
         logging.info("Setting up Tessera data...")
         download_missing_tiles = False
 
@@ -275,10 +270,11 @@ class BaseDataset(Dataset, ABC):
         size = self.modalities["tessera"].get(
             "size", KeyError('Missing parameter "size" for Tessera modality')
         )
-        version = self.modalities["tessera"].get("version") or "v1.0"
+        version = self.modalities["tessera"].get("version") or "v1.1"
 
         # If data does not exist or is empty → full download
         if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
+            from src.data_preprocessing.tessera_embeds import tessera_from_df
             if download_missing_tiles:
                 os.makedirs(dst_dir, exist_ok=True)
 
@@ -290,63 +286,67 @@ class BaseDataset(Dataset, ABC):
                     cache_dir=self.cache_dir,
                     version=version,
                 )
+                if self._ignore_single_missing_data_points:
+                    mask = self.df['tessera_path'].apply(lambda p: os.path.basename(p) in avail_files)
+                    self.df = self.df[mask]
+                    log.info(f"Dropped {(~mask).sum()} locations because they had missing tessera tiles.")
+                else:
+                    raise MissingDataError(
+                        "Please download the missing Tessera tiles from src/data_preprocessing/tessera_embeds")
 
                 # TODO: if we compile the dataset and use zenodo (or sth else) then change to pooch downloading/loading
                 # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
                 # or self.setup_tessera_from_pooch() <- per children class implementation
             else:
-                print("Please download the missing Tessera tiles...")
+                raise MissingDataError("Please download the Tessera tiles from src/data_preprocessing/tessera_embeds")
 
         # Download missing rows (if any)
         else:
-            from geotessera import GeoTessera
-
-            print("Checking missing Tessera tiles...")
+            log.info("Checking missing Tessera tiles...")
             avail_files = set(os.listdir(dst_dir))
-            gt = None
-            kept_records = []
-            missing_files = []
+            mask = self.df['tessera_path'].apply(lambda p: os.path.basename(p) in avail_files)
+            if mask.all():
+                return # all data is available
+            if download_missing_tiles:
+                log.warning("May download tessera tiles filled with 0a")
+                from src.data_preprocessing.tessera_embeds import (
+                    get_tessera_embeds,
+                    tessera_from_df
+                )
+                from geotessera import GeoTessera
 
-            for rec in self.records:
-                fname = os.path.basename(rec["tessera_path"])
+                gt = GeoTessera(cache_dir=self.cache_dir)
 
-                if fname in avail_files:
-                    kept_records.append(rec)
-                    continue
-
-                if download_missing_tiles:
-                    print(f"Retrieving missing Tessera data: {fname}")
-                    gt = gt or GeoTessera(cache_dir=self.cache_dir)
-                    row = self.df[self.df["name_loc"] == rec["name_loc"]]
+                missing_df = self.df[~mask]
+                # Try downloading missing tiles for each location
+                for _, row in missing_df.iterrows():
+                    fname = os.path.basename(row["tessera_path"])
+                    log.info(f"Retrieving missing Tessera data: {fname}")
                     lon, lat = row.lon.item(), row.lat.item()
-
                     try:
                         get_tessera_embeds(
                             lon,
                             lat,
-                            rec["name_loc"],
+                            row["name_loc"],
                             year=year,
                             save_dir=dst_dir,
                             tile_size=size,
                             tessera_con=gt,
                         )
-                        if os.path.exists(rec["tessera_path"]):
-                            kept_records.append(rec)
-                            avail_files.add(fname)
-                            continue
                     except NoTileError or PartialTileError as e:
-                        print(f"Tile for {fname} could not be retrieved. Error: {e}")
-                else:
-                    # self.records.pop(i)
-                    print(f"No tile found for {fname} thus it will not be used.")
+                        if self._ignore_single_missing_data_points:
+                            log.info(f"Tile for {fname} could not be retrieved. Error: {e}")
+                        else:
+                            raise e
+                mask = self.df['tessera_path'].apply(lambda p: os.path.basename(p) in avail_files)
+                self.df = self.df[mask]
+                log.info(f"Dropped {(~mask).sum()} locations because they had missing tessera tiles.")
 
-            self.records = kept_records
-
-            if missing_files:
-                print(f"Dropped {len(missing_files)} records with missing Tessera tiles.")
-
-            print("Downloading missing Tessera tiles...")
-            print("[Warning]: it may download tessera tiles filled with 0a")
+            elif self._ignore_single_missing_data_points:
+                self.df = self.df[mask]
+                log.info(f"Dropped {(~mask).sum()} locations because they had missing tessera tiles.")
+            else:
+                raise MissingDataError("Please download the missing Tessera tiles from src/data_preprocessing/tessera_embeds")
 
     @final
     def setup_aef(self) -> None:
@@ -359,11 +359,16 @@ class BaseDataset(Dataset, ABC):
 
         dst_dir = os.path.join(self.data_dir, "eo/aef")
         avail_files = os.listdir(dst_dir)
-        for i, rec in enumerate(self.records):
-            fname = os.path.basename(rec["aef_path"])
-            if fname not in avail_files:
-                self.records.pop(i)
-                print(f"No tile found for {fname} thus it will not be used.")
+
+        mask = self.df['aef_path'].apply(lambda p: os.path.basename(p) in avail_files)
+
+        if mask.all():
+            return
+        elif (~mask).any() and self._ignore_single_missing_data_points:
+            self.df = self.df[mask]
+            log.info(f"Dropped {(~mask).sum()} locations because they had missing aef tiles.")
+        else:
+            raise MissingDataError(f"Missing aef data for {len(self.df[mask].name_loc)} locations. \n Please download the missing aef tiles")
 
         # TODO aef retrieval?
         # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
