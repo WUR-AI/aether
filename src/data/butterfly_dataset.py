@@ -22,6 +22,7 @@ class ButterflyDataset(BaseDataset):
         use_unlabelled_data: bool = False,
         use_target_data: bool = True,
         use_aux_data: Any = None,
+        use_features: bool = False,
         seed: int = 12345,
         cache_dir: str = None,
         mock: bool = False,
@@ -62,6 +63,7 @@ class ButterflyDataset(BaseDataset):
             implemented_mod={"s2", "tessera", "coords", "aef", "aef_avr", "tessera_avr"},
             mock=mock,
             dtype=dtype,
+            use_features=use_features,
             return_name_loc=return_name_loc,
             csv_name=csv_name,
         )
@@ -224,6 +226,11 @@ class ButterflyDataset(BaseDataset):
                     )
                 else:
                     formatted_row["aux"][aux_cat] = [row[v] for v in vals]
+
+        if self.use_features and self.feat_names:
+            sample["eo"]["tabular"] = torch.tensor(
+                [row[k] for k in self.feat_names], dtype=torch.float32
+            )
 
         if self.return_name_loc:
             formatted_row["name_loc"] = row["name_loc"]
