@@ -6,7 +6,7 @@ import numpy as np
 import pooch
 import torch
 
-from src.data.base_dataset import TORCH_DTYPES, BaseDataset
+from src.data.base_dataset import BaseDataset
 from src.data_preprocessing.renaming_utils import rename_s2bms
 from src.utils.data_utils import center_crop_npy
 from src.utils.errors import IllegalArgumentCombination
@@ -198,7 +198,7 @@ class ButterflyDataset(BaseDataset):
             if modality in ["coords"]:
                 formatted_row["eo"][modality] = torch.tensor(
                     [row["lat"], row["lon"]],
-                    dtype=TORCH_DTYPES[self.modalities[modality]["dtype"]],
+                    dtype=getattr(torch, self.modalities[modality]["dtype"]),
                 )
             elif modality == "s2":
                 formatted_row["eo"][modality] = self.load_s2(row["s2_path"])
