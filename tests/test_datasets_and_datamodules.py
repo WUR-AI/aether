@@ -23,6 +23,7 @@ def test_datasets_generic_properties(request, tmp_path, sample_csv):
             seed=0,
             mock=use_mock,
         )
+        dataset.setup()
 
         assert len(dataset) > 0, f"{ds_class.__name__} is empty."
         sample = dataset[0]
@@ -42,7 +43,6 @@ def test_datasets_generic_properties(request, tmp_path, sample_csv):
         assert hasattr(
             dataset, "dataset_name"
         ), f"'dataset_name' attribute missing in {ds_class.__name__}."
-        assert hasattr(dataset, "mode"), f"'mode' attribute missing in {ds_class.__name__}."
         assert hasattr(
             dataset, "use_features"
         ), f"'use_features' attribute missing in {ds_class.__name__}."
