@@ -136,11 +136,15 @@ class BaseDataset(Dataset, ABC):
             dataset_name = "+".join(dataset_name)
         self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
 
-        self.records: dict[str, Any] = self.get_records()
+        self.columns: List[Any] = self.get_columns()
+        self.records: List[Any] = []
+
         self.return_name_loc: bool = return_name_loc
+        self._setup_flag = False
+        self._ignore_single_missing_data_points = True
 
     @final
-    def get_records(self) -> dict[str, Any]:
+    def get_columns(self) -> List[str]:
         """Gets record dictionary from the dataframe based on what is needed for the model (aux,
         target columns, modality paths)"""
 
@@ -152,15 +156,7 @@ class BaseDataset(Dataset, ABC):
             if modality == "coords":
                 columns.extend(["lat", "lon"])
             elif modality in ["aef_avr", "tessera_avr"]:
-                df = pd.read_csv(params.get("path", KeyError))
-                df["name_loc"] = df["name_loc"].astype(str)
-
-                self.df["name_loc"] = self.df["name_loc"].astype(str)
-
-                self.df = self.df.merge(df, on="name_loc", how="left")
-
-                max_no = 128 if modality == "tessera_avr" else 64
-                columns.extend([f"emb_{i}" for i in range(0, max_no)])
+                continue
             else:
                 # Add paths
                 self.add_modality_paths_to_df(
@@ -204,7 +200,10 @@ class BaseDataset(Dataset, ABC):
 
             self.tabular_dim = len(self.feat_names)# drop any duplicates
 
-        return self.df.loc[:, columns].to_dict("records")
+        return list(set(columns))
+
+    def get_records(self):
+        return self.df.loc[:, self.columns].to_dict("records")
 
     @final
     def __len__(self) -> int:
@@ -216,10 +215,15 @@ class BaseDataset(Dataset, ABC):
         """Returns a single item from the dataset."""
         pass
 
-    @abstractmethod
+    @final
     def setup(self) -> None:
-        """Setups the whole dataset, makes available data of requested modalities."""
-        pass
+        """Setups the whole dataset, makes available data of requested modalities
+        and filters out records for any location missing any modality data,"""
+        if not self._setup_flag:
+            self._setup() # to be implemented for each UC
+
+            self.records= self.get_records()
+            self._setup_flag = True
 
     @final
     def add_modality_paths_to_df(self, modality: str, extension: str) -> None:
