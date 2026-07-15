@@ -21,6 +21,7 @@ from src.utils.errors import IllegalArgumentCombination, MissingDataError
 
 log = logging.getLogger(__name__)
 
+
 class BaseDataModule(LightningDataModule):
     def __init__(
         self,
@@ -65,12 +66,10 @@ class BaseDataModule(LightningDataModule):
         self.dataset: BaseDataset = dataset
 
         # Caption generation
-        self.use_collate_fn: bool = self.dataset.use_aux_data
+        self.use_collate_fn: bool = self.dataset.use_aux_data is not None
         if self.use_collate_fn:
             assert caption_builder is not None, "Caption_builder cannot be None"
             self.caption_builder = caption_builder
-            self.caption_builder.sync_with_dataset(self.dataset)
-            self.concept_configs = caption_builder.concepts
         self._setup_flag = False
 
     @property
@@ -89,6 +88,10 @@ class BaseDataModule(LightningDataModule):
         """
 
         if not self._setup_flag:
+            if self.caption_builder is not None:
+                self.caption_builder.sync_with_dataset(self.dataset)
+                self.concept_configs = self.caption_builder.concepts
+
             # Set up the dataset (download requested modalities)
             self.dataset.setup()
             self.split_data()
@@ -387,11 +390,25 @@ class BaseDataModule(LightningDataModule):
                 [records_name_to_idx[n] for n in train_indices if n in records_name_to_idx]
             )
             val_indices = np.array(
-                [records_name_to_idx[n] for n in val_indices if n in records_name_to_idx]
+                [
+                    (
+                        records_name_to_idx[n]
+                        if n in records_name_to_idx
+                        else MissingDataError("Validation split is missing data")
+                    )
+                    for n in val_indices
+                ]
             )
             if test_indices is not None:
                 test_indices = np.array(
-                    [records_name_to_idx[n] for n in test_indices if n in records_name_to_idx]
+                    [
+                        (
+                            records_name_to_idx[n]
+                            if n in records_name_to_idx
+                            else MissingDataError("Validation split is missing data")
+                        )
+                        for n in test_indices
+                    ]
                 )
 
             log.info(f"Dataset was split using indices from file: {self.saved_split_file_path}")
@@ -415,8 +432,9 @@ class BaseDataModule(LightningDataModule):
         if self.hparams.save_split:
             self.save_split_indices(split_indices)
 
-        self._compute_tabular_normalisation_stats()
-        self._compute_target_normalisation_stats()
+        if self.dataset.use_features:
+            self._compute_tabular_normalisation_stats()
+            self._compute_target_normalisation_stats()
 
     def _compute_tabular_normalisation_stats(self) -> None:
         """Compute per-feature mean and std on the training split for use by TabularEncoder.
@@ -492,7 +510,9 @@ class BaseDataModule(LightningDataModule):
                 f"split_indices_{self.hparams.dataset_name}_{timestamp}.pth",
             ),
         )
-        log.info(f"Saved split indices to split_indices_{self.hparams.dataset_name}_{timestamp}.pth")
+        log.info(
+            f"Saved split indices to split_indices_{self.hparams.dataset_name}_{timestamp}.pth"
+        )
 
     def load_split_indices(self, filepath: str = None) -> dict:
         """Load split indices from a file."""
