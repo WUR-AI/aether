@@ -105,8 +105,38 @@ class BaseDataset(Dataset, ABC):
         self.use_target_data = use_target_data
         self.use_features = use_features
 
+        self.configure_use_aux(use_aux_data)
+
+        self.configure_use_feats(use_features)
+
+        # More precise dataset name (with modalities)
+        if isinstance(dataset_name, list):
+            dataset_name = "+".join(dataset_name)
+        self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
+
+        self.columns: List[Any] = self.get_columns()
+        self.records: List[Any] = []
+
+        self.return_name_loc: bool = return_name_loc
+        self._setup_flag = False
+        self._ignore_single_missing_data_points = True
+
+    def configure_use_feats(self, use_features):
+        if isinstance(use_features, DictConfig):
+            self.use_features = OmegaConf.to_container(use_features, resolve=True)
+        elif use_features is True or use_features == "all":
+            self.use_features = {
+                "pattern": "^feat_.*",
+                #     'columns' : []
+            }
+        else:
+            self.use_features = None
+
+    def configure_use_aux(self, use_aux_data):
         if isinstance(use_aux_data, DictConfig):
             self.use_aux_data = OmegaConf.to_container(use_aux_data, resolve=True)
+        elif isinstance(use_aux_data, dict):
+            self.use_aux_data = use_aux_data
         elif use_aux_data == "all":
             self.use_aux_data = {
                 "aux": {
@@ -120,28 +150,6 @@ class BaseDataset(Dataset, ABC):
             }
         else:
             self.use_aux_data = None
-
-        if isinstance(use_features, DictConfig):
-            self.use_features = OmegaConf.to_container(use_features, resolve=True)
-        elif use_features is True or use_features == "all":
-            self.use_features = {
-                "pattern": "^feat_.*",
-                #     'columns' : []
-            }
-        else:
-            self.use_features = None
-
-        # More precise dataset name (with modalities)
-        if isinstance(dataset_name, list):
-            dataset_name = "+".join(dataset_name)
-        self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
-
-        self.columns: List[Any] = self.get_columns()
-        self.records: List[Any] = []
-
-        self.return_name_loc: bool = return_name_loc
-        self._setup_flag = False
-        self._ignore_single_missing_data_points = True
 
     @final
     def get_columns(self) -> List[str]:
