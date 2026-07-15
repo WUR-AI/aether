@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from abc import ABC, abstractmethod
@@ -12,7 +13,9 @@ from torch.utils.data import Dataset
 
 from src.data_preprocessing.tessera_embeds import NoTileError, PartialTileError
 from src.utils.data_utils import center_crop_npy
+from src.utils.errors import MissingConfigurationError, MissingDataError
 
+log = logging.getLogger(__name__)
 
 class BaseDataset(Dataset, ABC):
     def __init__(
@@ -75,6 +78,7 @@ class BaseDataset(Dataset, ABC):
                 m_dtype = configs.get("dtype", dtype)
                 self.modalities[mod]["dtype"] = m_dtype
                 print(f"Dtype of {mod} set to {m_dtype}")
+                log.info(f"Dtype of {mod} set to {m_dtype}")
             else:
                 m_dtype = dtype
                 self.modalities[mod] = {"dtype": m_dtype}
@@ -255,7 +259,7 @@ class BaseDataset(Dataset, ABC):
             tessera_from_df,
         )
 
-        print("\n\nSetting up Tessera data...\n\n")
+        logging.info("Setting up Tessera data...")
         download_missing_tiles = False
 
         # Check if data is already available
@@ -347,7 +351,7 @@ class BaseDataset(Dataset, ABC):
         Right now retrieval is through GEE API
         """
 
-        print("\n\nSetting up AEF data...\n\n")
+        log.info("Setting up AEF data...")
 
         dst_dir = os.path.join(self.data_dir, "eo/aef")
         avail_files = os.listdir(dst_dir)
