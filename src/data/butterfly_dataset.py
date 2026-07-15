@@ -49,6 +49,8 @@ class ButterflyDataset(BaseDataset):
         if use_unlabelled_data:
             # csv_name = 'model_ready_s2bms-unlabelled-20260529.csv'
             csv_name = "model_ready_s2bms-unlabelled-merged.csv"
+        elif mock:
+            csv_name = None
         else:
             csv_name = "model_ready_s2bms.csv"
 
