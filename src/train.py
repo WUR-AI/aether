@@ -1,34 +1,20 @@
+import time
+
+print(f"[train.py] Script started at {time.strftime('%Y-%m-%d %H:%M:%S')}", flush=True)
+
+import os
 from typing import Any, Dict, List, Optional, Tuple
 
 import hydra
-import lightning as L
 import rootutils
+import torch
 from dotenv import load_dotenv
-from lightning import Callback, LightningModule, Trainer
+from lightning import Callback, LightningModule, Trainer, seed_everything
 from lightning.pytorch.callbacks.model_checkpoint import ModelCheckpoint
 from lightning.pytorch.loggers import Logger, WandbLogger
 from omegaconf import DictConfig, OmegaConf
 
 from src.data.base_datamodule import BaseDataModule
-from src.utils.experiment_tracking import compose_experiment_name, experiment_check
-
-rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
-load_dotenv()
-
-# Disable tokenizers parallelism to avoid warnings when using multiprocessing
-import os
-import time
-
-import torch
-
-# Optimize Tensor Core usage (L40S / A100 / H100 all benefit from this)
-torch.set_float32_matmul_precision("high")
-
-if os.environ.get("TOKENIZERS_PARALLELISM") is None:
-    os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-print(f"[train.py] Script started at {time.strftime('%Y-%m-%d %H:%M:%S')}", flush=True)
-
 from src.utils import (
     RankedLogger,
     extras,
@@ -38,6 +24,17 @@ from src.utils import (
     log_hyperparameters,
     task_wrapper,
 )
+from src.utils.experiment_tracking import compose_experiment_name, experiment_check
+
+rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+load_dotenv()
+
+# Optimize Tensor Core usage (L40S / A100 / H100 all benefit from this)
+torch.set_float32_matmul_precision("high")
+
+# Disable tokenizers parallelism to avoid warnings when using multiprocessing
+if os.environ.get("TOKENIZERS_PARALLELISM") is None:
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 log = RankedLogger(__name__, rank_zero_only=True)
 
@@ -57,7 +54,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     # set seed for random number generators in pytorch, numpy and python.random
     if cfg.get("seed"):
-        L.seed_everything(cfg.seed, workers=True)
+        seed_everything(cfg.seed, workers=True)
 
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
     datamodule: BaseDataModule = hydra.utils.instantiate(cfg.data)
