@@ -10,7 +10,7 @@ from src.models.components.metrics.contrastive_validation import (
     RetrievalContrastiveValidation,
 )
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
-from src.models.components.projectors_adapters.base_encoder import BaseEncoder
+from src.models.components.projectors.base_projector import BaseProjector
 from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
 
 
@@ -24,8 +24,8 @@ class TextAlignmentModel(BaseModel):
         scheduler: torch.optim.lr_scheduler,
         loss_fn: BaseLossFn,
         metrics: MetricsWrapper,
-        geo_adapter: BaseEncoder | None = None,
-        text_adapter: BaseEncoder | None = None,
+        geo_adapter: BaseProjector | None = None,
+        text_adapter: BaseProjector | None = None,
         num_classes: int | None = None,
         tabular_dim: int | None = None,
         ks: list[int] | None = [5, 10, 15],
