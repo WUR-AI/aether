@@ -28,7 +28,7 @@ class TextAlignmentModel(BaseModel):
         text_adapter: BaseProjector | None = None,
         num_classes: int | None = None,
         tabular_dim: int | None = None,
-        ks: list[int] | None = [5, 10, 15],
+        ks: list[int] | None = None,
         match_to_geo: bool = True,
     ) -> None:
         """Implementation of contrastive text-eo modality alignment model.
@@ -63,7 +63,7 @@ class TextAlignmentModel(BaseModel):
         self.geo_adapter = geo_adapter
         self.text_adapter = text_adapter
         # Metrics
-        self.ks = ks
+        self.ks = ks or [5, 10, 15]
         self.log_kwargs = dict(on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
 
         self.match_to_geo = match_to_geo
