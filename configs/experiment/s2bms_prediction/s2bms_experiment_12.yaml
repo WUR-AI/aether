@@ -3,7 +3,7 @@
 # to execute this experiment run:
 # python train.py experiment=example
 
-# Tessera with average encoder and MLP prediction head, for tile sizes 128 and 256, each with 3 random seeds
+# Tessera with resnet (18 or 50) encoder and MLP prediction head, for tile sizes 128 and 256, each with 3 random seeds
 
 defaults:
   - override /model: s2bms_prediction
@@ -16,30 +16,32 @@ tags:
   - tessera_${str:${data.dataset.modalities.tessera.size}}
   - ${str:${seed}}
 
-experiment_name: avr_tessera_${str:${data.dataset.modalities.tessera.size}}_mlp
+experiment_name: rn${str:${model.geo_encoder.resnet_version}}_tessera_${str:${data.dataset.modalities.tessera.size}}_mlp_v1.1
 
 model:
   geo_encoder:
-    _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
+    _target_: src.models.components.geo_encoders.cnn_encoder.CNNEncoder
     geo_data_name: tessera
-  trainable_modules: [prediction_head]
+    input_n_bands: 128
+    pretrained_cnn:
   prediction_head:
     _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
+  trainable_modules: [geo_encoder, prediction_head]
 
 data:
   dataset:
     modalities:
       tessera:
         format: npy
-        enable_nans: true
     use_target_data: true
     use_aux_data: false
+    dtype: float32
   caption_builder:
-  pin_memory: false
+  pin_memory: true
   num_workers: 14
   batch_size: 128
-  persistent_workers: false
-  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  persistent_workers: true
+  saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
   wandb:
@@ -54,4 +56,5 @@ hydra:
   sweeper:
     params:
       seed: 12345, 404, 654
-      +data.dataset.modalities.tessera.size: 128, 256
+      ++data.dataset.modalities.tessera.size: 128, 256
+      ++model.geo_encoder.resnet_version: 18, 50

@@ -30,7 +30,7 @@ data:
   dataset:
     modalities:
       aef:
-        format: tif
+        format: npy
         enable_nans: true
     use_target_data: true
     use_aux_data: false
@@ -38,7 +38,7 @@ data:
   pin_memory: true
   num_workers: 14
   batch_size: 128
-  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
   wandb:

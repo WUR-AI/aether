@@ -3,7 +3,7 @@
 # to execute this experiment run:
 # python train.py experiment=example
 
-# Tessera with average encoder and MLP prediction head with larger hidden dim (512), for tile sizes 128 and 256, each with 3 random seeds
+# AEF with average encoder and MLP prediction head, for tile sizes 128 and 256, each with 3 random seeds
 
 defaults:
   - override /model: s2bms_prediction
@@ -12,35 +12,33 @@ defaults:
 
 tags:
   - prediction
-  - tessera
-  - tessera_${str:${data.dataset.modalities.tessera.size}}
+  - aef
+  - aef_${str:${data.dataset.modalities.aef.size}}
   - ${str:${seed}}
 
-experiment_name: avr_tessera_${str:${data.dataset.modalities.tessera.size}}_mlp_bigger
+experiment_name: avr_aef_${str:${data.dataset.modalities.aef.size}}_mlp
 
 model:
   geo_encoder:
     _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
-    geo_data_name: tessera
+    geo_data_name: aef
   trainable_modules: [prediction_head]
   prediction_head:
     _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
-    hidden_dim: 512
 
 data:
   dataset:
     modalities:
-      tessera:
+      aef:
         format: npy
         enable_nans: true
     use_target_data: true
     use_aux_data: false
   caption_builder:
-  pin_memory: false
+  pin_memory: true
   num_workers: 14
   batch_size: 128
-  persistent_workers: false
-  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
   wandb:
@@ -54,5 +52,5 @@ hydra:
   mode: MULTIRUN
   sweeper:
     params:
-      seed: 12345, 404, 654
-      +data.dataset.modalities.tessera.size: 128, 256
+      seed: 12345 #, 404, 654
+      +data.dataset.modalities.aef.size: 128 #, 256

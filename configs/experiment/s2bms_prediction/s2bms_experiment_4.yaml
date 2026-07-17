@@ -13,34 +13,33 @@ defaults:
 tags:
   - prediction
   - tessera
-  - tessera_${str:${data.dataset.modalities.tessera.size}}
+  - tessera_${str:${data.dataset.modalities.tessera_avr.size}}
   - ${str:${seed}}
 
-experiment_name: avr_tessera_${str:${data.dataset.modalities.tessera.size}}_linear
+experiment_name: avr_tessera_${str:${data.dataset.modalities.tessera_avr.size}}_linear_v1.1
 
 model:
   geo_encoder:
-    _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
-    geo_data_name: tessera
+    _target_: src.models.components.geo_encoders.identity_encoder.IdentityEncoder
+    geo_data_name: tessera_avr
   trainable_modules: [prediction_head]
   prediction_head:
     _target_: src.models.components.pred_heads.linear_pred_head.LinearPredictionHead
-    hidden_dim: 512
 
 data:
   dataset:
     modalities:
-      tessera:
-        format: npy
+      tessera_avr:
+        path: ${paths.data_dir}/s2bms/eo/avr_tessera_${str:${data.dataset.modalities.tessera_avr.size}}.csv
         enable_nans: true
     use_target_data: true
     use_aux_data: false
   caption_builder:
-  pin_memory: false
+  pin_memory: true
   num_workers: 14
   batch_size: 128
-  persistent_workers: false
-  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  persistent_workers: true
+  saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
   wandb:
@@ -55,4 +54,4 @@ hydra:
   sweeper:
     params:
       seed: 12345, 404, 654
-      +data.dataset.modalities.tessera.size: 128, 256
+      +data.dataset.modalities.tessera_avr.size: 128, 256
