@@ -158,7 +158,7 @@ class PredictiveModel(BaseModel):
             # Invert scaling so all logged metrics are in original target units
             preds_for_metrics = preds * self.target_std + self.target_mean
         else:
-            loss = self.loss_fn(preds, target)
+            loss = self.loss_fn(preds, labels=target)
             preds_for_metrics = preds
 
         # logging
