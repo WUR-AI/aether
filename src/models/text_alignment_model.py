@@ -116,10 +116,16 @@ class TextAlignmentModel(BaseModel):
 
         print("------------------------")
 
-    def on_fit_start(self):
+
+    def _on_x_star(self):
         # Configure contrastive retrieval evaluation
+        if hasattr(self, '_retrieval_setup_flag'):
+            if self._retrieval_setup_flag:
+                return
+
         self.setup_retrieval_evaluation(verbose=0)
-        print("Retrieval evaluation configured")
+        self._retrieval_setup_flag = True
+        log.info("Retrieval evaluation configured")
 
     def setup_retrieval_evaluation(
         self,
