@@ -306,3 +306,22 @@ class BaseModel(LightningModule, ABC):
     # TODO feels illegal
     def load_state_dict(self, state_dict, strict=True):
         return super().load_state_dict(state_dict, strict=False)
+
+    @final
+    def on_fit_start(self):
+        self._on_x_star()
+
+    @final
+    def on_test_start(self):
+        self._on_x_star()
+
+    @final
+    def on_validate_start(self):
+        self._on_x_star()
+
+    @final
+    def on_predict_start(self):
+        self._on_x_star()
+
+    def _on_x_star(self):
+        pass

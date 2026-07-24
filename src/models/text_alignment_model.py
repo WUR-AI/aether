@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, Tuple, override
 
 import torch
@@ -13,6 +14,8 @@ from src.models.components.metrics.metrics_wrapper import MetricsWrapper
 from src.models.components.projectors.base_projector import BaseProjector
 from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
 
+log = logging.getLogger(__name__)
+
 
 class TextAlignmentModel(BaseModel):
     def __init__(
@@ -22,8 +25,8 @@ class TextAlignmentModel(BaseModel):
         text_encoder: BaseTextEncoder,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
-        loss_fn: BaseLossFn,
-        metrics: MetricsWrapper,
+        loss_fn: BaseLossFn | None = None,
+        metrics: MetricsWrapper | None = None,
         geo_adapter: BaseProjector | None = None,
         text_adapter: BaseProjector | None = None,
         num_classes: int | None = None,
@@ -77,7 +80,7 @@ class TextAlignmentModel(BaseModel):
         Otherwise, some configuration variables must be made available
         """
         # Set up encoders and missing adapters/projectors
-        print("-------Model------------")
+        log.info("-------Model------------")
         new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup() or []]
 
         if self.geo_adapter:
@@ -101,7 +104,7 @@ class TextAlignmentModel(BaseModel):
 
         if geo_branch_dim != text_branch_dim:
             if self.geo_adapter or self.text_adapter:
-                print(
+                log.info(
                     f"You opted to use:{' geo' if self.geo_adapter else '' and ' text' if self.text_adapter else ''} adapter",
                     "but you miss-configured output dimensions:\n"
                     f"geo: {geo_branch_dim} vs text: {text_branch_dim}\n",
@@ -114,12 +117,17 @@ class TextAlignmentModel(BaseModel):
                 self.geo_encoder.add_projector(projected_dim=self.text_encoder.output_dim)
                 self.trainable_modules.append("geo_encoder.extra_projector")
 
-        print("------------------------")
+        log.info("------------------------")
 
-    def on_fit_start(self):
+    def _on_x_star(self):
         # Configure contrastive retrieval evaluation
+        if hasattr(self, "_retrieval_setup_flag"):
+            if self._retrieval_setup_flag:
+                return
+
         self.setup_retrieval_evaluation(verbose=0)
-        print("Retrieval evaluation configured")
+        self._retrieval_setup_flag = True
+        log.info("Retrieval evaluation configured")
 
     def setup_retrieval_evaluation(
         self,
@@ -265,7 +273,9 @@ class TextAlignmentModel(BaseModel):
         avr_scores[f"{mode}_avr_top-dyn_k_index"] = []
         for i, result in concept_scores.items():  # loop through concepts
             if verbose:
-                print(f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:')
+                log.info(
+                    f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:'
+                )
             for k, v in result.items():  # loop through k values
                 if k == "dynamic_k":
                     self.log(f"{mode}_dyn_k_{self.concept_names[i]}", v, **self.log_kwargs)
@@ -282,7 +292,7 @@ class TextAlignmentModel(BaseModel):
                     avr_scores[f"{mode}_avr_top-{k}"].append(v)
 
                 if verbose:
-                    print(f"Top-{k}: {v:.1f}%")
+                    log.info(f"Top-{k}: {v:.1f}%")
 
         for k, v in avr_scores.items():
             avr_scores[k] = sum(v) / len(v)
@@ -326,8 +336,8 @@ class TextAlignmentModel(BaseModel):
                 ):
                     concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
             concept_embeds = F.normalize(concept_embeds, dim=1)
-            if self.text_adapter:
-                concept_embeds = self.text_adapter(concept_embeds)
+        if self.text_adapter:
+            concept_embeds = self.text_adapter(concept_embeds)
 
         # Similarity
         geo_embeds = F.normalize(geo_embeds, dim=1)

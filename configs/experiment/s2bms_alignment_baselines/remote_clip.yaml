@@ -1,0 +1,61 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+# Geoclip with linear prediction head, with 3 random seeds
+
+defaults:
+  - override /model: s2bms_alignment
+  - override /data: s2bms_prediction
+  - override /metrics: s2bms_alignment
+
+baseline: true
+ckpt_path:
+validate: true
+seed: 12345
+
+tags:
+  - baseline
+  - alignment
+  - geoclip
+
+experiment_name: RemoteCLIP_${model.model_name}_baseline
+projects: s2bms_alignment
+
+model:
+  _target_: src.models.remote_clip_baseline.build_RemoteCLIP_model
+  hf_cache_dir: ${paths.huggingface_cache}
+  trainable_modules: []
+  model.model_name: "RN50" #, 'ViT-B-32', 'ViT-L-14'
+
+data:
+  dataset:
+    modalities:
+      s2:
+        size: 224
+        channels: rgb
+        format: tif
+    use_target_data: false
+    use_aux_data: "all"
+    use_unlabelled_data: false
+    dtype: float32
+  caption_builder:
+    _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
+    templates_fname:
+    concepts_fname: v4.json
+    data_dir: ${paths.data_dir}/s2bms
+    seed: ${seed}
+    n_captions_for_validation: 50
+  num_workers: 1
+  persistent_workers: true
+  saved_split_file_name: "s2bms_union_val_test.pth"
+  batch_size: 128
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "alignment"
+    project: "s2bms__alignment"
+  aim:
+    experiment: "alignment"
