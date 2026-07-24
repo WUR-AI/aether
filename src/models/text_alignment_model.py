@@ -1,7 +1,9 @@
+import logging
 from typing import Dict, Tuple, override
 
 import torch
 import torch.nn.functional as F
+from src.models.components.projectors.base_projector import BaseProjector
 
 from src.models.base_model import BaseModel
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
@@ -10,8 +12,9 @@ from src.models.components.metrics.contrastive_validation import (
     RetrievalContrastiveValidation,
 )
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
-from src.models.components.projectors_adapters.base_encoder import BaseEncoder
 from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
+
+log = logging.getLogger(__name__)
 
 
 class TextAlignmentModel(BaseModel):
@@ -77,7 +80,7 @@ class TextAlignmentModel(BaseModel):
         Otherwise, some configuration variables must be made available
         """
         # Set up encoders and missing adapters/projectors
-        print("-------Model------------")
+        log.info("-------Model------------")
         new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup() or []]
 
         if self.geo_adapter:
@@ -101,7 +104,7 @@ class TextAlignmentModel(BaseModel):
 
         if geo_branch_dim != text_branch_dim:
             if self.geo_adapter or self.text_adapter:
-                print(
+                log.info(
                     f"You opted to use:{' geo' if self.geo_adapter else '' and ' text' if self.text_adapter else ''} adapter",
                     "but you miss-configured output dimensions:\n"
                     f"geo: {geo_branch_dim} vs text: {text_branch_dim}\n",
@@ -114,12 +117,11 @@ class TextAlignmentModel(BaseModel):
                 self.geo_encoder.add_projector(projected_dim=self.text_encoder.output_dim)
                 self.trainable_modules.append("geo_encoder.extra_projector")
 
-        print("------------------------")
-
+        log.info("------------------------")
 
     def _on_x_star(self):
         # Configure contrastive retrieval evaluation
-        if hasattr(self, '_retrieval_setup_flag'):
+        if hasattr(self, "_retrieval_setup_flag"):
             if self._retrieval_setup_flag:
                 return
 
@@ -271,7 +273,9 @@ class TextAlignmentModel(BaseModel):
         avr_scores[f"{mode}_avr_top-dyn_k_index"] = []
         for i, result in concept_scores.items():  # loop through concepts
             if verbose:
-                print(f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:')
+                log.info(
+                    f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:'
+                )
             for k, v in result.items():  # loop through k values
                 if k == "dynamic_k":
                     self.log(f"{mode}_dyn_k_{self.concept_names[i]}", v, **self.log_kwargs)
@@ -288,7 +292,7 @@ class TextAlignmentModel(BaseModel):
                     avr_scores[f"{mode}_avr_top-{k}"].append(v)
 
                 if verbose:
-                    print(f"Top-{k}: {v:.1f}%")
+                    log.info(f"Top-{k}: {v:.1f}%")
 
         for k, v in avr_scores.items():
             avr_scores[k] = sum(v) / len(v)
