@@ -120,8 +120,9 @@ class ButterflyDataset(BaseDataset):
         avail_files = os.listdir(dst_dir)
 
         mask = self.df["s2_path"].apply(lambda p: os.path.basename(p) in avail_files)
-
-        if (~mask).any() and self._ignore_single_missing_data_points:
+        if mask.all():
+            return
+        elif (~mask).any() and self._ignore_single_missing_data_points:
             self.df = self.df[mask]
             log.info(f"Dropped {(~mask).sum()} locations because they had missing s2 tiles.")
         else:
