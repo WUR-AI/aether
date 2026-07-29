@@ -336,6 +336,8 @@ class TextAlignmentModel(BaseModel):
                 ):
                     concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
             concept_embeds = F.normalize(concept_embeds, dim=1)
+            if self.text_adapter:
+                concept_embeds = self.text_adapter(concept_embeds)
 
         # Similarity
         geo_embeds = F.normalize(geo_embeds, dim=1)
