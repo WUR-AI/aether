@@ -202,7 +202,7 @@ class TextAlignmentModel(BaseModel):
             feats = feats.reshape(2, -1, feats.size(-1))
             geo_feats, text_feats = feats[0], feats[1]
 
-        # Get loss
+        # Get aux values
         aux_values = batch["aux"].get("aux")
         aux_ids_per_caption = batch.get("text_aux_ids")
 
@@ -242,12 +242,11 @@ class TextAlignmentModel(BaseModel):
         self.log_dict(metrics, batch_size=local_batch_size, **self.log_kwargs)
 
         if mode in ["val", "test"]:
-            aux = batch.get("aux", {}).get("aux")
             self.outputs_epoch_memory.append(
                 {
                     # Store on CPU to avoid holding the whole epoch on GPU.
                     "geo_feats": geo_feats.detach().cpu(),
-                    "aux_vals": aux.detach().cpu() if aux is not None else None,
+                    "aux_vals": aux_values.detach().cpu() if aux_values is not None else None,
                 }
             )
 
