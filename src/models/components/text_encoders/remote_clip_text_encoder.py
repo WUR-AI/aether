@@ -35,9 +35,6 @@ class RemoteCLIPTextEncoder(BaseTextEncoder):
             text_embeds = self.model.encode_text(text)
 
             # Project
-            if self.projector is not None:
-                text_embeds = self.projector(text_embeds)
-
             if self.extra_projector is not None:
                 text_embeds = self.extra_projector(text_embeds)
 
