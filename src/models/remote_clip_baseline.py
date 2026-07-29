@@ -19,6 +19,7 @@ def build_RemoteCLIP_model(
     hf_cache_dir: str = "../.cache",
     return_geo_encoder: bool = True,
     return_text_encoder: bool = True,
+    preprocessing: str | None = None,
     **kwargs,
 ):
     """Implements RemoteCLIP model as TextAlignmentModel."""
@@ -42,6 +43,9 @@ def build_RemoteCLIP_model(
     out_dim = models[model_name]
 
     if return_geo_encoder:
+        assert (
+            preprocessing == "div_10000"
+        ), "S2 must be preprocessed with preprocessing set to 'div_10000'"
         geo_encoder = RemoteClipImgEncoder(geo_encoder=model.visual, out_dim=out_dim)
     if return_text_encoder:
         model.visual = None
