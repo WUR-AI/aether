@@ -86,7 +86,7 @@ class TextAlignmentModel(BaseModel):
 
         new_modules.extend([f"text_encoder.{i}" for i in self.text_encoder.setup() or []])
         if self.text_adapter:
-            self.text_adapter.set_input_dim(self.text_encoder.input_dim)
+            self.text_adapter.set_input_dim(self.text_encoder.output_dim)
             new_modules.extend([f"text_adapter.{i}" for i in self.text_adapter.setup() or []])
 
         self.trainable_modules.extend(new_modules)
