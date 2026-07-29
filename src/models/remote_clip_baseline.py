@@ -17,6 +17,8 @@ log = logging.getLogger(__name__)
 def build_RemoteCLIP_model(
     model_name: str = "ViT-L-14",
     hf_cache_dir: str = "../.cache",
+    return_geo_encoder: bool = True,
+    return_text_encoder: bool = True,
     **kwargs,
 ):
     """Implements RemoteCLIP model as TextAlignmentModel."""
@@ -39,13 +41,18 @@ def build_RemoteCLIP_model(
 
     out_dim = models[model_name]
 
-    geo_encoder = RemoteClipImgEncoder(geo_encoder=model.visual, out_dim=out_dim)
-    model.visual = None
-
-    text_encoder = RemoteCLIPTextEncoder(model=model, tokenizer=tokenizer, out_dim=out_dim)
-
-    return TextAlignmentModel(
-        geo_encoder=geo_encoder,
-        text_encoder=text_encoder,
-        **kwargs,
-    )
+    if return_geo_encoder:
+        geo_encoder = RemoteClipImgEncoder(geo_encoder=model.visual, out_dim=out_dim)
+    if return_text_encoder:
+        model.visual = None
+        text_encoder = RemoteCLIPTextEncoder(model=model, tokenizer=tokenizer, out_dim=out_dim)
+        if return_geo_encoder:
+            return TextAlignmentModel(
+                geo_encoder=geo_encoder,
+                text_encoder=text_encoder,
+                **kwargs,
+            )
+        else:
+            return text_encoder
+    elif return_geo_encoder:
+        return geo_encoder
