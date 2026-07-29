@@ -17,7 +17,7 @@ tags:
   - aef_128
   - ${str:${seed}}
 
-experiment_name: unlab_avr_aef_128_mlp_cliptext
+experiment_name: unlab_captions_v6_siglip
 projects: s2bms_alignment
 
 model:
@@ -34,42 +34,38 @@ model:
     hf_cache_dir: ${paths.huggingface_cache}
     use_geoclip_projector: false
   loss_fn:
-    _target_: src.models.components.loss_fns.clip_loss.ClipLoss
-    temperature: 0.07
-  trainable_modules: [loss_fn.log_temp]
+    _target_: src.models.components.loss_fns.siglip_loss.SigLipLoss
+  trainable_modules: [loss_fn.log_scale, loss_fn.bias]
 
 data:
   dataset:
     modalities:
       aef_avr:
-        path: ${paths.data_dir}/s2bms/eo/avr_aef_256_unlabelled.csv
+        path: ${paths.data_dir}/s2bms/eo/avr_aef_128_unlabelled.csv
         enable_nans: true
     use_target_data: false
     use_aux_data: "all"
     use_unlabelled_data: true
     dtype: float32
-    return_name_loc: true
   caption_builder:
     _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
-    templates_fname: v5.json
+    templates_fname: v6.json
     concepts_fname: v4.json
     data_dir: ${paths.data_dir}/s2bms
     seed: ${seed}
     n_captions_for_validation: 50
-    stats_file: ${paths.data_dir}/s2bms/aux_stats/labelled.json
 
   num_workers: 14
   persistent_workers: true
   pin_memory: true
   prefetch_factor: 6
-  batch_size: 256
-  saved_split_file_name: "s2bms_10k-unlabelled_coords_aef256.pth"
+  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
 
 logger:
   wandb:
     tags: ${tags}
     group: "alignment"
-    project: "s2bms_alignment"
+    project: "s2bms_aef_alignment"
   aim:
     experiment: "alignment"
 
@@ -78,5 +74,5 @@ hydra:
   sweeper:
     params:
       seed: 12345 #, 404, 654
-      ++data.caption_builder.return_aux_ids: false
       ++callbacks.early_stopping.patience: 20
+      ++data.batch_size: 128, 256, 512 #32, 64,
