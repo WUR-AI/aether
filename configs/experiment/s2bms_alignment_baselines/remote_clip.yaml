@@ -20,14 +20,14 @@ tags:
   - alignment
   - geoclip
 
-experiment_name: RemoteCLIP_${model.model_name}_baseline
+experiment_name: RemoteCLIP_${str:${model.model_name}}_baseline
 projects: s2bms_alignment
 
 model:
   _target_: src.models.remote_clip_baseline.build_RemoteCLIP_model
   hf_cache_dir: ${paths.huggingface_cache}
   trainable_modules: []
-  model.model_name: "RN50" #, 'ViT-B-32', 'ViT-L-14'
+  preprocessing: ${data.dataset.modalities.s2.preprocessing}
 
 data:
   dataset:
@@ -36,13 +36,14 @@ data:
         size: 224
         channels: rgb
         format: tif
+        preprocessing: div_10000
     use_target_data: false
     use_aux_data: "all"
     use_unlabelled_data: false
     dtype: float32
   caption_builder:
     _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
-    templates_fname:
+    templates_fname: v5.json
     concepts_fname: v4.json
     data_dir: ${paths.data_dir}/s2bms
     seed: ${seed}
@@ -56,6 +57,12 @@ logger:
   wandb:
     tags: ${tags}
     group: "alignment"
-    project: "s2bms__alignment"
+    project: "s2bms_aef_alignment"
   aim:
     experiment: "alignment"
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      ++model.model_name: ViT-B-32, ViT-L-14  #RN50
