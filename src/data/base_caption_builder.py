@@ -186,7 +186,7 @@ class BaseCaptionBuilder(ABC):
                 filled_in_location_templates.append(filled_template)
 
             if self.return_aux_ids:
-                ids.append(ids_per_location)
+                ids.append(list(ids_per_location))
             formatted_location_captions.append(filled_in_location_templates)
         if self.return_aux_ids:
             return formatted_location_captions, ids
