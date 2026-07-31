@@ -74,6 +74,7 @@ class BaseModel(LightningModule, ABC):
         self.tabular_dim = tabular_dim
 
         self.setup_flag = False
+        self._best_loss = None
 
     @final
     def setup(self, stage: str) -> None:

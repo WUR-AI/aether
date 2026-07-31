@@ -294,6 +294,11 @@ class TextAlignmentModel(BaseModel):
 
     @override
     def on_validation_epoch_end(self):
+        val_loss = self.trainer.callback_metrics["val_loss"]
+        if self._best_loss is None or val_loss < self._best_loss:
+            self._best_loss = val_loss.detach()
+        self.log("best_val_loss", self._best_loss, sync_dist=False)
+
         return self._on_epoch_end("val")
 
     @override
