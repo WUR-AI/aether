@@ -1,0 +1,88 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+# Baseline
+
+defaults:
+  - override /model: s2bms_alignment
+  - override /data: s2bms_prediction
+  - override /metrics: s2bms_alignment
+
+tags:
+  - alignment
+  - avr_aef_128
+  - ${str:${seed}}
+
+experiment_name: baseline_top-k-idx_b${str:${data.batch_size}}_s${str:${model.loss_fn.sigma}}
+projects: s2bms_alignment
+
+model:
+  geo_encoder:
+    _target_: src.models.components.geo_encoders.identity_encoder.IdentityEncoder
+    geo_data_name: aef_avr
+  geo_adapter:
+    _target_: src.models.components.projectors.mlp_projector.MLPProjector
+    nn_layers: 2
+    hidden_dim: 512
+    output_dim: 768
+  text_encoder:
+    _target_: src.models.components.text_encoders.clip_text_encoder.ClipTextEncoder
+    hf_cache_dir: ${paths.huggingface_cache}
+    use_geoclip_projector: false
+  loss_fn:
+    _target_: src.models.components.loss_fns.soft_contrastive_loss.SoftContrastiveLoss
+    stats_file: ${paths.data_dir}/s2bms/aux_stats/unlabelled.json
+    temperature: 0.07
+  trainable_modules: [loss_fn.log_temp]
+
+data:
+  dataset:
+    modalities:
+      aef_avr:
+        path: ${paths.data_dir}/s2bms/eo/avr_aef_128_unlabelled.csv
+        enable_nans: true
+    use_target_data: false
+    use_aux_data: "all"
+    use_unlabelled_data: true
+    dtype: float32
+  caption_builder:
+    _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
+    templates_fname: v6.json
+    concepts_fname: v4.json
+    data_dir: ${paths.data_dir}/s2bms
+    seed: ${seed}
+    n_captions_for_validation: 50
+
+  num_workers: 14
+  persistent_workers: true
+  pin_memory: true
+  prefetch_factor: 6
+  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "alignment"
+    project: "s2bms_alignment_experimental"
+  aim:
+    experiment: "alignment"
+
+callbacks:
+  model_checkpoint:
+    monitor: "val_avr_top-dyn_k_index"
+    mode: "max"
+  early_stopping:
+    monitor: "val_avr_top-dyn_k_index"
+    patience: 20
+    mode: "max"
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      seed: 12345 #, 404, 654
+      ++model.loss_fn.sigma: 1
+      ++data.caption_builder.return_aux_ids: false
+      ++data.batch_size: 128, 256, 512, 1028
