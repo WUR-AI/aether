@@ -18,7 +18,7 @@ seed: 12345
 tags:
   - baseline
   - alignment
-  - geoclip
+  - remoteclip
 
 experiment_name: RemoteCLIP_${str:${model.model_name}}_baseline
 projects: s2bms_alignment
@@ -65,4 +65,4 @@ hydra:
   mode: MULTIRUN
   sweeper:
     params:
-      ++model.model_name: ViT-B-32, ViT-L-14  #RN50
+      ++model.model_name: ViT-B-32, ViT-L-14, RN50
