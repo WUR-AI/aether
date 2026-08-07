@@ -84,6 +84,6 @@ hydra:
   sweeper:
     params:
       seed: 12345 #, 404, 654
-      ++model.loss_fn.sigma: 0.5, 1
+      ++model.loss_fn.sigma: 0.25, 0.5, 1
       ++data.caption_builder.return_aux_ids: true
       ++data.batch_size: 128, 256, 512, 1028

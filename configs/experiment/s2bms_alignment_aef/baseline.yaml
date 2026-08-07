@@ -77,4 +77,4 @@ hydra:
       ++model.loss_fn.sigma: 0.25
       ++data.caption_builder.return_aux_ids: false
       ++callbacks.early_stopping.patience: 20
-      ++data.batch_size: 512
+      ++data.batch_size: 128
