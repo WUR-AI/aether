@@ -339,7 +339,7 @@ def test_yield_africa_config_loads():
     with initialize(version_base="1.3", config_path="../configs"):
         cfg = compose(
             config_name="train.yaml",
-            overrides=["experiment=yield_africa_tabular_reg", "hydra.job.chdir=false"],
+            overrides=["experiment=cy/yield_africa_tabular_reg", "hydra.job.chdir=false"],
         )
     assert cfg.data._target_ == "src.data.base_datamodule.BaseDataModule"
     assert cfg.data.dataset._target_ == "src.data.yield_africa_dataset.YieldAfricaDataset"
@@ -352,7 +352,7 @@ def test_yield_africa_model_instantiates():
     with initialize(version_base="1.3", config_path="../configs"):
         cfg = compose(
             config_name="train.yaml",
-            overrides=["experiment=yield_africa_tabular_reg", "hydra.job.chdir=false"],
+            overrides=["experiment=cy/yield_africa_tabular_reg", "hydra.job.chdir=false"],
         )
     model = hydra.utils.instantiate(cfg.model)
     assert model is not None
