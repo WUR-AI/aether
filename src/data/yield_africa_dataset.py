@@ -188,15 +188,8 @@ class YieldAfricaDataset(BaseDataset):
         # get_records() mutates self.use_aux_data in place (replacing pattern
         # dicts with resolved column-name lists), so reset it from the original
         # parameter before calling it a second time.
-        if use_aux_data is None or use_aux_data == "all":
-            self.use_aux_data = {
-                "aux": {"pattern": "^aux_(?!.*top).*"},
-                "top": {"pattern": "^aux_.*top.*"},
-            }
-        elif isinstance(use_aux_data, dict):
-            self.use_aux_data = use_aux_data
-        else:
-            self.use_aux_data = None
+        self.configure_use_aux(use_aux_data)
+        self.get_columns()
 
         # Always rebuild so feat_year / feat_country_* are reflected in
         # self.feat_names and self.tabular_dim.
@@ -262,7 +255,7 @@ class YieldAfricaDataset(BaseDataset):
                 )
             self.records = resolved
 
-    def setup(self) -> None:
+    def _setup(self) -> None:
         """Check for requested modality data; warn if TESSERA tiles are absent.
 
         Unlike other datasets, TESSERA tiles for yield_africa vary per record
