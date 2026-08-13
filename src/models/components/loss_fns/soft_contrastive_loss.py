@@ -114,7 +114,7 @@ class SoftContrastiveLoss(BaseLossFn):
             # Create a mask
             mask = torch.zeros((batch_size, n_aux_cols), dtype=aux_values.dtype, device=device)
             for j, used_cols in enumerate(aux_ids_per_caption):
-                if used_cols:
+                if len(used_cols) > 0:
                     mask[j, used_cols] = 1.0
             mask = mask.unsqueeze(0)
 

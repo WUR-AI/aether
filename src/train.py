@@ -155,7 +155,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         )
 
         val_metrics = trainer.callback_metrics
-        wandb_logger.log_metrics({f"best_val_{k}": v for k, v in val_metrics.items()})
+        wandb_logger.log_metrics({f"best_{k}": v for k, v in val_metrics.items()})
 
     if cfg.get("test") and wandb_logger is not None:
         log.info("Starting testing!")

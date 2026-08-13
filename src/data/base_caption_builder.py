@@ -52,14 +52,12 @@ class BaseCaptionBuilder(ABC):
         self.seed = seed
         random.seed(self.seed)
 
-        if n_captions_for_validation == "all":
-            self.n = self.__len__
-        elif n_captions_for_validation > len(self):
+        self.n = n_captions_for_validation
+
+        if isinstance(n_captions_for_validation, int) and n_captions_for_validation > len(self):
             raise IllegalArgumentCombination(
                 f"Requested {n_captions_for_validation} captions exceeds template dictionary size"
             )
-        else:
-            self.n = n_captions_for_validation
 
         self.return_aux_ids = return_aux_ids
 
@@ -170,17 +168,20 @@ class BaseCaptionBuilder(ABC):
             row_top = aux_values.get("top")[i] if aux_values.get("top") else None
 
             # Sample templates
-            template_ids = random.choices(range(len(self.templates)), k=self.n)
+            if self.n == "all":
+                template_ids = list(range(len(self)))
+            else:
+                template_ids = random.choices(range(len(self.templates)), k=self.n)
 
             # Get filled in templates for location
             filled_in_location_templates = []
-            ids_per_location = []
+            ids_per_location = set()
             for template_idx in template_ids:
                 if self.return_aux_ids:
-                    filled_template, template_ids = self._build_from_template(
+                    filled_template, col_ids = self._build_from_template(
                         template_idx, aux=row_aux, top=row_top
                     )
-                    ids_per_location.extend(filled_template)
+                    ids_per_location.update(col_ids)
                 else:
                     filled_template = self._build_from_template(
                         template_idx, aux=row_aux, top=row_top
@@ -188,7 +189,7 @@ class BaseCaptionBuilder(ABC):
                 filled_in_location_templates.append(filled_template)
 
             if self.return_aux_ids:
-                ids.append(template_ids)
+                ids.append(list(ids_per_location))
             formatted_location_captions.append(filled_in_location_templates)
         if self.return_aux_ids:
             return formatted_location_captions, ids
