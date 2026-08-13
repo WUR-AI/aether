@@ -138,7 +138,7 @@ def test_with_tabular_encoder():
 
     Both branches projected to the same output_dim (32) via per-branch projectors.
     """
-    from src.models.components.projectors_adapters.mlp_projector import MLPProjector
+    from src.models.components.projectors.mlp_projector import MLPProjector
 
     tabular_dim = 23
     tab_enc = TabularEncoder(output_dim=32)

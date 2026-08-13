@@ -1,36 +1,16 @@
+import os
 from typing import Any, Dict, List, Tuple
 
 import hydra
 import rootutils
-from lightning import LightningDataModule, LightningModule, Trainer
-from lightning.pytorch.loggers import Logger
-from omegaconf import DictConfig
+import torch
+from dotenv import load_dotenv
+from lightning import Trainer
+from lightning.pytorch.loggers import Logger, WandbLogger
+from omegaconf import DictConfig, OmegaConf
 
-rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
-
-# Disable tokenizers parallelism to avoid warnings when using multiprocessing
-import os
-
-if os.environ.get("TOKENIZERS_PARALLELISM") is None:
-    os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-# ------------------------------------------------------------------------------------ #
-# the setup_root above is equivalent to:
-# - adding project root dir to PYTHONPATH
-#       (so you don't need to force user to install project as a package)
-#       (necessary before importing any local modules e.g. `from src import utils`)
-# - setting up PROJECT_ROOT environment variable
-#       (which is used as a base for paths in "configs/paths/local.yaml")
-#       (this way all filepaths are the same no matter where you run the code)
-# - loading environment variables from ".env" in root dir
-#
-# you can remove it if you:
-# 1. either install project as a package or move entry files to project root dir
-# 2. set `root_dir` to "." in "configs/paths/local.yaml"
-#
-# more info: https://github.com/ashleve/rootutils
-# ------------------------------------------------------------------------------------ #
-
+from src.data.base_datamodule import BaseDataModule
+from src.models.base_model import BaseModel
 from src.utils import (
     RankedLogger,
     extras,
@@ -38,8 +18,21 @@ from src.utils import (
     log_hyperparameters,
     task_wrapper,
 )
+from src.utils.experiment_tracking import compose_experiment_name
+
+rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+load_dotenv()
+
+# Optimize Tensor Core usage (L40S / A100 / H100 all benefit from this)
+torch.set_float32_matmul_precision("high")
+
+# Disable tokenizers parallelism to avoid warnings when using multiprocessing
+if os.environ.get("TOKENIZERS_PARALLELISM") is None:
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 log = RankedLogger(__name__, rank_zero_only=True)
+
+OmegaConf.register_new_resolver("str", str, replace=True)
 
 
 @task_wrapper
@@ -52,13 +45,14 @@ def evaluate(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     :param cfg: DictConfig configuration composed by Hydra.
     :return: Tuple[dict, dict] with metrics and dict with all instantiated objects.
     """
-    assert cfg.ckpt_path
+    if not cfg.baseline:
+        assert cfg.ckpt_path
 
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
-    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)
+    datamodule: BaseDataModule = hydra.utils.instantiate(cfg.data)
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
-    model: LightningModule = hydra.utils.instantiate(cfg.model)
+    model: BaseModel = hydra.utils.instantiate(cfg.model)
 
     log.info("Instantiating loggers...")
     logger: List[Logger] = instantiate_loggers(cfg.get("logger"))
@@ -73,18 +67,37 @@ def evaluate(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         "logger": logger,
         "trainer": trainer,
     }
-
-    if logger:
+    wandb_logger = next((log for log in logger if isinstance(log, WandbLogger)), None)
+    if wandb_logger:
         log.info("Logging hyperparameters!")
         log_hyperparameters(object_dict)
 
+        group = cfg.get("experiment_name", "null")
+        if group == "null":
+            compose_experiment_name(cfg)
+        wandb_logger.log_metrics({"experiment": group})
+
     log.info("Starting testing!")
-    trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
-
-    # for predictions use trainer.predict(...)
-    # predictions = trainer.predict(model=model, dataloaders=dataloaders, ckpt_path=cfg.ckpt_path)
-
+    trainer.test(
+        model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"), weights_only=False
+    )
     metric_dict = trainer.callback_metrics
+
+    if cfg.get("validate") and wandb_logger is not None:
+        # Run validation
+        log.info("Validating!")
+
+        trainer.validate(
+            model=model,
+            datamodule=datamodule,
+            ckpt_path=cfg.get("ckpt_path"),
+            weights_only=False,
+        )
+
+        val_metrics = trainer.callback_metrics
+        wandb_logger.log_metrics({f"best_{k}": v for k, v in val_metrics.items()})
+
+        metric_dict = {**metric_dict, **val_metrics}
 
     return metric_dict, object_dict
 
