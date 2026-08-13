@@ -518,7 +518,7 @@ class BaseDataset(Dataset, ABC):
 
         if modality == "aef_avr":
             emb_cols = [f"emb_{i}" for i in range(64)]
-        else:
+        elif modality == "tessera_avr":
             emb_cols = [f"emb_{i}" for i in range(128)]
 
         lookup_values = df[emb_cols].to_numpy()
@@ -529,5 +529,7 @@ class BaseDataset(Dataset, ABC):
 
         if modality == "aef_avr":
             self.aef_avr = lookup
-        else:
+            self.tessera_avr = None
+        elif modality == "tessera_avr":
             self.tessera_avr = lookup
+            self.aef_avr = None
