@@ -1,7 +1,9 @@
+import logging
 from typing import Dict, Tuple, override
 
 import torch
 import torch.nn.functional as F
+from src.models.components.projectors.base_projector import BaseProjector
 
 from src.models.base_model import BaseModel
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
@@ -10,8 +12,10 @@ from src.models.components.metrics.contrastive_validation import (
     RetrievalContrastiveValidation,
 )
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
-from src.models.components.projectors_adapters.base_encoder import BaseEncoder
+from src.models.components.projectors.base_projector import BaseProjector
 from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
+
+log = logging.getLogger(__name__)
 
 
 class TextAlignmentModel(BaseModel):
@@ -22,13 +26,13 @@ class TextAlignmentModel(BaseModel):
         text_encoder: BaseTextEncoder,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
-        loss_fn: BaseLossFn,
-        metrics: MetricsWrapper,
+        loss_fn: BaseLossFn | None = None,
+        metrics: MetricsWrapper | None = None,
         geo_adapter: BaseEncoder | None = None,
         text_adapter: BaseEncoder | None = None,
         num_classes: int | None = None,
         tabular_dim: int | None = None,
-        ks: list[int] | None = [5, 10, 15],
+        ks: list[int] | None = None,
         match_to_geo: bool = True,
     ) -> None:
         """Implementation of contrastive text-eo modality alignment model.
@@ -63,7 +67,7 @@ class TextAlignmentModel(BaseModel):
         self.geo_adapter = geo_adapter
         self.text_adapter = text_adapter
         # Metrics
-        self.ks = ks
+        self.ks = ks or [5, 10, 15]
         self.log_kwargs = dict(on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
 
         self.match_to_geo = match_to_geo
@@ -77,7 +81,7 @@ class TextAlignmentModel(BaseModel):
         Otherwise, some configuration variables must be made available
         """
         # Set up encoders and missing adapters/projectors
-        print("-------Model------------")
+        log.info("-------Model------------")
         new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup() or []]
 
         if self.geo_adapter:
@@ -101,7 +105,7 @@ class TextAlignmentModel(BaseModel):
 
         if geo_branch_dim != text_branch_dim:
             if self.geo_adapter or self.text_adapter:
-                print(
+                log.info(
                     f"You opted to use:{' geo' if self.geo_adapter else '' and ' text' if self.text_adapter else ''} adapter",
                     "but you miss-configured output dimensions:\n"
                     f"geo: {geo_branch_dim} vs text: {text_branch_dim}\n",
@@ -114,12 +118,17 @@ class TextAlignmentModel(BaseModel):
                 self.geo_encoder.add_projector(projected_dim=self.text_encoder.output_dim)
                 self.trainable_modules.append("geo_encoder.extra_projector")
 
-        print("------------------------")
+        log.info("------------------------")
 
-    def on_fit_start(self):
+    def _on_x_star(self):
         # Configure contrastive retrieval evaluation
+        if hasattr(self, "_retrieval_setup_flag"):
+            if self._retrieval_setup_flag:
+                return
+
         self.setup_retrieval_evaluation(verbose=0)
-        print("Retrieval evaluation configured")
+        self._retrieval_setup_flag = True
+        log.info("Retrieval evaluation configured")
 
     def setup_retrieval_evaluation(
         self,
@@ -194,7 +203,7 @@ class TextAlignmentModel(BaseModel):
             feats = feats.reshape(2, -1, feats.size(-1))
             geo_feats, text_feats = feats[0], feats[1]
 
-        # Get loss
+        # Get aux values
         aux_values = batch["aux"].get("aux")
         aux_ids_per_caption = batch.get("text_aux_ids")
 
@@ -234,12 +243,11 @@ class TextAlignmentModel(BaseModel):
         self.log_dict(metrics, batch_size=local_batch_size, **self.log_kwargs)
 
         if mode in ["val", "test"]:
-            aux = batch.get("aux", {}).get("aux")
             self.outputs_epoch_memory.append(
                 {
                     # Store on CPU to avoid holding the whole epoch on GPU.
                     "geo_feats": geo_feats.detach().cpu(),
-                    "aux_vals": aux.detach().cpu() if aux is not None else None,
+                    "aux_vals": aux_values.detach().cpu() if aux_values is not None else None,
                 }
             )
 
@@ -265,7 +273,9 @@ class TextAlignmentModel(BaseModel):
         avr_scores[f"{mode}_avr_top-dyn_k_index"] = []
         for i, result in concept_scores.items():  # loop through concepts
             if verbose:
-                print(f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:')
+                log.info(
+                    f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:'
+                )
             for k, v in result.items():  # loop through k values
                 if k == "dynamic_k":
                     self.log(f"{mode}_dyn_k_{self.concept_names[i]}", v, **self.log_kwargs)
@@ -282,7 +292,7 @@ class TextAlignmentModel(BaseModel):
                     avr_scores[f"{mode}_avr_top-{k}"].append(v)
 
                 if verbose:
-                    print(f"Top-{k}: {v:.1f}%")
+                    log.info(f"Top-{k}: {v:.1f}%")
 
         for k, v in avr_scores.items():
             avr_scores[k] = sum(v) / len(v)
@@ -326,6 +336,8 @@ class TextAlignmentModel(BaseModel):
                 ):
                     concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
             concept_embeds = F.normalize(concept_embeds, dim=1)
+            if self.text_adapter:
+                concept_embeds = self.text_adapter(concept_embeds)
 
         # Similarity
         geo_embeds = F.normalize(geo_embeds, dim=1)
