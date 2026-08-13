@@ -1,3 +1,4 @@
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, final
 
@@ -10,6 +11,8 @@ from src.models.components.metrics.metrics_wrapper import MetricsWrapper
 from src.models.components.pred_heads.base_pred_head import BasePredictionHead
 from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
 from src.utils.logging_utils import log_model_loading
+
+log = logging.getLogger(__name__)
 
 
 class BaseModel(LightningModule, ABC):
@@ -81,7 +84,7 @@ class BaseModel(LightningModule, ABC):
         """Updates model based data-bound configurations (through datamodule), This method is
         called after trainer is initialized and datamodule is available."""
         if self.setup_flag:
-            print("Model is already set up!")
+            log.info("Model is already set up!")
             return
 
         # If trainer is attached get num_classes and tabular_dim from datamodule (data-dependent)
@@ -111,11 +114,11 @@ class BaseModel(LightningModule, ABC):
     @final
     def full_freezer(self):
         """Freeze the whole network."""
-        print("--------Frozen--------")
+        log.info("--------Frozen--------")
         for name, param in self.named_parameters():
             param.requires_grad = False
-        print("Full model")
-        print("------------------------")
+        log.info("Full model")
+        log.info("------------------------")
 
         for name, module in self.named_modules():
             module.eval()
@@ -160,10 +163,10 @@ class BaseModel(LightningModule, ABC):
             else:
                 module.eval()
 
-        print("------Set to train------")
+        log.info("------Set to train------")
         for m in sorted(expanded_trainable):
-            print(f"  {m}")
-        print("------------------------")
+            log.info(f"  {m}")
+        log.info("------------------------")
         self.trainable_modules = list(expanded_trainable)
 
     @abstractmethod
@@ -301,7 +304,7 @@ class BaseModel(LightningModule, ABC):
     def on_load_checkpoint(self, checkpoint):
         """Load pre-trained parts of the model."""
         res = self.load_state_dict(checkpoint["state_dict"], strict=False)
-        print("Model loaded from a checkpoint.")
+        log.info("Model loaded from a checkpoint.")
         log_model_loading("Model from checkpoint", res)
 
     # TODO feels illegal

@@ -2,39 +2,63 @@ import os
 import re
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import wandb
 from omegaconf import DictConfig
 
 # Which wandb projects to log runs from
-PROJECTS = ["s2bms_prediction", "s2bms_alignment"]  # Important to keep updating!
+PROJECTS = ["s2bms_aef_alignment"]  # Important to keep updating!
+# PROJECTS = ["s2bms_prediction", "s2bms_alignment", "s2bms_aef_alignment"]  # Important to keep updating!
 EXPERIMENT_TRACKER_NAME = "experiment_tracker.csv"
 ENTITY = "aether_xai"
 
 
 def parse_data_name(run=None, cfg=None):
+    def _parse_model(model):
+        if "EncoderWrapper" in model["_target_"]:
+            models = [m["encoder"] for m in model["encoder_branches"]]
+        else:
+            models = [model]
+
+        for m in models:
+            if "SatClip" in m["_target_"]:
+                return "satclip"
+            elif "GeoClip" in m["_target_"]:
+                return "geoclip"
+        return "coords"
+
     if cfg is None:
         assert run is not None
         data_dict = run.config["data"]["dataset"]["modalities"]
+        model = run.config["model"]["geo_encoder"]
     else:
         data_dict = cfg["data"]["dataset"]["modalities"]
+        model = cfg["model"]["geo_encoder"]
+
+    def _parse(k):
+        if k == "coords":
+            return _parse_model(model)
+        else:
+            if isinstance(data_dict[k], dict):
+                if data_dict[k].get("size"):
+                    s = "_" + str(data_dict[k].get("size"))
+                elif data_dict[k].get("path"):
+                    s = "_" + data_dict[k].get("path").split("_")[-1].replace(".csv", "")
+                    if s == "_unlabelled":
+                        s = "_" + data_dict[k].get("path").split("_")[-2]
+                else:
+                    s = ""
+            return k.replace("_avr", "") + s
 
     if len(data_dict) == 1:
-        k = list(data_dict.keys())[0]
-        if k == "coords":
-            if "GeoClip" in run.config["model"]["geo_encoder"]["_target_"]:
-                data_name = "geoclip"
-            else:
-                data_name = "satclip"
-        else:
-            ks = list(data_dict.keys())
-            ks_new = [
-                f"{k}{f'_{k.get('size')}' if isinstance(k, dict) and k.get('size') else ''}"
-                for k in ks
-            ]
-            data_name = "-".join(map(str, ks_new))
+        data_name = _parse(list(data_dict.keys())[0])
+    else:
+        ks = list(data_dict.keys())
+        ks_new = [_parse(k) for k in ks]
+        data_name = "-".join(map(str, ks_new))
 
-        return data_name
+    return data_name
 
 
 def compose_experiment_name(cfg: DictConfig) -> str:
@@ -145,16 +169,19 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
             # Look for missing experiments
             if run.state != "finished":
                 continue
+            if "baseline" in run.summary.get("experiment"):
+                continue
 
-            if run.id not in ids:
-                runs_list.append(run)
-
+            if run.summary.get("best_val_loss") is None or run.id not in ids:
                 # Get all values for logging
                 task = project
                 run_id = run.id
                 seed = run.config["seed"]
-                best_path = run.summary.get("best_model_path", "null")
-                best_epoch = float(re.search(r".*_([0-9]{3})\.ckpt$", best_path).group(1))
+                best_path = run.summary.get("best_model_path")
+                if best_path is not None:
+                    best_epoch = float(re.search(r".*_([0-9]{3})\.ckpt", best_path).group(1))
+                else:
+                    best_epoch = None
                 source_dir = run.summary.get("source_dir", "null")
                 best_val_loss = run.config.get("best_val_loss", None)
                 if project == "s2bms_prediction":
@@ -167,7 +194,7 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
                         loss_per_epoch = results.groupby("epoch")["val_loss"].mean()
                         if best_epoch:
                             best_val_loss = loss_per_epoch[best_epoch]
-                        else:
+                        if np.isnan(best_val_loss) or best_epoch is None:
                             best_val_loss = loss_per_epoch.min().item()
                         run.summary.update({"best_val_loss": best_val_loss})
                 if project == "s2bms_prediction" and best_val_mse_loss is None:
@@ -177,7 +204,7 @@ def get_experiments_from_wandb(cfg: DictConfig) -> pd.DataFrame | None:
 
                 experiment = run.summary.get("experiment")
                 if experiment is None:
-                    experiment = run.config["experiment_name"]
+                    experiment = run.config.get("experiment_name")
                     run.summary.update({"experiment": experiment})
                     data_name = parse_data_name(run=run)
                     run.summary.update({"data_used": data_name})
