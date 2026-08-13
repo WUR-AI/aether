@@ -231,9 +231,11 @@ class ButterflyDataset(BaseDataset):
                     formatted_row["aux"][aux_cat] = [row[v] for v in vals]
 
         if self.use_features and self.feat_names:
-            formatted_row["eo"]["tabular"] = torch.tensor(
-                [row[k] for k in self.feat_names], dtype=torch.float32
-            )
+            raw = torch.tensor([row[k] for k in self.feat_names], dtype=torch.float32)
+            if self._feat_mean is not None and self._feat_std is not None:
+                formatted_row["eo"]["tabular"] = (raw - self._feat_mean) / self._feat_std
+            else:
+                formatted_row["eo"]["tabular"] = raw
 
         if self.return_name_loc:
             formatted_row["name_loc"] = row["name_loc"]

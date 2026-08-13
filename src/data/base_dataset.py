@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -205,11 +206,29 @@ class BaseDataset(Dataset, ABC):
             else:
                 raise ValueError('use_features should have "pattern" or "columns" defined')
             self.feat_names = feat_names
+            self._feat_norm_setup()
             columns.extend(feat_names)
 
             self.tabular_dim = len(self.feat_names)  # drop any duplicates
 
         return list(set(columns))
+
+    def _feat_norm_setup(self):
+        """If statistics files provided for the features, read them into self.feat_stats
+        parameter."""
+
+        if "stats_file" in self.use_features:
+            with open(self.use_features["stats_file"]) as json_data:
+                d = json.load(json_data)
+
+            means = [d[f]["mean"] for f in self.feat_names]
+            stds = [d[f]["std"] if d[f]["std"] > 1e-8 else 1.0 for f in self.feat_names]
+
+            self._feat_mean = torch.tensor(means, dtype=torch.float32)
+            self._feat_std = torch.tensor(stds, dtype=torch.float32)
+        else:
+            self._feat_mean = None
+            self._feat_std = None
 
     def get_records(self):
         return self.df.loc[:, self.columns].to_dict("records")
