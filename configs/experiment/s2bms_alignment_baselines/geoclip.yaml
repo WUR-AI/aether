@@ -44,7 +44,7 @@ data:
     dtype: float32
   caption_builder:
     _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
-    templates_fname:
+    templates_fname: v6.json
     concepts_fname: v4.json
     data_dir: ${paths.data_dir}/s2bms
     seed: ${seed}
@@ -58,6 +58,4 @@ logger:
   wandb:
     tags: ${tags}
     group: "alignment"
-    project: "s2bms__alignment"
-  aim:
-    experiment: "alignment"
+    project: "s2bms_aef_alignment_baselines"
