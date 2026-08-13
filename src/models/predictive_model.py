@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, override
 
 import torch
@@ -10,6 +11,8 @@ from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
 from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
 from src.models.components.pred_heads.linear_pred_head import BasePredictionHead
+
+log = logging.getLogger(__name__)
 
 
 class PredictiveModel(BaseModel):
@@ -81,9 +84,9 @@ class PredictiveModel(BaseModel):
         if stage != "fit" and isinstance(self.trainable_modules, tuple):
             self.trainable_modules = list(self.trainable_modules)
 
-        print("-------Model------------")
+        log.info("-------Model------------")
         self._setup_encoders_adapters()
-        print("------------------------")
+        log.info("------------------------")
 
     def _setup_encoders_adapters(self):
         """Set up encoders and missing adapters/projectors."""
@@ -116,7 +119,7 @@ class PredictiveModel(BaseModel):
                 self.geo_encoder.output_dim, dtype=self.geo_encoder.dtype
             )
             self.trainable_modules.append("normalizer")
-            print("Model set up to normalise geo_encoder features.")
+            log.info("Model set up to normalise geo_encoder features.")
 
         # Configure prediction head based on geo-encoder output_dim
         self.prediction_head.set_dim(

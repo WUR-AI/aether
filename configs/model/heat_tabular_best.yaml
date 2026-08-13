@@ -1,0 +1,25 @@
+_target_: src.models.predictive_model.PredictiveModel
+geo_encoder:
+  _target_: src.models.components.geo_encoders.tabular_encoder.TabularEncoder
+  output_dim: 64
+  geo_data_name: tabular
+prediction_head:
+  _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
+  nn_layers: 3
+  hidden_dim: 512
+trainable_modules: [geo_encoder, prediction_head]
+normalize_features: false
+metrics: ${metrics}
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.0001
+  weight_decay: 0.0001
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+loss_fn:
+  _target_: torch.nn.MSELoss

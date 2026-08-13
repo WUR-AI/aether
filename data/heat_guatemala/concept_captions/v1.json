@@ -1,0 +1,82 @@
+[
+  {
+    "concept_caption": "Densely vegetated green area with abundant healthy vegetation",
+    "is_max": true,
+    "theta_k": 0.334,
+    "col": "aux_ndvi_mean"
+  },
+  {
+    "concept_caption": "Sparsely vegetated area with little greenery",
+    "is_max": false,
+    "theta_k": 0.112,
+    "col": "aux_ndvi_mean"
+  },
+  {
+    "concept_caption": "Moist surface with no vegetation water stress",
+    "is_max": true,
+    "theta_k": 0.097,
+    "col": "aux_ndwi_mean"
+  },
+  {
+    "concept_caption": "Dry surface with vegetation under drought stress",
+    "is_max": false,
+    "theta_k": -0.053,
+    "col": "aux_ndwi_mean"
+  },
+  {
+    "concept_caption": "Forested area with substantial tree canopy cover",
+    "is_max": true,
+    "theta_k": 34.244,
+    "col": "aux_forest_cover_perc"
+  },
+  {
+    "concept_caption": "Area with dense tropical tree cover",
+    "is_max": true,
+    "theta_k": 43.0,
+    "col": "aux_tree_cover_perc"
+  },
+  {
+    "concept_caption": "Established, older built-up urban fabric",
+    "is_max": true,
+    "theta_k": 30.0,
+    "col": "aux_builtup_age_years"
+  },
+  {
+    "concept_caption": "Flat, low-lying terrain",
+    "is_max": false,
+    "theta_k": 3.092,
+    "col": "aux_slope_perc"
+  },
+  {
+    "concept_caption": "Hilly terrain with higher relief",
+    "is_max": true,
+    "theta_k": 19.775,
+    "col": "aux_slope_perc"
+  },
+  {
+    "concept_caption": "High socioeconomic quality neighbourhood",
+    "is_max": true,
+    "theta_k": 4.0,
+    "col": "aux_socioeconomic"
+  },
+  {
+    "concept_caption": "Low socioeconomic quality neighbourhood",
+    "is_max": false,
+    "theta_k": 2.0,
+    "col": "aux_socioeconomic"
+  },
+  {
+    "concept_caption": "Hot surface above the urban heat-stress limit",
+    "is_max": true,
+    "theta_k": 26.592,
+    "col": "aux_lst",
+    "note": "month-confounded: compute/evaluate on March-only blocks for a clean signal"
+  },
+  {
+    "concept_caption": "Cool surface well under the heat-stress limit",
+    "is_max": false,
+    "theta_k": 23.69,
+    "col": "aux_lst",
+    "note": "month-confounded: compute/evaluate on March-only blocks for a clean signal"
+  }
+]

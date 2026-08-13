@@ -1,3 +1,5 @@
+import json
+import logging
 import os
 import re
 from abc import ABC, abstractmethod
@@ -7,18 +9,14 @@ import numpy as np
 import pandas as pd
 import rasterio
 import torch
+from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import Dataset
 
 from src.data_preprocessing.tessera_embeds import NoTileError, PartialTileError
 from src.utils.data_utils import center_crop_npy
+from src.utils.errors import MissingConfigurationError, MissingDataError
 
-TORCH_DTYPES = {
-    "float32": torch.float32,
-    "float64": torch.float64,
-    "int32": torch.int32,
-    "int64": torch.int64,
-    "bfloat16": torch.bfloat16,
-}
+log = logging.getLogger(__name__)
 
 
 class BaseDataset(Dataset, ABC):
@@ -30,7 +28,6 @@ class BaseDataset(Dataset, ABC):
         use_aux_data: Dict[str, List[str] | str] | str | None = None,
         dataset_name: str | List[str] = "BaseDataset",
         seed: int = 12345,
-        mode: str = "train",
         cache_dir: str = None,
         implemented_mod: set[str] = None,
         mock: bool = False,
@@ -56,7 +53,6 @@ class BaseDataset(Dataset, ABC):
         :param use_aux_data: if auxiliary values should be returned
         :param dataset_name: dataset name
         :param seed: random seed
-        :param mode: train/val/test mode of the dataset
         :param cache_dir: directory to save cached data
         :param implemented_mod: implemented modalities for each dataset
         :param mock: whether to mock csv file
@@ -68,12 +64,12 @@ class BaseDataset(Dataset, ABC):
             dataset_name = "mock"
 
         # Dtype
-        assert dtype in TORCH_DTYPES.keys()
-        self.dtype: str = TORCH_DTYPES[dtype]
+        assert getattr(torch, dtype), KeyError(f"Requested dtype {dtype} is not supported.")
+        self.dtype: str = getattr(torch, dtype)
 
         # Modalities
         self.implemented_mod = implemented_mod
-        self.modalities: dict = modalities
+        self.modalities = modalities
 
         # Check modalities and set dtypes
         for mod, configs in self.modalities.items():
@@ -82,37 +78,25 @@ class BaseDataset(Dataset, ABC):
 
             if configs is not None:
                 m_dtype = configs.get("dtype", dtype)
-                self.modalities[mod]["dtype"] = m_dtype
-                print(f"Dtype of {mod} set to {m_dtype}")
+                self.modalities[mod]["dtype"] = m_dtype  # Overwrite if dtype was not specified
+                log.info(f"Dtype of {mod} set to {m_dtype}")
             else:
                 m_dtype = dtype
                 self.modalities[mod] = {"dtype": m_dtype}
 
         # Set data attributes
         self.registry_path = os.path.join(data_dir, "registry.txt")
-        if type(dataset_name) is str:
-            dataset_name = [dataset_name]
-        if "unlabel" in dataset_name[0]:
-            dataset_dirname = dataset_name[0].split("-unlabel")[0]
-        else:
-            dataset_dirname = dataset_name[0]
-        self.data_dir = os.path.join(data_dir, dataset_dirname)
+        self.data_dir = os.path.join(data_dir, dataset_name)
         self.cache_dir = cache_dir or os.path.join(data_dir, "cache")
-        for d in [self.cache_dir]:
-            os.makedirs(d, exist_ok=True)
+        os.makedirs(self.cache_dir, exist_ok=True)
 
         # Read model ready csv df
-        for i_ds, ds in enumerate(dataset_name):
-            csv_filename = csv_name or f"model_ready_{ds}.csv"
-            path_csv = os.path.join(self.data_dir, csv_filename)
-            assert os.path.exists(
-                path_csv
-            ), f"{path_csv} does not exist. (Expecting {ds} to exist in {self.data_dir})"
-            tmp_df: pd.DataFrame = pd.read_csv(path_csv)
-            if i_ds == 0:
-                self.df = tmp_df
-            else:
-                self.df = pd.concat([self.df, tmp_df], ignore_index=True)
+        csv_filename = csv_name or f"model_ready_{dataset_name}.csv"
+        path_csv = os.path.join(self.data_dir, csv_filename)
+        assert os.path.exists(
+            path_csv
+        ), f"{path_csv} does not exist. (Expecting {csv_filename} to exist in {self.data_dir})"
+        self.df = pd.read_csv(path_csv)
 
         # Other attributes or placeholders
         self.pooch_cli = None
@@ -122,7 +106,41 @@ class BaseDataset(Dataset, ABC):
         self.use_target_data = use_target_data
         self.use_features = use_features
 
-        if use_aux_data is None or use_aux_data == "all":
+        self.configure_use_aux(use_aux_data)
+
+        self.configure_use_feats(use_features)
+
+        # More precise dataset name (with modalities)
+        if isinstance(dataset_name, list):
+            dataset_name = "+".join(dataset_name)
+        self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
+
+        self.columns: List[Any] = self.get_columns()
+        self.records: List[Any] = []
+
+        self.return_name_loc: bool = return_name_loc
+        self._setup_flag = False
+        self._ignore_single_missing_data_points = True
+
+    def configure_use_feats(self, use_features):
+        if isinstance(use_features, DictConfig):
+            self.use_features = OmegaConf.to_container(use_features, resolve=True)
+        elif use_features is True or use_features == "all":
+            self.use_features = {
+                "pattern": "^feat_.*",
+                #     'columns' : []
+            }
+        elif isinstance(use_features, dict):
+            self.use_features = use_features
+        else:
+            self.use_features = None
+
+    def configure_use_aux(self, use_aux_data):
+        if isinstance(use_aux_data, DictConfig):
+            self.use_aux_data = OmegaConf.to_container(use_aux_data, resolve=True)
+        elif isinstance(use_aux_data, dict):
+            self.use_aux_data = use_aux_data
+        elif use_aux_data is True or use_aux_data == "all":
             self.use_aux_data = {
                 "aux": {
                     "pattern": "^aux_(?!.*top).*",
@@ -133,22 +151,11 @@ class BaseDataset(Dataset, ABC):
                     #     'columns' : []
                 },
             }
-
-        elif type(use_aux_data) is dict:
-            self.use_aux_data = use_aux_data
         else:
             self.use_aux_data = None
 
-        # More precise dataset name (with modalities)
-        if isinstance(dataset_name, list):
-            dataset_name = "+".join(dataset_name)
-        self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
-        self.mode: str = mode  # 'train', 'val', 'test'
-        self.records: dict[str, Any] = self.get_records()
-        self.return_name_loc: bool = return_name_loc
-
     @final
-    def get_records(self) -> dict[str, Any]:
+    def get_columns(self) -> List[str]:
         """Gets record dictionary from the dataframe based on what is needed for the model (aux,
         target columns, modality paths)"""
 
@@ -160,26 +167,16 @@ class BaseDataset(Dataset, ABC):
             if modality == "coords":
                 columns.extend(["lat", "lon"])
             elif modality in ["aef_avr", "tessera_avr"]:
-                df = pd.read_csv(params.get("path", KeyError))
-                df["name_loc"] = df["name_loc"].astype(str)
-
-                self.df["name_loc"] = self.df["name_loc"].astype(str)
-
-                self.df = self.df.merge(df, on="name_loc", how="left")
-
-                max_no = 128 if modality == "tessera_avr" else 64
-                columns.extend([f"emb_{i}" for i in range(0, max_no)])
+                continue
             else:
                 # Add paths
                 self.add_modality_paths_to_df(
                     modality,
-                    params.get(
-                        "format", KeyError(f"{modality} modality is missing format parameter")
-                    ),
+                    params.get("format"),
                 )
                 columns.append(f"{modality}_path")
 
-        # Include targets TODO: this could be moved under geo-modalities
+        # Include targets
         if self.use_target_data:
             self.target_names = [c for c in self.df.columns if "target_" in c]
             columns.extend(self.target_names)
@@ -201,11 +198,40 @@ class BaseDataset(Dataset, ABC):
 
         # Include tabular features
         if self.use_features:
-            self.feat_names = [c for c in self.df.columns if c.startswith("feat_")]
-            columns.extend(self.feat_names)
-            self.tabular_dim = len(self.feat_names)
+            if "pattern" in self.use_features:
+                pattern = re.compile(self.use_features["pattern"])
+                feat_names = [x for x in self.df.columns if pattern.match(x)]
+            elif "columns" in self.use_features:
+                feat_names = self.use_features["columns"]
+            else:
+                raise ValueError('use_features should have "pattern" or "columns" defined')
+            self.feat_names = feat_names
+            self._feat_norm_setup()
+            columns.extend(feat_names)
 
-        return self.df.loc[:, columns].to_dict("records")
+            self.tabular_dim = len(self.feat_names)  # drop any duplicates
+
+        return list(set(columns))
+
+    def _feat_norm_setup(self):
+        """If statistics files provided for the features, read them into self.feat_stats
+        parameter."""
+
+        if "stats_file" in self.use_features:
+            with open(self.use_features["stats_file"]) as json_data:
+                d = json.load(json_data)
+
+            means = [d[f]["mean"] for f in self.feat_names]
+            stds = [d[f]["std"] if d[f]["std"] > 1e-8 else 1.0 for f in self.feat_names]
+
+            self._feat_mean = torch.tensor(means, dtype=torch.float32)
+            self._feat_std = torch.tensor(stds, dtype=torch.float32)
+        else:
+            self._feat_mean = None
+            self._feat_std = None
+
+    def get_records(self):
+        return self.df.loc[:, self.columns].to_dict("records")
 
     @final
     def __len__(self) -> int:
@@ -217,9 +243,17 @@ class BaseDataset(Dataset, ABC):
         """Returns a single item from the dataset."""
         pass
 
-    @abstractmethod
+    @final
     def setup(self) -> None:
-        """Setups the whole dataset, makes available data of requested modalities."""
+        """Setups the whole dataset, makes available data of requested modalities and filters out
+        records for any location missing any modality data,"""
+        if not self._setup_flag:
+            self._setup()  # to be implemented for each UC
+
+            self.records = self.get_records()
+            self._setup_flag = True
+
+    def _setup(self):
         pass
 
     @final
@@ -230,6 +264,9 @@ class BaseDataset(Dataset, ABC):
         :param extension: file extension
         :return: None
         """
+        assert extension in ["tif", "npy"], MissingConfigurationError(
+            f"Please specify a file extension for {modality}"
+        )
         # Directory path
         path = f"{self.data_dir}/eo/{modality}/"
 
@@ -254,12 +291,7 @@ class BaseDataset(Dataset, ABC):
         Right now retrieval is through GeoTessera API
         """
 
-        from src.data_preprocessing.tessera_embeds import (
-            get_tessera_embeds,
-            tessera_from_df,
-        )
-
-        print("\n\nSetting up Tessera data...\n\n")
+        logging.info("Setting up Tessera data...")
         download_missing_tiles = False
 
         # Check if data is already available
@@ -271,10 +303,12 @@ class BaseDataset(Dataset, ABC):
         size = self.modalities["tessera"].get(
             "size", KeyError('Missing parameter "size" for Tessera modality')
         )
-        version = self.modalities["tessera"].get("version") or "v1.0"
+        version = self.modalities["tessera"].get("version") or "v1.1"
 
         # If data does not exist or is empty → full download
         if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
+            from src.data_preprocessing.tessera_embeds import tessera_from_df
+
             if download_missing_tiles:
                 os.makedirs(dst_dir, exist_ok=True)
 
@@ -286,46 +320,81 @@ class BaseDataset(Dataset, ABC):
                     cache_dir=self.cache_dir,
                     version=version,
                 )
+                if self._ignore_single_missing_data_points:
+                    mask = self.df["tessera_path"].apply(
+                        lambda p: os.path.basename(p) in avail_files
+                    )
+                    self.df = self.df[mask]
+                    log.info(
+                        f"Dropped {(~mask).sum()} locations because they had missing tessera tiles."
+                    )
+                else:
+                    raise MissingDataError(
+                        "Please download the missing Tessera tiles from src/data_preprocessing/tessera_embeds"
+                    )
 
                 # TODO: if we compile the dataset and use zenodo (or sth else) then change to pooch downloading/loading
                 # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
                 # or self.setup_tessera_from_pooch() <- per children class implementation
             else:
-                print("Please download the missing Tessera tiles...")
+                raise MissingDataError(
+                    "Please download the Tessera tiles from src/data_preprocessing/tessera_embeds"
+                )
 
         # Download missing rows (if any)
         else:
-            from geotessera import GeoTessera
+            log.info("Checking missing Tessera tiles...")
+            avail_files = set(os.listdir(dst_dir))
+            mask = self.df["tessera_path"].apply(lambda p: os.path.basename(p) in avail_files)
+            if mask.all():
+                return  # all data is available
+            if download_missing_tiles:
+                log.warning("May download tessera tiles filled with 0a")
+                from geotessera import GeoTessera
 
-            print("Downloading missing Tessera tiles...")
-            print("[Warning]: it may download tessera tiles filled with 0a")
+                from src.data_preprocessing.tessera_embeds import (
+                    get_tessera_embeds,
+                    tessera_from_df,
+                )
 
-            avail_files = os.listdir(dst_dir)
-            gt = None
-            for i, rec in enumerate(self.records):
-                fname = os.path.basename(rec["tessera_path"])
-                if fname not in avail_files:
-                    if download_missing_tiles:
-                        print(f"Retrieving missing Tessera data: {fname}")
-                        gt = gt or GeoTessera(cache_dir=self.cache_dir)
-                        row = self.df[self.df["name_loc"] == rec["name_loc"]]
-                        lon, lat = row.lon.item(), row.lat.item()
-                        try:
-                            get_tessera_embeds(
-                                lon,
-                                lat,
-                                rec["name_loc"],
-                                year=year,
-                                save_dir=dst_dir,
-                                tile_size=size,
-                                tessera_con=gt,
-                            )
-                            continue
-                        except NoTileError or PartialTileError as e:
-                            print(f"Tile for {fname} could not be retrieved. Error: {e}")
-                    else:
-                        self.records.pop(i)
-                        print(f"No tile found for {fname} thus it will not be used.")
+                gt = GeoTessera(cache_dir=self.cache_dir)
+
+                missing_df = self.df[~mask]
+                # Try downloading missing tiles for each location
+                for _, row in missing_df.iterrows():
+                    fname = os.path.basename(row["tessera_path"])
+                    log.info(f"Retrieving missing Tessera data: {fname}")
+                    lon, lat = row.lon.item(), row.lat.item()
+                    try:
+                        get_tessera_embeds(
+                            lon,
+                            lat,
+                            row["name_loc"],
+                            year=year,
+                            save_dir=dst_dir,
+                            tile_size=size,
+                            tessera_con=gt,
+                        )
+                    except NoTileError or PartialTileError as e:
+                        if self._ignore_single_missing_data_points:
+                            log.info(f"Tile for {fname} could not be retrieved. Error: {e}")
+                        else:
+                            raise e
+                mask = self.df["tessera_path"].apply(lambda p: os.path.basename(p) in avail_files)
+                self.df = self.df[mask]
+                log.info(
+                    f"Dropped {(~mask).sum()} locations because they had missing tessera tiles."
+                )
+
+            elif self._ignore_single_missing_data_points:
+                self.df = self.df[mask]
+                log.info(
+                    f"Dropped {(~mask).sum()} locations because they had missing tessera tiles."
+                )
+            else:
+                raise MissingDataError(
+                    "Please download the missing Tessera tiles from src/data_preprocessing/tessera_embeds"
+                )
 
     @final
     def setup_aef(self) -> None:
@@ -334,15 +403,22 @@ class BaseDataset(Dataset, ABC):
         Right now retrieval is through GEE API
         """
 
-        print("\n\nSetting up AEF data...\n\n")
+        log.info("Setting up AEF data...")
 
         dst_dir = os.path.join(self.data_dir, "eo/aef")
         avail_files = os.listdir(dst_dir)
-        for i, rec in enumerate(self.records):
-            fname = os.path.basename(rec["aef_path"])
-            if fname not in avail_files:
-                self.records.pop(i)
-                print(f"No tile found for {fname} thus it will not be used.")
+
+        mask = self.df["aef_path"].apply(lambda p: os.path.basename(p) in avail_files)
+
+        if mask.all():
+            return
+        elif (~mask).any() and self._ignore_single_missing_data_points:
+            self.df = self.df[mask]
+            log.info(f"Dropped {(~mask).sum()} locations because they had missing aef tiles.")
+        else:
+            raise MissingDataError(
+                f"Missing aef data for {len(self.df[mask].name_loc)} locations. \n Please download the missing aef tiles"
+            )
 
         # TODO aef retrieval?
         # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
@@ -445,3 +521,35 @@ class BaseDataset(Dataset, ABC):
         np_dtype = np.float32 if is_bfloat16 else np.dtype(dtype_str)
 
         return np_dtype, is_bfloat16
+
+    def setup_embeds(self, modality):
+        params = self.modalities[modality]
+        dtype = getattr(torch, self.modalities[modality].get("dtype"))
+
+        path = params.get("path", KeyError(f"Please specify {modality} path to csv file"))
+        assert os.path.exists(path), FileNotFoundError(f"{path} does not exist.")
+        df = pd.read_csv(path)
+
+        # Filter out locations without data for embeddings
+        common = set(df["name_loc"]) & set(self.df["name_loc"])
+        df = df[df["name_loc"].isin(common)]
+        df.drop(columns=["Unnamed: 0"], inplace=True, errors="ignore")
+        self.df = self.df[self.df["name_loc"].isin(common)]
+
+        if modality == "aef_avr":
+            emb_cols = [f"emb_{i}" for i in range(64)]
+        elif modality == "tessera_avr":
+            emb_cols = [f"emb_{i}" for i in range(128)]
+
+        lookup_values = df[emb_cols].to_numpy()
+        lookup = {
+            name_loc: torch.tensor(lookup_values[i], dtype=dtype)
+            for i, name_loc in enumerate(df["name_loc"])
+        }
+
+        if modality == "aef_avr":
+            self.aef_avr = lookup
+            self.tessera_avr = None
+        elif modality == "tessera_avr":
+            self.tessera_avr = lookup
+            self.aef_avr = None

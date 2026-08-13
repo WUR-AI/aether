@@ -158,10 +158,10 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
                 formatted_desc = formatted_desc + f' of {round(value)} {units if units else ""}'
             replacements[init_token] = formatted_desc
 
-        template = self._fill(template, replacements)
+        filled_template = self._fill(template, replacements)
         if self.return_aux_ids:
-            return template, ids
-        return template
+            return filled_template, ids
+        return filled_template
 
 
 if __name__ == "__main__":

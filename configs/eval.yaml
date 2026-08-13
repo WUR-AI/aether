@@ -40,4 +40,4 @@ tags: ["dev"]
 seed: 12345
 
 # passing checkpoint path is necessary for evaluation
-ckpt_path: aether/logs/train/runs/2026-03-15_13-15-08/checkpoints/epoch_098.ckpt
+#ckpt_path: aether/logs/train/runs/2026-03-15_13-15-08/checkpoints/epoch_098.ckpt

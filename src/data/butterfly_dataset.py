@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Any, Dict, override
 
@@ -5,10 +6,12 @@ import numpy as np
 import pooch
 import torch
 
-from src.data.base_dataset import TORCH_DTYPES, BaseDataset
+from src.data.base_dataset import BaseDataset
 from src.data_preprocessing.renaming_utils import rename_s2bms
 from src.utils.data_utils import center_crop_npy
 from src.utils.errors import IllegalArgumentCombination
+
+log = logging.getLogger(__name__)
 
 
 class ButterflyDataset(BaseDataset):
@@ -19,6 +22,7 @@ class ButterflyDataset(BaseDataset):
         use_unlabelled_data: bool = False,
         use_target_data: bool = True,
         use_aux_data: Any = None,
+        use_features: bool = False,
         seed: int = 12345,
         cache_dir: str = None,
         mock: bool = False,
@@ -43,26 +47,32 @@ class ButterflyDataset(BaseDataset):
             use_unlabelled_data and use_target_data
         ), "Joint use of unlabelled and target data is not supported yet."
         if use_unlabelled_data:
-            dataset_name = ["s2bms", "s2bms-unlabelled-20260529"]
+            # csv_name = 'model_ready_s2bms-unlabelled-20260529.csv'
+            csv_name = "model_ready_s2bms-unlabelled-merged.csv"
+        elif mock:
+            csv_name = None
         else:
-            dataset_name = "s2bms"
+            csv_name = "model_ready_s2bms.csv"
 
         super().__init__(
             data_dir=data_dir,
             modalities=modalities,
             use_target_data=use_target_data,
             use_aux_data=use_aux_data,
-            dataset_name=dataset_name,
+            dataset_name="s2bms",
             seed=seed,
             cache_dir=cache_dir,
             implemented_mod={"s2", "tessera", "coords", "aef", "aef_avr", "tessera_avr"},
             mock=mock,
             dtype=dtype,
+            use_features=use_features,
             return_name_loc=return_name_loc,
+            csv_name=csv_name,
         )
 
-    def setup(self):
-        """Setups the whole dataset, makes available data of requested modalities."""
+    def _setup(self):
+        """Setups the whole dataset, makes available data of requested modalities and filters out
+        records for any location missing any modality data."""
 
         # Set up each requested modality
         for mod in self.modalities.keys():
@@ -76,10 +86,12 @@ class ButterflyDataset(BaseDataset):
                 self.setup_tessera()
             elif mod == "aef":
                 self.setup_aef()
+            elif mod in ["aef_avr", "tessera_avr"]:
+                self.setup_embeds(mod)
 
     def setup_s2bms(self) -> None:
         """Prepares (downloads, renames and moves) data from S2BMS study."""
-        print("\n\nSetting up S2BMS data...\n\n")
+        log.info("Setting up S2BMS data...")
 
         # Check if data is already available
         dst_dir = os.path.join(self.data_dir, "eo/s2")
@@ -104,14 +116,18 @@ class ButterflyDataset(BaseDataset):
                 f.writelines("Containing 4 channel S2 256x256px imagery.\n")
                 # TODO: add more
 
+        # Check for missing files
+        avail_files = os.listdir(dst_dir)
+
+        mask = self.df["s2_path"].apply(lambda p: os.path.basename(p) in avail_files)
+        if mask.all():
+            return
+        elif (~mask).any() and self._ignore_single_missing_data_points:
+            self.df = self.df[mask]
+            log.info(f"Dropped {(~mask).sum()} locations because they had missing s2 tiles.")
         else:
-            # Check for missing files
-            avail_files = os.listdir(dst_dir)
-            for rec in self.records:
-                fname = os.path.basename(rec["s2_path"])
-                if fname not in avail_files:
-                    raise FileNotFoundError(f"Missing S2 data: {fname}")
-                # TODO potentially handle single missing files with GEE API?
+            raise FileNotFoundError(f"Missing S2 data for {len(self.df[mask].name_loc)} locations")
+            # TODO potentially handle single missing files with GEE API?
 
     def init_norm_stats(self, means: list[float] = None, stds: list[float] = None):
         """Initializes normalization statistics for the original S2BMS dataset."""
@@ -160,7 +176,7 @@ class ButterflyDataset(BaseDataset):
         elif self.modalities["s2"].get("preprocessing") == "div_10000":
             im = im / 10000.0
             im = im.clip(0, 1)
-        else:
+        elif not self.modalities["s2"].get("preprocessing") == "div_2000":
             im = np.clip(im, 0, 2000)
             im = im / 2000.0
 
@@ -185,7 +201,7 @@ class ButterflyDataset(BaseDataset):
             if modality in ["coords"]:
                 formatted_row["eo"][modality] = torch.tensor(
                     [row["lat"], row["lon"]],
-                    dtype=TORCH_DTYPES[self.modalities[modality]["dtype"]],
+                    dtype=getattr(torch, self.modalities[modality]["dtype"]),
                 )
             elif modality == "s2":
                 formatted_row["eo"][modality] = self.load_s2(row["s2_path"])
@@ -195,15 +211,9 @@ class ButterflyDataset(BaseDataset):
             elif modality == "aef":
                 formatted_row["eo"][modality] = self.load_aef(row["aef_path"])
             elif modality == "aef_avr":
-                formatted_row["eo"][modality] = torch.tensor(
-                    [row[f"emb_{i}"] for i in range(64)],
-                    dtype=getattr(torch, self.modalities["aef_avr"].get("dtype")),
-                )
+                formatted_row["eo"][modality] = self.aef_avr[row["name_loc"]]
             elif modality == "tessera_avr":
-                formatted_row["eo"][modality] = torch.tensor(
-                    [row[f"emb_{i}"] for i in range(128)],
-                    dtype=getattr(torch, self.modalities["tessera_avr"].get("dtype")),
-                )
+                formatted_row["eo"][modality] = self.tessera_avr[row["name_loc"]]
 
         if self.use_target_data:
             formatted_row["target"] = torch.tensor(
@@ -219,6 +229,13 @@ class ButterflyDataset(BaseDataset):
                     )
                 else:
                     formatted_row["aux"][aux_cat] = [row[v] for v in vals]
+
+        if self.use_features and self.feat_names:
+            raw = torch.tensor([row[k] for k in self.feat_names], dtype=torch.float32)
+            if self._feat_mean is not None and self._feat_std is not None:
+                formatted_row["eo"]["tabular"] = (raw - self._feat_mean) / self._feat_std
+            else:
+                formatted_row["eo"]["tabular"] = raw
 
         if self.return_name_loc:
             formatted_row["name_loc"] = row["name_loc"]

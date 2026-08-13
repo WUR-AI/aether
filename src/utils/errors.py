@@ -14,3 +14,9 @@ class MissingDataError(ValueError):
     """Error for missing file path specification."""
 
     pass
+
+
+class MissingConfigurationError(ValueError):
+    """Error for missing file path specification."""
+
+    pass

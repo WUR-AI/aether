@@ -1,0 +1,35 @@
+# @package _global_
+# Guatemala performance: R2=0.672, RMSE=1.104, MAE=0.896
+# Kraków performance: R2=0.935, RMSE=0.523, MAE = 0.397
+defaults:
+  - override /model: heat_krakow_full_fusion_avg
+  - override /data: heat_krakow
+  - override /metrics: krakow_regression
+tags: ["heat_island", "krakow", "full_fusion_avg", "best", "regression"]
+seed: 12345
+trainer:
+  min_epochs: 1
+  max_epochs: 100
+data:
+  batch_size: 64
+  dataset:
+    modalities:
+      coords: {}
+      tessera:
+        year: 2024
+        size: 10 #9 resulted in slightly worse performance
+        format: npy
+callbacks:
+  model_checkpoint:
+    monitor: val_r2
+    mode: max
+  early_stopping:
+    monitor: val_r2
+    mode: max
+    patience: 20
+logger:
+  wandb:
+    tags: ${tags}
+    group: "heat_island"
+  aim:
+    experiment: "heat_island"
