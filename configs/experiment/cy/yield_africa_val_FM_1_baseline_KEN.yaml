@@ -1,0 +1,45 @@
+# @package _global_
+# Validation Track B, run FM-1: full multi-modal baseline on Kenya.
+#
+# Dual-year TESSERA (year Y + year Y−1) + tabular features, dynamic_gate fusion.
+# Architecture identical to ablation config E — this is the starting point for the
+# full-model hyperparameter search.
+#
+# If ablation E has already been run, reuse its split for a direct comparison:
+#   python src/train.py experiment=val_FM_1_baseline_KEN \
+#       data.saved_split_file_name=<split_from_ablation_A_or_TO1>
+#       data.save_split=false
+#
+# If starting fresh: run without overrides — the split will be saved and can be
+# shared with all subsequent FM variants.
+
+defaults:
+  - override /model: yield_tessera_dual_fusion_reg
+  - override /data: yield_africa_tessera_dual_KEN
+  - override /metrics: yield_africa_regression
+
+tags: ["yield_africa", "val_full_model", "KEN", "FM_1"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 150
+
+data:
+  batch_size: 64
+  save_split: true
+  dataset:
+    modalities:
+      tessera:
+        size: 9
+      tessera_prev:
+        size: 9
+    use_features: true
+
+logger:
+  wandb:
+    name: "val_FM_1_baseline"
+    tags: ${tags}
+    group: "val_full_model_KEN"
+  aim:
+    experiment: "yield_africa_val"

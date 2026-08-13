@@ -1,24 +1,21 @@
+import time
+
+print(f"[train.py] Script started at {time.strftime('%Y-%m-%d %H:%M:%S')}", flush=True)
+
+import os
 from typing import Any, Dict, List, Optional, Tuple
 
 import hydra
 import lightning as L
 import rootutils
+import torch
 from dotenv import load_dotenv
 from lightning import Callback, LightningModule, Trainer
-from lightning.pytorch.loggers import Logger
+from lightning.pytorch.callbacks.model_checkpoint import ModelCheckpoint
+from lightning.pytorch.loggers import Logger, WandbLogger
 from omegaconf import DictConfig, OmegaConf
 
 from src.data.base_datamodule import BaseDataModule
-
-rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
-load_dotenv()
-
-# Disable tokenizers parallelism to avoid warnings when using multiprocessing
-import os
-
-if os.environ.get("TOKENIZERS_PARALLELISM") is None:
-    os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
 from src.utils import (
     RankedLogger,
     extras,
@@ -28,8 +25,21 @@ from src.utils import (
     log_hyperparameters,
     task_wrapper,
 )
+from src.utils.experiment_tracking import compose_experiment_name, experiment_check
+
+rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+load_dotenv()
+
+# Optimize Tensor Core usage (L40S / A100 / H100 all benefit from this)
+torch.set_float32_matmul_precision("high")
+
+# Disable tokenizers parallelism to avoid warnings when using multiprocessing
+if os.environ.get("TOKENIZERS_PARALLELISM") is None:
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 log = RankedLogger(__name__, rank_zero_only=True)
+
+OmegaConf.register_new_resolver("str", str, replace=True)
 
 
 @task_wrapper
@@ -57,11 +67,16 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     raw_model_cfg = OmegaConf.to_container(cfg.model, resolve=True)
     model.update_configs(raw_model_cfg)
 
-    log.info("Instantiating callbacks...")
-    callbacks: List[Callback] = instantiate_callbacks(cfg.get("callbacks"))
-
     log.info("Instantiating loggers...")
     logger: List[Logger] = instantiate_loggers(cfg.get("logger"))
+    wandb_logger = next((log for log in logger if isinstance(log, WandbLogger)), None)
+    run_id = wandb_logger.experiment.id if wandb_logger else None
+
+    log.info("Instantiating callbacks...")
+    callbacks: List[Callback] = instantiate_callbacks(cfg.get("callbacks"))
+    early_stop_cb = next((cb for cb in callbacks if isinstance(cb, ModelCheckpoint)), None)
+    if run_id:
+        early_stop_cb.filename = f"{run_id}_epoch_{{epoch:03d}}"
 
     log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
     trainer: Trainer = hydra.utils.instantiate(cfg.trainer, callbacks=callbacks, logger=logger)
@@ -75,9 +90,13 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         "trainer": trainer,
     }
 
-    if logger:
+    if wandb_logger:
         log.info("Logging hyperparameters!")
         log_hyperparameters(object_dict)
+        group = cfg.get("experiment_name", "null")
+        if group == "null":
+            compose_experiment_name(cfg)
+        wandb_logger.log_metrics({"experiment": group})
 
     if cfg.get("train"):
         log.info("Starting training!")
@@ -85,9 +104,60 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
             model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"), weights_only=False
         )  # using weights_only=False here because torch lightning also saves optimizer and scheduler states etc which otherwise leads to an error when loading with weights_only=True
 
+        # If checkpointing was used log the best model path and metric
+        if wandb_logger and early_stop_cb:
+            best_metric = early_stop_cb.best_model_score.item()
+            best_path = early_stop_cb.best_model_path
+
+            data_dict = cfg["data"]["dataset"]["modalities"]
+            if len(data_dict) == 1:
+                k = list(data_dict.keys())[0]
+                if k == "coords":
+                    if "GeoClip" in cfg["model"]["geo_encoder"]["_target_"]:
+                        data_name = "geoclip"
+                    else:
+                        data_name = "satclip"
+                else:
+                    data_name = f"{k}_{data_dict[k].get('size', '')}"
+            else:
+                ks = list(data_dict.keys())
+                ks_new = [
+                    f"{k}{f'_{k.get('size')}' if isinstance(k, dict) and k.get('size') else ''}"
+                    for k in ks
+                ]
+                data_name = "-".join(map(str, ks_new))
+
+            # Log details to wandb
+            wandb_logger.log_metrics(
+                {
+                    "best_model_path": os.path.basename(best_path),
+                    "source_dir": os.path.dirname(best_path),
+                    "best_val_loss": best_metric,
+                    "data_used": data_name,
+                }
+            )
+
     train_metrics = trainer.callback_metrics
 
-    if cfg.get("test"):
+    if cfg.get("validate") and wandb_logger is not None:
+        # Run validation with the best ckpt
+        log.info("Validating the best ckpt!")
+        ckpt_path = trainer.checkpoint_callback.best_model_path
+        if ckpt_path == "":
+            log.warning("Best ckpt not found! Using current weights for testing...")
+            ckpt_path = None
+
+        trainer.validate(
+            model=model,
+            datamodule=datamodule,
+            ckpt_path=ckpt_path,
+            weights_only=False,
+        )
+
+        val_metrics = trainer.callback_metrics
+        wandb_logger.log_metrics({f"best_{k}": v for k, v in val_metrics.items()})
+
+    if cfg.get("test") and wandb_logger is not None:
         log.info("Starting testing!")
         ckpt_path = trainer.checkpoint_callback.best_model_path
         if ckpt_path == "":
@@ -119,6 +189,11 @@ def main(cfg: DictConfig) -> Optional[float]:
     # apply extra utilities
     # (e.g. ask for tags if none are provided in cfg, print cfg tree, etc.)
     extras(cfg)
+
+    # For experimental multi runs, check if any experiments are already executed
+    if cfg.get("check_experiments", False):
+        if experiment_check(cfg):
+            return None
 
     # train the model
     metric_dict, _ = train(cfg)

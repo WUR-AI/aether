@@ -1,0 +1,19 @@
+_target_: src.data.base_datamodule.BaseDataModule
+
+dataset:
+  _target_: src.data.butterfly_dataset.ButterflyDataset
+
+  data_dir: ${paths.data_dir}
+  modalities:
+  use_target_data: true # default true
+  use_aux_data: none # default false
+  seed: ${seed}
+  cache_dir: ${paths.cache_dir}
+
+batch_size: 16
+num_workers: 1
+pin_memory: false
+split_mode: "from_file" # default 'random'
+save_split: false
+saved_split_file_name: "s2bms_union_val_test.pth"
+seed: ${seed}

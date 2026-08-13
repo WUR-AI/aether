@@ -1,8 +1,9 @@
+import logging
 from typing import Dict, Tuple, override
 
-import numpy as np
 import torch
 import torch.nn.functional as F
+from src.models.components.projectors.base_projector import BaseProjector
 
 from src.models.base_model import BaseModel
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
@@ -11,9 +12,10 @@ from src.models.components.metrics.contrastive_validation import (
     RetrievalContrastiveValidation,
 )
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
-from src.models.components.text_encoders.base_text_encoder import (
-    BaseTextEncoder,
-)
+from src.models.components.projectors.base_projector import BaseProjector
+from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
+
+log = logging.getLogger(__name__)
 
 
 class TextAlignmentModel(BaseModel):
@@ -24,11 +26,13 @@ class TextAlignmentModel(BaseModel):
         text_encoder: BaseTextEncoder,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
-        loss_fn: BaseLossFn,
-        metrics: MetricsWrapper,
+        loss_fn: BaseLossFn | None = None,
+        metrics: MetricsWrapper | None = None,
+        geo_adapter: BaseEncoder | None = None,
+        text_adapter: BaseEncoder | None = None,
         num_classes: int | None = None,
         tabular_dim: int | None = None,
-        ks: list[int] | None = [5, 10, 15],
+        ks: list[int] | None = None,
         match_to_geo: bool = True,
     ) -> None:
         """Implementation of contrastive text-eo modality alignment model.
@@ -46,6 +50,7 @@ class TextAlignmentModel(BaseModel):
         :param match_to_geo: whether to match dimensions of text encoder to geo_encoder or visa-
             versa
         """
+
         super().__init__(
             trainable_modules=trainable_modules,
             geo_encoder=geo_encoder,
@@ -59,8 +64,10 @@ class TextAlignmentModel(BaseModel):
             tabular_dim=tabular_dim,
         )
 
+        self.geo_adapter = geo_adapter
+        self.text_adapter = text_adapter
         # Metrics
-        self.ks = ks
+        self.ks = ks or [5, 10, 15]
         self.log_kwargs = dict(on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
 
         self.match_to_geo = match_to_geo
@@ -74,66 +81,78 @@ class TextAlignmentModel(BaseModel):
         Otherwise, some configuration variables must be made available
         """
         # Set up encoders and missing adapters/projectors
-        print("-------Model------------")
+        log.info("-------Model------------")
         new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup() or []]
+
+        if self.geo_adapter:
+            self.geo_adapter.set_input_dim(self.geo_encoder.output_dim)
+            new_modules.extend([f"geo_adapter.{i}" for i in self.geo_adapter.setup() or []])
+
         new_modules.extend([f"text_encoder.{i}" for i in self.text_encoder.setup() or []])
+        if self.text_adapter:
+            self.text_adapter.set_input_dim(self.text_encoder.output_dim)
+            new_modules.extend([f"text_adapter.{i}" for i in self.text_adapter.setup() or []])
+
         self.trainable_modules.extend(new_modules)
 
         # Extra projector for text encoder if eo and text dim not match
-        if self.geo_encoder.output_dim != self.text_encoder.output_dim:
-            if self.match_to_geo:
+        geo_branch_dim = (
+            self.geo_adapter.output_dim if self.geo_adapter else self.geo_encoder.output_dim
+        )
+        text_branch_dim = (
+            self.text_adapter.output_dim if self.text_adapter else self.text_encoder.output_dim
+        )
+
+        if geo_branch_dim != text_branch_dim:
+            if self.geo_adapter or self.text_adapter:
+                log.info(
+                    f"You opted to use:{' geo' if self.geo_adapter else '' and ' text' if self.text_adapter else ''} adapter",
+                    "but you miss-configured output dimensions:\n"
+                    f"geo: {geo_branch_dim} vs text: {text_branch_dim}\n",
+                    "Please try again.",
+                )
+            elif self.match_to_geo:
                 self.text_encoder.add_projector(projected_dim=self.geo_encoder.output_dim)
                 self.trainable_modules.append("text_encoder.extra_projector")
             else:
                 self.geo_encoder.add_projector(projected_dim=self.text_encoder.output_dim)
                 self.trainable_modules.append("geo_encoder.extra_projector")
 
+        log.info("------------------------")
+
+    def _on_x_star(self):
         # Configure contrastive retrieval evaluation
-        self.setup_retrieval_evaluation()
-        print("------------------------")
+        if hasattr(self, "_retrieval_setup_flag"):
+            if self._retrieval_setup_flag:
+                return
 
-    def setup_retrieval_evaluation(self):
+        self.setup_retrieval_evaluation(verbose=0)
+        self._retrieval_setup_flag = True
+        log.info("Retrieval evaluation configured")
+
+    def setup_retrieval_evaluation(
+        self,
+        use_saved_threshold_if_available=True,
+        overwrite_existing_thresholds=False,
+        save_newly_computed_threshold=True,
+        compute_train_threshold=True,
+        verbose=1,
+    ):
+        # Configure concept thresholds for contrastive retrieval evaluation:
+        self.trainer.datamodule.setup_conceptcaption_validation_parameters(
+            use_saved_threshold_if_available=use_saved_threshold_if_available,
+            overwrite_existing_thresholds=overwrite_existing_thresholds,
+            save_newly_computed_threshold=save_newly_computed_threshold,
+            compute_train_threshold=compute_train_threshold,
+            verbose=verbose,
+        )
+
         self.concept_configs = self.trainer.datamodule.concept_configs
-        self.concepts = [c["concept_caption"] for c in self.concept_configs]
-        self.concept_names = [
-            f"{c['col'].replace('aux_', '')}_{'max' if c['is_max'] else 'min'}"
-            for c in self.concept_configs
-        ]
+        self.concepts = self.trainer.datamodule.concepts
+        self.concept_names = self.trainer.datamodule.concept_names
+        self.dynamic_k_baselines = self.trainer.datamodule.dynamic_k_baselines
 
-        dataset_names = ["train", "val", "test"]
-        self.dynamic_k_baselines = {}
-        for dataset_name in dataset_names:
-            if not hasattr(self.trainer.datamodule, f"data_{dataset_name}"):
-                continue
-
-            tmp_ds = getattr(self.trainer.datamodule, f"data_{dataset_name}")
-            n_ds = len(tmp_ds)
-            self.dynamic_k_baselines[dataset_name] = {}
-
-            # Placeholder for all concepts
-            aux_vals_per_concept = {i: [] for i in range(len(self.concept_configs))}
-
-            for item in tmp_ds:
-                aux_data = item["aux"]["aux"]
-                for i_c, c in enumerate(self.concept_configs):
-                    aux_col_id = c["id"]
-                    aux_vals_per_concept[i_c].append(aux_data[aux_col_id])
-
-            # Compute per concept
-            for i_c, c in enumerate(self.concept_configs):
-                c_name = self.concept_names[i_c]
-                aux_vals_current_ds = aux_vals_per_concept[i_c]
-
-                theta_k = self.find_elbow_point(aux_vals_current_ds)
-                self.concept_configs[i_c][
-                    "theta_k"
-                ] = theta_k  # assign new theta_k to concept_configs for later use in validation
-                if c["is_max"]:
-                    n_baseline = sum(aux_val >= theta_k for aux_val in aux_vals_current_ds)
-                else:
-                    n_baseline = sum(aux_val <= theta_k for aux_val in aux_vals_current_ds)
-                self.dynamic_k_baselines[dataset_name][c_name] = n_baseline / n_ds * 100
-
+        # Set up loss and metrics for contrastive retrieval evaluation:
         self.contrastive_val = RetrievalContrastiveValidation(self.ks, self.concept_configs)
         self.outputs_epoch_memory = []
 
@@ -143,8 +162,10 @@ class TextAlignmentModel(BaseModel):
                 return
 
         # Encode concepts if text branch is frozen
-        with torch.no_grad():
+        with torch.inference_mode():
             self.concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
+            self.concept_embeds = F.normalize(self.concept_embeds, dim=1)
+            self.concept_embeds = self.concept_embeds.to(self.device)
 
     @override
     def forward(
@@ -156,7 +177,11 @@ class TextAlignmentModel(BaseModel):
 
         # Embed modalities
         geo_feats = self.geo_encoder(batch)
+        if self.geo_adapter:
+            geo_feats = self.geo_adapter(geo_feats)
         text_feats = self.text_encoder(batch, mode)
+        if self.text_adapter:
+            text_feats = self.text_adapter(text_feats)
 
         # Change dtype of geo data if it does not match text dtype
         if geo_feats.dtype != text_feats.dtype:
@@ -169,75 +194,109 @@ class TextAlignmentModel(BaseModel):
 
         # Embed
         geo_feats, text_feats = self.forward(batch, mode)
+        if geo_feats.isnan().any():  # debugging
+            log.debug(geo_feats)
+            log.debug(batch["name_loc"])
+            exit()
         local_batch_size = geo_feats.size(0)
 
         # batch recomposing in ddp
-        if self.trainer.world_size > 1:
+        if self.loss_fn.name in ["CLIPLoss", "SoftContrastiveLoss"] and self.trainer.world_size > 1:
             feats = torch.stack([geo_feats, text_feats], dim=0)
             feats = self.all_gather(feats)
             feats = feats.reshape(2, -1, feats.size(-1))
             geo_feats, text_feats = feats[0], feats[1]
 
+        # Get aux values
+        aux_values = batch["aux"].get("aux")
+        aux_ids_per_caption = batch.get("text_aux_ids")
+
         # Get loss
-        loss = self.loss_fn(geo_feats, text_feats)
+        if self.loss_fn is not None:
+            loss = self.loss_fn(
+                geo_feats,
+                text_feats,
+                mode=mode,
+                aux_values=aux_values,
+                aux_ids_per_caption=aux_ids_per_caption,
+            )
+            if self.loss_fn.name == "SigLIPLoss" and self.trainer.world_size > 1:
+                raise NotImplementedError('SigLIPLoss is not implemented in distributed training.')
+
+            # Logging
+            self.log(f"{mode}_loss", loss, batch_size=local_batch_size, **self.log_kwargs)
+            if hasattr(self.loss_fn, "log_temp") and mode == "train":
+                self.log(
+                    "temp",
+                    self.loss_fn.__getattr__("log_temp").exp(),
+                    batch_size=local_batch_size,
+                    **self.log_kwargs,
+                )
+        else:
+            loss = None
 
         # Get similarities
-        with torch.no_grad():
-            metrics = self.metrics(
-                mode=mode,
-                geo_feats=geo_feats,
-                text_feats=text_feats,
-                local_batch_size=local_batch_size,
-            )
-
-        # Logging
-        self.log(f"{mode}_loss", loss, batch_size=local_batch_size, **self.log_kwargs)
-
-        if self.loss_fn.__getattr__("log_temp") and mode == "train":
-            self.log(
-                "temp",
-                self.loss_fn.__getattr__("log_temp").exp(),
-                batch_size=local_batch_size,
-                **self.log_kwargs,
-            )
-
-        self.log_dict(metrics, batch_size=local_batch_size, **self.log_kwargs)
+        if self.metrics is not None:
+            with torch.no_grad():
+                metrics = self.metrics(
+                    mode=mode,
+                    geo_feats=geo_feats,
+                    text_feats=text_feats,
+                    local_batch_size=local_batch_size,
+                )
+            self.log_dict(metrics, batch_size=local_batch_size, **self.log_kwargs)
 
         if mode in ["val", "test"]:
             self.outputs_epoch_memory.append(
                 {
-                    "geo_feats": geo_feats.detach(),
-                    "aux_vals": batch.get("aux", {}).get("aux").detach(),
+                    # Store on CPU to avoid holding the whole epoch on GPU.
+                    "geo_feats": geo_feats.detach().cpu(),
+                    "aux_vals": aux_values.detach().cpu() if aux_values is not None else None,
                 }
             )
 
         return loss
 
-    def _on_epoch_end(self, mode: str):
+    def _on_epoch_end(self, mode: str, verbose=0):
 
         # Combine batches
         geo_feats = torch.cat([x["geo_feats"] for x in self.outputs_epoch_memory], dim=0)
+        geo_feats = geo_feats.to(self.device, non_blocking=True)
 
-        aux_vals = torch.cat([x["aux_vals"] for x in self.outputs_epoch_memory], dim=0)
+        aux_vals = torch.cat([x["aux_vals"] for x in self.outputs_epoch_memory], dim=0).to(
+            self.device, non_blocking=True
+        )
 
         # Rank on similarity
         similarity = self.concept_similarities(geo_feats)
 
         concept_scores = self.contrastive_val(similarity, aux_values=aux_vals)
-        # TODO pearson
 
-        avr_scores = {f"{mode}_avr_top-{k}": [] for k in self.ks}
-        for i, result in concept_scores.items():
-            print(f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:')
-            for k, v in result.items():
+        avr_scores = {f"{mode}_avr_top-{k}": [] for k in self.ks if k != "dynamic_k"}
+        avr_scores[f"{mode}_avr_top-dyn_k"] = []
+        avr_scores[f"{mode}_avr_top-dyn_k_index"] = []
+        for i, result in concept_scores.items():  # loop through concepts
+            if verbose:
+                log.info(
+                    f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:'
+                )
+            for k, v in result.items():  # loop through k values
                 if k == "dynamic_k":
-                    self.log(f"dyn_k_{self.concept_names[i]}", v, **self.log_kwargs)
+                    self.log(f"{mode}_dyn_k_{self.concept_names[i]}", v, **self.log_kwargs)
                     indexed_v = (v - self.dynamic_k_baselines[mode][self.concept_names[i]]) / (
                         100 - self.dynamic_k_baselines[mode][self.concept_names[i]]
                     )
-                    self.log(f"dyn_k_index_{self.concept_names[i]}", indexed_v, **self.log_kwargs)
-                print(f"Top-{k}: {v:.1f}%")
-                avr_scores[f"{mode}_avr_top-{k}"].append(v)
+                    self.log(
+                        f"{mode}_dyn_k_index_{self.concept_names[i]}", indexed_v, **self.log_kwargs
+                    )
+
+                    avr_scores[f"{mode}_avr_top-dyn_k"].append(v)
+                    avr_scores[f"{mode}_avr_top-dyn_k_index"].append(indexed_v)
+                else:
+                    avr_scores[f"{mode}_avr_top-{k}"].append(v)
+
+                if verbose:
+                    log.info(f"Top-{k}: {v:.1f}%")
 
         for k, v in avr_scores.items():
             avr_scores[k] = sum(v) / len(v)
@@ -249,6 +308,11 @@ class TextAlignmentModel(BaseModel):
 
     @override
     def on_validation_epoch_end(self):
+        val_loss = self.trainer.callback_metrics["val_loss"]
+        if self._best_loss is None or val_loss < self._best_loss:
+            self._best_loss = val_loss.detach()
+        self.log("best_val_loss", self._best_loss, sync_dist=False)
+
         return self._on_epoch_end("val")
 
     @override
@@ -256,43 +320,36 @@ class TextAlignmentModel(BaseModel):
         return self._on_epoch_end("test")
 
     def concept_similarities(self, geo_embeds, concept=None) -> torch.Tensor:
+        device_type = geo_embeds.device.type
+        is_bf16 = self.trainer.precision == "bf16-mixed" and device_type == "cuda"
+
         # Get concept embeddings
         if concept is not None:
             # If only one concept is provided
             if isinstance(concept, str):
                 concept = [concept]
-            with torch.no_grad():
-                concept_embeds = self.text_encoder({"text": concept}, mode="train")
+
+            with torch.inference_mode():
+                with torch.autocast(
+                    device_type=device_type, dtype=torch.bfloat16, enabled=is_bf16
+                ):
+                    concept_embeds = self.text_encoder({"text": concept}, mode="train")
+            concept_embeds = F.normalize(concept_embeds, dim=1)
 
         elif self.concept_embeds is not None:
             concept_embeds = self.concept_embeds
         else:
-            with torch.no_grad():
-                concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
+            with torch.inference_mode():
+                with torch.autocast(
+                    device_type=device_type, dtype=torch.bfloat16, enabled=is_bf16
+                ):
+                    concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
+            concept_embeds = F.normalize(concept_embeds, dim=1)
+            if self.text_adapter:
+                concept_embeds = self.text_adapter(concept_embeds)
 
         # Similarity
         geo_embeds = F.normalize(geo_embeds, dim=1)
-        concept_embeds = F.normalize(concept_embeds, dim=1)
         similarity_matrix = concept_embeds @ geo_embeds.T
 
         return similarity_matrix
-
-    @staticmethod
-    def find_elbow_point(vals):
-        vals = np.sort(vals)
-        x = np.arange(len(vals)) / len(vals)
-        y = vals
-        slope = (y[-1] - y[0]) / (x[-1] - x[0])  # diagonal from first to last point
-        intercept = y[0] - slope * x[0]
-        orthogonal_slope = -1 / slope
-
-        intercepts_orthogonal = y - orthogonal_slope * x
-        intersection_diagonal_orthogonal = (intercepts_orthogonal - intercept) / (
-            slope - orthogonal_slope
-        )
-        distances = np.sqrt(
-            (x - intersection_diagonal_orthogonal) ** 2 + (y - (slope * x + intercept)) ** 2
-        )  # distance to diagonal
-        elbow_index = np.argmax(distances)
-        elbow_point = y[elbow_index]
-        return elbow_point

@@ -1,0 +1,34 @@
+# @package _global_
+# Best config: R2=0.733, RMSE=1.011, MAE=0.814
+defaults:
+  - override /model: heat_tessera_avg_best
+  - override /data: heat_guatemala
+  - override /metrics: guatemala_regression
+tags: ["heat_island", "guatemala", "tessera_avg", "best", "regression"]
+seed: 12345
+trainer:
+  min_epochs: 1
+  max_epochs: 100
+data:
+  batch_size: 64
+  dataset:
+    modalities:
+      coords: {}
+      tessera:
+        year: 2024
+        size: 10
+        format: npy
+callbacks:
+  model_checkpoint:
+    monitor: val_r2
+    mode: max
+  early_stopping:
+    monitor: val_r2
+    mode: max
+    patience: 20
+logger:
+  wandb:
+    tags: ${tags}
+    group: "heat_island"
+  aim:
+    experiment: "heat_island"

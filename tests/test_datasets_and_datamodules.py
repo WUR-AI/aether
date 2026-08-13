@@ -1,4 +1,3 @@
-from src.data.base_dataset import BaseDataset
 from src.data.butterfly_dataset import ButterflyDataset
 from src.data.heat_guatemala_dataset import HeatGuatemalaDataset
 from src.data.satbird_dataset import SatBirdDataset
@@ -24,6 +23,7 @@ def test_datasets_generic_properties(request, tmp_path, sample_csv):
             seed=0,
             mock=use_mock,
         )
+        dataset.setup()
 
         assert len(dataset) > 0, f"{ds_class.__name__} is empty."
         sample = dataset[0]
@@ -43,7 +43,6 @@ def test_datasets_generic_properties(request, tmp_path, sample_csv):
         assert hasattr(
             dataset, "dataset_name"
         ), f"'dataset_name' attribute missing in {ds_class.__name__}."
-        assert hasattr(dataset, "mode"), f"'mode' attribute missing in {ds_class.__name__}."
         assert hasattr(
             dataset, "use_features"
         ), f"'use_features' attribute missing in {ds_class.__name__}."
@@ -64,6 +63,7 @@ def test_datasets_generic_properties(request, tmp_path, sample_csv):
 
 def test_datamodule_random_split_and_loaders(create_butterfly_dataset):
     dataset, dm = create_butterfly_dataset
+    dm.setup()
 
     assert len(dm.data_train) == 4
     assert len(dm.data_val) == 1
@@ -77,6 +77,7 @@ def test_datamodule_random_split_and_loaders(create_butterfly_dataset):
 def test_random_split_is_deterministic(create_butterfly_dataset):
     dataset1, dm1 = create_butterfly_dataset
     dataset2, dm2 = create_butterfly_dataset
+    dm1.setup(), dm2.setup()
 
     assert dm1.data_train.indices == dm2.data_train.indices
     assert dm1.data_val.indices == dm2.data_val.indices

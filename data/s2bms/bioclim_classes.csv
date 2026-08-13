@@ -1,11 +1,11 @@
 name,units,min,max,scale,pixel_size,description
 aux_bioclim_01,°C,-29.0,32.0,0.1,meters,Annual mean temperature
-aux_bioclim_02,°C,0.9,21.4,0.1,meters,Mean diurnal range (mean of monthly (max temp - min temp))
-aux_bioclim_03,%,7.0,96.0,1.0,meters,Isothermality (bio02/bio07 * 100)
-aux_bioclim_04,°C,0.62,227.21,0.01,meters,Temperature seasonality (Standard deviation * 100)
+aux_bioclim_02,°C,0.9,21.4,0.1,meters,Mean diurnal range
+aux_bioclim_03,%,7.0,96.0,1.0,meters,Isothermality
+aux_bioclim_04,°C,0.62,227.21,0.01,meters,Temperature seasonality
 aux_bioclim_05,°C,-9.6,49.0,0.1,meters,Max temperature of warmest month
 aux_bioclim_06,°C,-57.3,25.8,0.1,meters,Min temperature of coldest month
-aux_bioclim_07,°C,5.3,72.5,0.1,meters,Temperature annual range (bio05 - bio06)
+aux_bioclim_07,°C,5.3,72.5,0.1,meters,Temperature annual range
 aux_bioclim_08,°C,-28.5,37.8,0.1,meters,Mean temperature of wettest quarter
 aux_bioclim_09,°C,-52.1,36.6,0.1,meters,Mean temperature of driest quarter
 aux_bioclim_10,°C,-14.3,38.3,0.1,meters,Mean temperature of warmest quarter

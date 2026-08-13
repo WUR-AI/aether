@@ -231,6 +231,7 @@ def test_yield_africa_dataset_no_features(request, yield_africa_csv, tmp_path):
         mock=use_mock,
         use_features=False,
     )
+    ds.setup()
     sample = ds[0]
     assert "tabular" not in sample["eo"]
     assert ds.tabular_dim is None
@@ -250,6 +251,7 @@ def test_yield_africa_dataset_no_country_features(request, yield_africa_csv, tmp
         use_features=True,
         use_country_features=False,
     )
+    ds.setup()
     for name in ds.feat_names:
         assert not name.startswith("feat_country_"), f"Unexpected country feature: {name}"
     expected_dim = len(MOCK_FEAT_COLS) + 1 + 6  # CSV feats + feat_year + Fourier harmonics
@@ -282,6 +284,7 @@ def test_yield_africa_dataset_aux_shape(yield_africa_dataset_with_aux):
 
 def test_yield_africa_datamodule_split_sizes(yield_africa_datamodule):
     dm = yield_africa_datamodule
+    dm.setup()
     assert len(dm.data_train) == 7
     assert len(dm.data_val) == 2
     assert len(dm.data_test) == 1
@@ -323,6 +326,7 @@ def test_yield_africa_datamodule_split_deterministic(request, yield_africa_csv, 
         )
 
     dm1, dm2 = make_dm(), make_dm()
+    dm1.setup(), dm2.setup()
     assert dm1.data_train.indices == dm2.data_train.indices
     assert dm1.data_val.indices == dm2.data_val.indices
 
@@ -337,7 +341,7 @@ def test_yield_africa_config_loads():
     with initialize(version_base="1.3", config_path="../configs"):
         cfg = compose(
             config_name="train.yaml",
-            overrides=["experiment=yield_africa_tabular_reg", "hydra.job.chdir=false"],
+            overrides=["experiment=cy/yield_africa_tabular_reg", "hydra.job.chdir=false"],
         )
     assert cfg.data._target_ == "src.data.base_datamodule.BaseDataModule"
     assert cfg.data.dataset._target_ == "src.data.yield_africa_dataset.YieldAfricaDataset"
@@ -350,7 +354,7 @@ def test_yield_africa_model_instantiates():
     with initialize(version_base="1.3", config_path="../configs"):
         cfg = compose(
             config_name="train.yaml",
-            overrides=["experiment=yield_africa_tabular_reg", "hydra.job.chdir=false"],
+            overrides=["experiment=cy/yield_africa_tabular_reg", "hydra.job.chdir=false"],
         )
     model = hydra.utils.instantiate(cfg.model)
     assert model is not None

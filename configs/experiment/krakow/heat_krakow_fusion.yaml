@@ -1,0 +1,25 @@
+# @package _global_
+# Variant C: GeoClip + tabular fusion
+# Guatemala performance: R2=0.555, RMSE=1.285, MAE=1.039
+# Kraków performance: R2=0.804, RMSE=0.902, MAE=0.688
+defaults:
+  - override /model: heat_fusion_reg
+  - override /data: heat_krakow
+  - override /metrics: krakow_regression
+
+tags: ["heat_island", "krakow", "fusion", "regression"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 50
+
+data:
+  batch_size: 64
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "heat_island"
+  aim:
+    experiment: "heat_island"

@@ -19,7 +19,9 @@ class BaseGeoEncoder(nn.Module, ABC):
 
         self.allowed_geo_data_names: list[str] | None = None
         self.geo_data_name: str | None = None
+        self.adopted: bool = False
 
+    @final
     def update_configs(self, cfg):
         if len(self.cfg_dict) == 0:
             self.cfg_dict = cfg
@@ -41,6 +43,8 @@ class BaseGeoEncoder(nn.Module, ABC):
             if verbose > 0:
                 print(f"Model set up with {self.__str__()}")
             self.setup_flag = True
+            if self.adopted:
+                trainable_modules = []
             return trainable_modules
 
     @abstractmethod

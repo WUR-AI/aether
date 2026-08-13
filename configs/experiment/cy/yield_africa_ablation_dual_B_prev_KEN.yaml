@@ -1,0 +1,38 @@
+# @package _global_
+# Ablation config B — tessera_prev (year Y−1) + tabular only, dynamic_gate fusion.
+#
+# Isolates the contribution of the preceding year's embedding. Expected to perform
+# worse than A for single-year growing seasons (tessera_prev partially misses the
+# harvest-year season) but may approach A or exceed it for cross-year seasons
+# (Oct–Mar in KEN). Records without a year-1 tile are excluded via
+# require_prev_year_tessera, keeping the record set comparable to D and E.
+#
+# Requires: ABLATION_SPLIT — set saved_split_file_name to the file saved by config A.
+
+defaults:
+  - override /model: yield_tessera_prev_fusion_reg
+  - override /data: yield_africa_tessera_prev_KEN
+  - override /metrics: yield_africa_regression
+
+tags: ["yield_africa", "tessera_ablation", "KEN", "config_B"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 150
+  gradient_clip_val: 1.0
+
+data:
+  batch_size: 64
+  split_mode: from_file
+  saved_split_file_name: split_indices_2026-04-27-1644.pth
+  dataset:
+    use_features: true
+
+logger:
+  wandb:
+    name: "ablation_B_tessera_prev"
+    tags: ${tags}
+    group: "ablation_dual_tessera_KEN"
+  aim:
+    experiment: "yield_africa_ablation"

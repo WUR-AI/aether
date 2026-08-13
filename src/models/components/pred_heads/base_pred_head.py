@@ -59,3 +59,28 @@ class BasePredictionHead(nn.Module, ABC):
     def _setup(self) -> None:
         """Configures specific prediction head."""
         pass
+
+    @property
+    def device(self) -> torch.device | None:
+        devices = {p.device for p in self.parameters()}
+        if len(devices) > 1:
+            raise RuntimeError("Prediction head is on multiple devices")
+        elif len(devices) == 0:
+            return None
+        return devices.pop()
+
+    @property
+    def dtype(self) -> torch.dtype | None:
+        dtypes = {p.dtype for p in self.parameters()}
+        if len(dtypes) > 1:
+            raise RuntimeError("Prediction head has multiple dtypes")
+        elif len(dtypes) == 0:
+            return None
+        return dtypes.pop()
+
+    @final
+    def update_configs(self, cfg):
+        if len(self.cfg_dict) == 0:
+            self.cfg_dict = cfg
+        else:
+            print("Configs for prediction head not updated")
