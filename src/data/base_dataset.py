@@ -9,8 +9,8 @@ import rasterio
 import torch
 from torch.utils.data import Dataset
 
+from src.data_preprocessing.tessera_embeds import NoTileError, PartialTileError
 from src.utils.data_utils import center_crop_npy
-from src.utils.errors import MissingDataError
 
 TORCH_DTYPES = {
     "float32": torch.float32,
@@ -28,7 +28,7 @@ class BaseDataset(Dataset, ABC):
         modalities: dict,
         use_target_data: bool = True,
         use_aux_data: Dict[str, List[str] | str] | str | None = None,
-        dataset_name: str = "BaseDataset",
+        dataset_name: str | List[str] = "BaseDataset",
         seed: int = 12345,
         mode: str = "train",
         cache_dir: str = None,
@@ -37,6 +37,7 @@ class BaseDataset(Dataset, ABC):
         use_features: bool = True,
         csv_name: str = None,
         dtype: str = "float32",
+        return_name_loc: bool = False,
     ) -> None:
         """Interface for any use case dataset.
 
@@ -87,21 +88,31 @@ class BaseDataset(Dataset, ABC):
                 m_dtype = dtype
                 self.modalities[mod] = {"dtype": m_dtype}
 
-        # More precise dataset name (with modalities)
-        self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
-
         # Set data attributes
         self.registry_path = os.path.join(data_dir, "registry.txt")
-        self.data_dir = os.path.join(data_dir, dataset_name)
+        if type(dataset_name) is str:
+            dataset_name = [dataset_name]
+        if "unlabel" in dataset_name[0]:
+            dataset_dirname = dataset_name[0].split("-unlabel")[0]
+        else:
+            dataset_dirname = dataset_name[0]
+        self.data_dir = os.path.join(data_dir, dataset_dirname)
         self.cache_dir = cache_dir or os.path.join(data_dir, "cache")
-        for d in [self.data_dir, self.cache_dir]:
+        for d in [self.cache_dir]:
             os.makedirs(d, exist_ok=True)
 
         # Read model ready csv df
-        csv_filename = csv_name or f"model_ready_{dataset_name}.csv"
-        path_csv = os.path.join(self.data_dir, csv_filename)
-        assert os.path.exists(path_csv), f"{path_csv} does not exist."
-        self.df: pd.DataFrame = pd.read_csv(path_csv)
+        for i_ds, ds in enumerate(dataset_name):
+            csv_filename = csv_name or f"model_ready_{ds}.csv"
+            path_csv = os.path.join(self.data_dir, csv_filename)
+            assert os.path.exists(
+                path_csv
+            ), f"{path_csv} does not exist. (Expecting {ds} to exist in {self.data_dir})"
+            tmp_df: pd.DataFrame = pd.read_csv(path_csv)
+            if i_ds == 0:
+                self.df = tmp_df
+            else:
+                self.df = pd.concat([self.df, tmp_df], ignore_index=True)
 
         # Other attributes or placeholders
         self.pooch_cli = None
@@ -128,8 +139,13 @@ class BaseDataset(Dataset, ABC):
         else:
             self.use_aux_data = None
 
+        # More precise dataset name (with modalities)
+        if isinstance(dataset_name, list):
+            dataset_name = "+".join(dataset_name)
+        self.dataset_name: str = dataset_name + "_" + "_".join(modalities)
         self.mode: str = mode  # 'train', 'val', 'test'
         self.records: dict[str, Any] = self.get_records()
+        self.return_name_loc: bool = return_name_loc
 
     @final
     def get_records(self) -> dict[str, Any]:
@@ -143,6 +159,16 @@ class BaseDataset(Dataset, ABC):
         for modality, params in self.modalities.items():
             if modality == "coords":
                 columns.extend(["lat", "lon"])
+            elif modality in ["aef_avr", "tessera_avr"]:
+                df = pd.read_csv(params.get("path", KeyError))
+                df["name_loc"] = df["name_loc"].astype(str)
+
+                self.df["name_loc"] = self.df["name_loc"].astype(str)
+
+                self.df = self.df.merge(df, on="name_loc", how="left")
+
+                max_no = 128 if modality == "tessera_avr" else 64
+                columns.extend([f"emb_{i}" for i in range(0, max_no)])
             else:
                 # Add paths
                 self.add_modality_paths_to_df(
@@ -233,7 +259,6 @@ class BaseDataset(Dataset, ABC):
             tessera_from_df,
         )
 
-
         print("\n\nSetting up Tessera data...\n\n")
         download_missing_tiles = False
 
@@ -246,22 +271,27 @@ class BaseDataset(Dataset, ABC):
         size = self.modalities["tessera"].get(
             "size", KeyError('Missing parameter "size" for Tessera modality')
         )
+        version = self.modalities["tessera"].get("version") or "v1.0"
 
         # If data does not exist or is empty → full download
         if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
-            os.makedirs(dst_dir, exist_ok=True)
+            if download_missing_tiles:
+                os.makedirs(dst_dir, exist_ok=True)
 
-            tessera_from_df(
-                self.df,
-                data_dir=dst_dir,
-                year=year,
-                tile_size=size,
-                cache_dir=self.cache_dir,
-            )
+                tessera_from_df(
+                    self.df,
+                    data_dir=dst_dir,
+                    year=year,
+                    tile_size=size,
+                    cache_dir=self.cache_dir,
+                    version=version,
+                )
 
-            # TODO: if we compile the dataset and use zenodo (or sth else) then change to pooch downloading/loading
-            # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
-            # or self.setup_tessera_from_pooch() <- per children class implementation
+                # TODO: if we compile the dataset and use zenodo (or sth else) then change to pooch downloading/loading
+                # TODO: in case of zenodo use may need to be moved to UC dataset subclasses
+                # or self.setup_tessera_from_pooch() <- per children class implementation
+            else:
+                print("Please download the missing Tessera tiles...")
 
         # Download missing rows (if any)
         else:
@@ -291,11 +321,11 @@ class BaseDataset(Dataset, ABC):
                                 tessera_con=gt,
                             )
                             continue
-                        except:
-                            print(f"Tile for {fname} could not be retrieved.")
-                self.records.pop(i)
-                print(f"No tile found for {fname} thus it will not be used.")
-
+                        except NoTileError or PartialTileError as e:
+                            print(f"Tile for {fname} could not be retrieved. Error: {e}")
+                    else:
+                        self.records.pop(i)
+                        print(f"No tile found for {fname} thus it will not be used.")
 
     @final
     def setup_aef(self) -> None:
@@ -307,6 +337,12 @@ class BaseDataset(Dataset, ABC):
         print("\n\nSetting up AEF data...\n\n")
 
         dst_dir = os.path.join(self.data_dir, "eo/aef")
+        avail_files = os.listdir(dst_dir)
+        for i, rec in enumerate(self.records):
+            fname = os.path.basename(rec["aef_path"])
+            if fname not in avail_files:
+                self.records.pop(i)
+                print(f"No tile found for {fname} thus it will not be used.")
 
         # TODO aef retrieval?
         # TODO: in case of zenodo use may need to be moved to UC dataset subclasses

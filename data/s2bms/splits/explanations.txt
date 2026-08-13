@@ -1,0 +1,6 @@
+split_indices_s2bms-unlabelled-20260529_2026-05-29-1433.pth: all train/val/test unlabelled indices (not used, source data)
+split_indices_s2bms+s2bms-unlabelled-20260529_2026-05-29-1438.pth: original S2BMS split and all train/val/test unlabelled indices (not used, source data)
+split_indices_s2bms_2024-08-14-1459.pth: original S2BMS split (not used, source data)
+
+s2bms_union_val_test: S2BMS labelled subset for this study. All val and test split datapoints are available for modalities of: coords, alphaearth and tessera.
+s2bms_unlabelled_union_val_test: s2bms_union_val_test + all train samples from the unlabelled dataset
