@@ -129,6 +129,8 @@ class BaseDataset(Dataset, ABC):
                 "pattern": "^feat_.*",
                 #     'columns' : []
             }
+        elif isinstance(use_features, dict):
+            self.use_features = use_features
         else:
             self.use_features = None
 
@@ -198,11 +200,10 @@ class BaseDataset(Dataset, ABC):
             if "pattern" in self.use_features:
                 pattern = re.compile(self.use_features["pattern"])
                 feat_names = [x for x in self.df.columns if pattern.match(x)]
+            elif "columns" in self.use_features:
+                feat_names = self.use_features["columns"]
             else:
-                feat_names = self.use_features.get(
-                    "columns",
-                    ValueError('use_features should have "pattern" or "columns" defined'),
-                )
+                raise ValueError('use_features should have "pattern" or "columns" defined')
             self.feat_names = feat_names
             columns.extend(feat_names)
 
