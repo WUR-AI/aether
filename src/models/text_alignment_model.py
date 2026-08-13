@@ -12,6 +12,7 @@ from src.models.components.metrics.contrastive_validation import (
     RetrievalContrastiveValidation,
 )
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
+from src.models.components.projectors.base_projector import BaseProjector
 from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
 
 log = logging.getLogger(__name__)

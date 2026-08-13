@@ -231,6 +231,7 @@ def test_yield_africa_dataset_no_features(request, yield_africa_csv, tmp_path):
         mock=use_mock,
         use_features=False,
     )
+    ds.setup()
     sample = ds[0]
     assert "tabular" not in sample["eo"]
     assert ds.tabular_dim is None
@@ -250,6 +251,7 @@ def test_yield_africa_dataset_no_country_features(request, yield_africa_csv, tmp
         use_features=True,
         use_country_features=False,
     )
+    ds.setup()
     for name in ds.feat_names:
         assert not name.startswith("feat_country_"), f"Unexpected country feature: {name}"
     expected_dim = len(MOCK_FEAT_COLS) + 1 + 6  # CSV feats + feat_year + Fourier harmonics
