@@ -16,7 +16,8 @@ import torch
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
 from src.models.components.geo_encoders.encoder_wrapper import EncoderWrapper
 from src.models.components.geo_encoders.tabular_encoder import TabularEncoder
-from src.models.components.projectors_adapters.mlp_projector import MLPProjector
+from src.models.components.projectors.mlp_projector import MLPProjector
+
 
 # ---------------------------------------------------------------------------
 # Minimal stub encoder for testing — outputs a fixed-size embedding.

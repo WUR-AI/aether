@@ -3,10 +3,10 @@ from typing import List, override
 import torch
 from torch import nn
 
-from src.models.components.projectors_adapters.base_encoder import BaseEncoder
+from src.models.components.projectors.base_projector import BaseProjector
 
 
-class MLPProjector(BaseEncoder):
+class MLPProjector(BaseProjector):
     def __init__(
         self,
         output_dim: int,
