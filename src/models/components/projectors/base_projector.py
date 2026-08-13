@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 
-class BaseEncoder(nn.Module, ABC):
+class BaseProjector(nn.Module, ABC):
     def __init__(self) -> None:
         super().__init__()
 
