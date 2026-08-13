@@ -102,7 +102,7 @@ def _make_dataset(
         use_aux_data="none",
         seed=42,
         mock=True,
-        use_features=True,
+        use_features={"columns": ["feat_year"]},  # temporary fix
         **kwargs,
     )
 
