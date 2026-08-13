@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import random
 import re
@@ -9,6 +10,8 @@ import torch
 
 from src.data.base_dataset import BaseDataset
 from src.utils.errors import IllegalArgumentCombination
+
+log = logging.getLogger(__name__)
 
 
 class BaseCaptionBuilder(ABC):
@@ -92,7 +95,7 @@ class BaseCaptionBuilder(ABC):
             new_concepts_fname = f"v{new_version}.json"
         new_concepts_path = os.path.join(self.data_dir, "concept_captions", new_concepts_fname)
         json.dump(concept_configs, open(new_concepts_path, "w"), indent=4)
-        print(f"Concept thresholds stored in {new_concepts_path}")
+        logging.info(f"Concept thresholds stored in {new_concepts_path}")
         if update_self:
             self.update_concept_thresholds(concept_configs)
             self.concepts_path = new_concepts_path

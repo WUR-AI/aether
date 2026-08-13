@@ -1,9 +1,8 @@
-import itertools
 import json
 import os
 import random
 
-import src.data_preprocessing.data_utils as du
+import numpy as np
 
 # -------------------------
 # 1. Variable pools
@@ -229,11 +228,21 @@ def get_context_template(k):
         return random.choice(CONTEXT_TEMPLATES_THREE)
 
 
-def pick_context():
+def pick_context(pool=None):
     """Picks a random context description style and variables."""
-    pool = BIOCLIM + POP + ROADS
-    k = random.choice([1, 2, 3])
-    vars_ = random.sample(pool, k=k)
+    if pool is None:
+        pool = BIOCLIM + POP + ROADS
+    if pool == ROADS + POP:
+        k = min(random.choice([1, 2]), len(pool))
+        if k > 1:
+            vars_ = random.sample(ROADS, k=1)
+            vars_.extend(random.sample(POP, k=k - 1))
+        else:
+            vars_ = random.sample(pool, k=k)
+    else:
+        k = min(random.choice([1, 2, 3]), len(pool))
+        vars_ = random.sample(pool, k=k)
+
     tmpl = get_context_template(k)
     # print(get_context_template(k), tmpl)
     if k == 1:
@@ -244,13 +253,30 @@ def pick_context():
         return tmpl.format(V1=vars_[0], V2=vars_[1], V3=vars_[2])
 
 
-def generate_captions(n=1000, seed=42, save_path=None):
+def generate_captions(n=1000, seed=42, save_path=None, template_type="mixed"):
     """Generates n captions by randomly sampling from the variable and template pools."""
     random.seed(seed)
     captions = set()
 
     while len(captions) < n:
-        cap = f"{pick_entity()} {pick_landcover()}, {pick_context()}."
+        if template_type == "parallel":
+            style = np.random.choice(
+                ["corine", "bioclim", "roads+pop"], 1, p=[0.45, 0.45, 0.1]
+            ).item()
+        else:
+            style = template_type
+
+        if style == "mixed":
+            cap = f"{pick_entity()} {pick_landcover()}, {pick_context()}."
+        elif style == "corine":
+            cap = f"{pick_entity()} {pick_landcover()}."
+        elif style == "bioclim":
+            cap = f"{pick_entity()} {pick_context(pool=BIOCLIM)}."
+        elif style == "roads+pop":
+            cap = f"{pick_entity()} {pick_context(pool=ROADS+POP)}."
+        else:
+            raise ValueError(f"Unknown template_type or style: {style}")
+
         captions.add(cap)
 
     if save_path is not None:

@@ -16,7 +16,7 @@ model:
     _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
     geo_data_name: coords
   geo_adapter:
-    _target_: src.models.components.projectors_adapters.mlp_projector.MLPProjector
+    _target_: src.models.components.projectors.mlp_projector.MLPProjector
     nn_layers: 2
     hidden_dim: 512
     output_dim: 768
