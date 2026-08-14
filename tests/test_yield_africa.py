@@ -65,6 +65,7 @@ MOCK_INJECTED_FEAT_NAMES = (
 MOCK_TABULAR_DIM = len(MOCK_FEAT_COLS) + len(MOCK_INJECTED_FEAT_NAMES)  # 8 + 15 = 23
 MOCK_N_AUX = len(MOCK_AUX_COLS)  # 4
 
+MOCK_FEAT_DICT = {"columns": list(MOCK_FEAT_COLS.keys()) + list(MOCK_INJECTED_FEAT_NAMES)}
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -108,7 +109,7 @@ def yield_africa_dataset(request, yield_africa_csv, tmp_path):
         use_aux_data="none",
         seed=42,
         mock=use_mock,
-        use_features=True,
+        use_features=MOCK_FEAT_DICT,
     )
 
 
@@ -124,7 +125,7 @@ def yield_africa_dataset_with_aux(request, yield_africa_csv, tmp_path):
         use_aux_data="all",
         seed=42,
         mock=use_mock,
-        use_features=True,
+        use_features=MOCK_FEAT_DICT,
     )
 
 
@@ -140,7 +141,7 @@ def yield_africa_datamodule(request, yield_africa_csv, tmp_path):
         use_aux_data="none",
         seed=42,
         mock=use_mock,
-        use_features=True,
+        use_features=MOCK_FEAT_DICT,
     )
     return BaseDataModule(
         dataset=dataset,
@@ -193,6 +194,7 @@ def test_yield_africa_dataset_attributes(yield_africa_dataset):
     assert yield_africa_dataset.num_classes == 1
     assert yield_africa_dataset.tabular_dim == MOCK_TABULAR_DIM
     expected_feat_names = set(MOCK_FEAT_COLS.keys()) | MOCK_INJECTED_FEAT_NAMES
+    assert hasattr(yield_africa_dataset, "feat_names")
     assert set(yield_africa_dataset.feat_names) == expected_feat_names
 
 
@@ -240,6 +242,19 @@ def test_yield_africa_dataset_no_features(request, yield_africa_csv, tmp_path):
 def test_yield_africa_dataset_no_country_features(request, yield_africa_csv, tmp_path):
     """With use_country_features=False, no feat_country_* columns are injected."""
     use_mock = request.config.getoption("--use-mock")
+
+    TMP_MOCK_INJECTED_FEAT_NAMES = {"feat_year"} | {  # without feat_country_* columns
+        "feat_lat_sin1",
+        "feat_lat_cos1",
+        "feat_lat_sin2",
+        "feat_lat_cos2",
+        "feat_lon_sin1",
+        "feat_lon_cos1",
+    }
+    TMP_MOCK_FEAT_DICT = {
+        "columns": list(MOCK_FEAT_COLS.keys()) + list(TMP_MOCK_INJECTED_FEAT_NAMES)
+    }
+
     ds = YieldAfricaDataset(
         data_dir=yield_africa_csv,
         cache_dir=str(tmp_path / "cache"),
@@ -248,7 +263,7 @@ def test_yield_africa_dataset_no_country_features(request, yield_africa_csv, tmp
         use_aux_data="none",
         seed=0,
         mock=use_mock,
-        use_features=True,
+        use_features=TMP_MOCK_FEAT_DICT,
         use_country_features=False,
     )
     ds.setup()
@@ -313,6 +328,7 @@ def test_yield_africa_datamodule_split_deterministic(request, yield_africa_csv, 
             use_target_data=True,
             use_aux_data="none",
             seed=42,
+            use_features=MOCK_FEAT_DICT,
             mock=use_mock,
         )
         return BaseDataModule(

@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 class BaseModel(LightningModule, ABC):
     def __init__(
         self,
-        trainable_modules: list[str],
+        trainable_modules: list[str] | None,
         geo_encoder: BaseGeoEncoder | None,
         text_encoder: BaseTextEncoder | None,
         prediction_head: BasePredictionHead | None,
@@ -59,7 +59,7 @@ class BaseModel(LightningModule, ABC):
             ]
         )
 
-        self.trainable_modules = trainable_modules
+        self.trainable_modules = trainable_modules or []
         if geo_encoder:
             self.geo_encoder = geo_encoder
         if text_encoder:
