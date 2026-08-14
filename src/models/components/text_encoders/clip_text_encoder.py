@@ -8,7 +8,7 @@ from transformers import CLIPModel, CLIPProcessor
 from src.models.components.text_encoders.base_text_encoder import (
     BaseTextEncoder,
 )
-from utils.errors import MissingConfigurationError
+from src.utils.errors import MissingConfigurationError
 
 # Keep these keys in sync with clip_img.py so an (image, text) pair can be
 # configured with the same model_name and land in the same embedding space.
