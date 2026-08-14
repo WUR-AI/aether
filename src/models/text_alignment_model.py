@@ -201,7 +201,11 @@ class TextAlignmentModel(BaseModel):
         local_batch_size = geo_feats.size(0)
 
         # batch recomposing in ddp
-        if self.loss_fn.name in ["CLIPLoss", "SoftContrastiveLoss"] and self.trainer.world_size > 1:
+        if (
+            self.loss_fn is not None
+            and self.loss_fn.name in ["CLIPLoss", "SoftContrastiveLoss"]
+            and self.trainer.world_size > 1
+        ):
             feats = torch.stack([geo_feats, text_feats], dim=0)
             feats = self.all_gather(feats)
             feats = feats.reshape(2, -1, feats.size(-1))
@@ -221,7 +225,7 @@ class TextAlignmentModel(BaseModel):
                 aux_ids_per_caption=aux_ids_per_caption,
             )
             if self.loss_fn.name == "SigLIPLoss" and self.trainer.world_size > 1:
-                raise NotImplementedError('SigLIPLoss is not implemented in distributed training.')
+                raise NotImplementedError("SigLIPLoss is not implemented in distributed training.")
 
             # Logging
             self.log(f"{mode}_loss", loss, batch_size=local_batch_size, **self.log_kwargs)
@@ -308,10 +312,11 @@ class TextAlignmentModel(BaseModel):
 
     @override
     def on_validation_epoch_end(self):
-        val_loss = self.trainer.callback_metrics["val_loss"]
-        if self._best_loss is None or val_loss < self._best_loss:
-            self._best_loss = val_loss.detach()
-        self.log("best_val_loss", self._best_loss, sync_dist=False)
+        if self.loss_fn is not None:
+            val_loss = self.trainer.callback_metrics["val_loss"]
+            if self._best_loss is None or val_loss < self._best_loss:
+                self._best_loss = val_loss.detach()
+            self.log("best_val_loss", self._best_loss, sync_dist=False)
 
         return self._on_epoch_end("val")
 
