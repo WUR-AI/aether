@@ -18,26 +18,34 @@ seed: 12345
 tags:
   - baseline
   - alignment
-  - geoclip
+  - clip
 
-experiment_name: geoclip_baseline
+experiment_name: clip_baseline_${str:${size}}
 projects: s2bms_alignment
 
 model:
   geo_encoder:
-    _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
-    geo_data_name: coords
+    _target_: src.models.components.geo_encoders.clip_img.ClipImgEncoder
+    geo_data_name: s2
+    hf_cache_dir: ${paths.huggingface_cache}
+    model_name: ${size}
+
   text_encoder:
     _target_: src.models.components.text_encoders.clip_text_encoder.ClipTextEncoder
+    use_geoclip_projector: false
     hf_cache_dir: ${paths.huggingface_cache}
-    use_geoclip_projector: true
+    model_name: ${size}
   loss_fn:
   trainable_modules: []
 
 data:
   dataset:
     modalities:
-      coords:
+      s2:
+        size: 224
+        channels: rgb
+        format: tif
+        preprocessing: div_2000
     use_target_data: false
     use_aux_data: "all"
     use_unlabelled_data: false
@@ -59,3 +67,9 @@ logger:
     tags: ${tags}
     group: "alignment"
     project: "s2bms_aef_alignment_baselines"
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      ++size: ViT-B-32, ViT-B-16, ViT-L-14, RN50

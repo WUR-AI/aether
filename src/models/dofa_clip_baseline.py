@@ -38,8 +38,8 @@ def build_DOFACLIP_model(
 
     if return_geo_encoder:
         assert (
-            preprocessing == "div_10000"
-        ), "S2 must be preprocessed with preprocessing set to 'div_10000'"
+            preprocessing == "div_2000"
+        ), "S2 must be preprocessed with preprocessing set to 'div_2000'"
         geo_encoder = DOFAClipImgEncoder(
             geo_encoder=model.visual, out_dim=out_dim, geo_data_name=geo_data_name
         )
