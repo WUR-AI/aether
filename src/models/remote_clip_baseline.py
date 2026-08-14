@@ -44,8 +44,8 @@ def build_RemoteCLIP_model(
 
     if return_geo_encoder:
         assert (
-            preprocessing == "div_10000"
-        ), "S2 must be preprocessed with preprocessing set to 'div_10000'"
+            preprocessing == "div_2000"
+        ), "S2 must be preprocessed with preprocessing set to 'div_2000'"
         geo_encoder = RemoteClipImgEncoder(geo_encoder=model.visual, out_dim=out_dim)
     if return_text_encoder:
         model.visual = None
