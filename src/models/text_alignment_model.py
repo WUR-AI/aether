@@ -3,7 +3,6 @@ from typing import Dict, Tuple, override
 
 import torch
 import torch.nn.functional as F
-from src.models.components.projectors.base_projector import BaseProjector
 
 from src.models.base_model import BaseModel
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
@@ -28,8 +27,8 @@ class TextAlignmentModel(BaseModel):
         scheduler: torch.optim.lr_scheduler,
         loss_fn: BaseLossFn | None = None,
         metrics: MetricsWrapper | None = None,
-        geo_adapter: BaseEncoder | None = None,
-        text_adapter: BaseEncoder | None = None,
+        geo_adapter: BaseProjector | None = None,
+        text_adapter: BaseProjector | None = None,
         num_classes: int | None = None,
         tabular_dim: int | None = None,
         ks: list[int] | None = None,
