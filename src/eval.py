@@ -1,36 +1,16 @@
+import os
 from typing import Any, Dict, List, Tuple
 
 import hydra
 import rootutils
-from lightning import LightningDataModule, LightningModule, Trainer
-from lightning.pytorch.loggers import Logger
-from omegaconf import DictConfig
+import torch
+from dotenv import load_dotenv
+from lightning import Trainer
+from lightning.pytorch.loggers import Logger, WandbLogger
+from omegaconf import DictConfig, OmegaConf
 
-rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
-
-# Disable tokenizers parallelism to avoid warnings when using multiprocessing
-import os
-
-if os.environ.get("TOKENIZERS_PARALLELISM") is None:
-    os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-# ------------------------------------------------------------------------------------ #
-# the setup_root above is equivalent to:
-# - adding project root dir to PYTHONPATH
-#       (so you don't need to force user to install project as a package)
-#       (necessary before importing any local modules e.g. `from src import utils`)
-# - setting up PROJECT_ROOT environment variable
-#       (which is used as a base for paths in "configs/paths/local.yaml")
-#       (this way all filepaths are the same no matter where you run the code)
-# - loading environment variables from ".env" in root dir
-#
-# you can remove it if you:
-# 1. either install project as a package or move entry files to project root dir
-# 2. set `root_dir` to "." in "configs/paths/local.yaml"
-#
-# more info: https://github.com/ashleve/rootutils
-# ------------------------------------------------------------------------------------ #
-
+from src.data.base_datamodule import BaseDataModule
+from src.models.base_model import BaseModel
 from src.utils import (
     RankedLogger,
     extras,
@@ -38,13 +18,28 @@ from src.utils import (
     log_hyperparameters,
     task_wrapper,
 )
+from src.utils.experiment_tracking import compose_experiment_name
+from utils.errors import FileNotSpecified
+
+rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+load_dotenv()
+
+# Optimize Tensor Core usage (L40S / A100 / H100 all benefit from this)
+torch.set_float32_matmul_precision("high")
+
+# Disable tokenizers parallelism to avoid warnings when using multiprocessing
+if os.environ.get("TOKENIZERS_PARALLELISM") is None:
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 log = RankedLogger(__name__, rank_zero_only=True)
+
+OmegaConf.register_new_resolver("str", str, replace=True)
 
 
 @task_wrapper
 def evaluate(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """Evaluates given checkpoint on a datamodule testset.
+    """Evaluates given checkpoint on a datamodule testset. Used to evaluate prediction or alignment
+    model individually. Can also evaluate the alignment baselines from other studies.
 
     This method is wrapped in optional @task_wrapper decorator, that controls the behavior during
     failure. Useful for multiruns, saving info about the crash, etc.
@@ -52,39 +47,119 @@ def evaluate(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     :param cfg: DictConfig configuration composed by Hydra.
     :return: Tuple[dict, dict] with metrics and dict with all instantiated objects.
     """
-    assert cfg.ckpt_path
 
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
-    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)
-
-    log.info(f"Instantiating model <{cfg.model._target_}>")
-    model: LightningModule = hydra.utils.instantiate(cfg.model)
+    datamodule: BaseDataModule = hydra.utils.instantiate(cfg.data)
+    datamodule.setup()
 
     log.info("Instantiating loggers...")
     logger: List[Logger] = instantiate_loggers(cfg.get("logger"))
+    wandb_logger = next((log for log in logger if isinstance(log, WandbLogger)), None)
 
     log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
-    trainer: Trainer = hydra.utils.instantiate(cfg.trainer, logger=logger)
+    trainer: Trainer = (
+        hydra.utils.instantiate(cfg.trainer, logger=logger)
+        if cfg.trainer
+        else Trainer(logger=logger)
+    )
 
-    object_dict = {
-        "cfg": cfg,
-        "datamodule": datamodule,
-        "model": model,
-        "logger": logger,
-        "trainer": trainer,
-    }
+    if not cfg.get("baseline"):
+        assert cfg.ckpt_path
+        ckpt_path = cfg.get("ckpt_path") or FileNotSpecified(
+            'You must specify model weight path as "ckpt_path"'
+        )
+        model_ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
 
-    if logger:
-        log.info("Logging hyperparameters!")
-        log_hyperparameters(object_dict)
+        model_hparams = model_ckpt["hyper_parameters"]
+        pred_model = "prediction" in ckpt_path
+        model_hparams["_target_"] = (
+            "src.models.predictive_model.PredictiveModel"
+            if pred_model
+            else "src.models.text_alignment_model.TextAlignmentModel"
+        )
 
+        model_hparams["trainable_modules"] = None
+        if not pred_model:
+            model_hparams["text_encoder"]["hf_cache_dir"] = os.path.join(
+                cfg.paths.cache_dir, "huggingface"
+            )
+        if "AverageEncoder" in model_hparams["geo_encoder"]["_target_"]:
+            if "aef_avr" in cfg.data.dataset.modalities.keys():
+                model_hparams["geo_encoder"].update(
+                    {
+                        "_target_": "src.models.components.geo_encoders.identity_encoder.IdentityEncoder",
+                        "geo_data_name": "aef_avr",
+                    }
+                )
+            elif "tessera_avr" in cfg.data.dataset.modalities.keys():
+                model_hparams["geo_encoder"].update(
+                    {
+                        "_target_": "src.models.components.geo_encoders.identity_encoder.IdentityEncoder",
+                        "geo_data_name": "tessera_avr",
+                    }
+                )
+
+        if "loss_fn" not in model_hparams.keys():
+            model_hparams["loss_fn"] = cfg.get("model", {}).get("loss_fn")
+        if "scheduler" not in model_hparams.keys():
+            model_hparams["scheduler"] = cfg.get("model", {}).get("scheduler")
+        if "optimizer" not in model_hparams.keys():
+            model_hparams["optimizer"] = cfg.get("model", {}).get("optimizer")
+        if "metrics" not in model_hparams.keys():
+            model_hparams["metrics"] = cfg.get("metrics")
+        model: BaseModel = hydra.utils.instantiate(model_hparams)
+        trainer.datamodule = datamodule
+        model.trainer = trainer
+
+        model.setup("test")
+        model.load_state_dict(model_ckpt["state_dict"])
+        object_dict = {
+            "cfg": cfg,
+            "datamodule": datamodule,
+            "model": model,
+            "logger": logger,
+            "trainer": trainer,
+        }
+    else:
+        log.info(f"Instantiating model <{cfg.model._target_}>")
+        model: BaseModel = hydra.utils.instantiate(cfg.model)
+
+        object_dict = {
+            "cfg": cfg,
+            "datamodule": datamodule,
+            "model": model,
+            "logger": logger,
+            "trainer": trainer,
+        }
+
+        if wandb_logger:
+            log.info("Logging hyperparameters!")
+            log_hyperparameters(object_dict)
+
+            group = cfg.get("experiment_name", "null")
+            if group == "null":
+                compose_experiment_name(cfg)
+            wandb_logger.log_metrics({"experiment": group})
     log.info("Starting testing!")
-    trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
-
-    # for predictions use trainer.predict(...)
-    # predictions = trainer.predict(model=model, dataloaders=dataloaders, ckpt_path=cfg.ckpt_path)
-
+    trainer.test(
+        model=model,
+        datamodule=datamodule,
+    )
     metric_dict = trainer.callback_metrics
+
+    if cfg.get("validate") and wandb_logger is not None:
+        # Run validation
+        log.info("Validating!")
+
+        trainer.validate(
+            model=model,
+            datamodule=datamodule,
+        )
+
+        val_metrics = trainer.callback_metrics
+        wandb_logger.log_metrics({f"best_{k}": v for k, v in val_metrics.items()})
+
+        metric_dict = {**metric_dict, **val_metrics}
 
     return metric_dict, object_dict
 

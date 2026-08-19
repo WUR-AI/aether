@@ -1,0 +1,103 @@
+[
+  {
+    "concept_caption": "Densely populated area with many houses",
+    "is_max": true,
+    "theta_k": 0.3,
+    "col": "aux_corine_frac_11"
+  },
+  {
+    "concept_caption": "Very sparsely populated area with few houses",
+    "is_max": false,
+    "theta_k": 0.05,
+    "col": "aux_corine_frac_11"
+  },{
+    "concept_caption": "Area with infrastructure such as roads, railways, airport, ports and heavy industry.",
+    "is_max": true,
+    "theta_k": 0.1,
+    "col": "aux_corine_frac_12"
+  },
+  {
+    "concept_caption": "Arable land with crops for agriculture",
+    "is_max": true,
+    "theta_k": 0.65,
+    "col": "aux_corine_frac_21"
+  },
+  {
+    "concept_caption": "Pasture fields with grass for grazing animals",
+    "is_max": true,
+    "theta_k": 0.6,
+    "col": "aux_corine_frac_231"
+  },
+  {
+    "concept_caption": "Agricultural land used for crops, pasture or mixed farming",
+    "is_max": true,
+    "theta_k": 0.05,
+    "col": "aux_corine_frac_24"
+  },
+ {
+    "concept_caption": "Forested area with many trees",
+    "is_max": true,
+    "theta_k": 0.25,
+    "col": "aux_corine_frac_31"
+  },
+ {
+    "concept_caption": "Scrub area with trees, shrub, moors.",
+    "is_max": true,
+    "theta_k": 0.2,
+    "col": "aux_corine_frac_32"
+  },
+ {
+    "concept_caption": "Moorlands and heathlands with low vegetation",
+    "is_max": true,
+    "theta_k": 0.2,
+    "col": "aux_corine_frac_322"
+  },
+ {
+    "concept_caption": "Wetlands such as marshes, swamps, mudflats and bogs.",
+    "is_max": true,
+    "theta_k": 0.2,
+    "col": "aux_corine_frac_4"
+  },
+ {
+    "concept_caption": "Peat bogs",
+    "is_max": true,
+    "theta_k": 0.2,
+    "col": "aux_corine_frac_412"
+  },
+ {
+    "concept_caption": "Water bodies such as lakes, rivers and sea",
+    "is_max": true,
+    "theta_k": 0.2,
+    "col": "aux_corine_frac_5"
+  },
+ {
+    "concept_caption": "Warm area with high summer temperatures",
+    "is_max": true,
+    "theta_k": 22,
+    "col": "aux_bioclim_05"
+  },
+ {
+    "concept_caption": "Cold area with low winter temperatures",
+    "is_max": false,
+    "theta_k": 0,
+    "col": "aux_bioclim_06"
+  },
+ {
+    "concept_caption": "Wet area with a lot of rainfall",
+    "is_max": true,
+    "theta_k": 950,
+    "col": "aux_bioclim_12"
+  },
+ {
+    "concept_caption": "Remote area far from roads and infrastructure",
+    "is_max": true,
+    "theta_k": 1500,
+    "col": "aux_meandist_road"
+  },
+ {
+    "concept_caption": "Densely populated area with many houses",
+    "is_max": true,
+    "theta_k": 1500,
+    "col": "aux_pop_density"
+  }
+]

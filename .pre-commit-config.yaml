@@ -76,7 +76,7 @@ repos:
         args:
           [
             "--extend-ignore",
-            "E203,E402,E501,F401,F841,RST2,RST301",
+            "E203,E266,E402,E501,F401,F841,RST2,RST301",
             "--exclude",
             "logs/*,data/*",
           ]
@@ -123,7 +123,7 @@ repos:
       - id: codespell
         args:
           - --skip=logs/**,data/**,*.ipynb
-          # - --ignore-words-list=abc,def
+          - --ignore-words-list=mape,ans,fertil
 
   # jupyter notebook cell output clearing
   - repo: https://github.com/kynan/nbstripout
@@ -142,6 +142,6 @@ repos:
       - id: nbqa-flake8
         args:
           [
-            "--extend-ignore=E203,E402,E501,F401,F841",
+            "--extend-ignore=E203,E266,E402,E501,F401,F841",
             "--exclude=logs/*,data/*",
           ]

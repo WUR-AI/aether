@@ -6,14 +6,16 @@ dataset:
   data_dir: ${paths.data_dir}/
   modalities:
     coords:
+  use_unlabelled_data: false
   use_target_data: false
-  use_aux_data: true
+  use_aux_data: "all"
   seed: ${seed}
   cache_dir: ${paths.cache_dir}
 
 caption_builder:
   _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
-  templates_fname: v1.json
+  templates_fname: v3.json
+  concepts_fname: v4.json
   data_dir: ${paths.data_dir}/s2bms
   seed: ${seed}
 
@@ -22,5 +24,5 @@ num_workers: 8
 pin_memory: true
 split_mode: "from_file"
 save_split: false
-saved_split_file_name: "split_indices_s2bms_2024-08-14-1459.pth"
+saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
 seed: ${seed}

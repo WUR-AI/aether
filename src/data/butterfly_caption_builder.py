@@ -1,12 +1,12 @@
-import math
 import os
-from typing import Any, List, override
+from typing import List, override
 
 import pandas as pd
+import torch
 
 from src.data.base_caption_builder import (
     BaseCaptionBuilder,
-    get_adjective_for_percentage,
+    sample_adjective_for_percentage,
 )
 from src.data.base_dataset import BaseDataset
 from src.data_preprocessing.data_utils import (
@@ -16,8 +16,23 @@ from src.data_preprocessing.data_utils import (
 
 
 class ButterflyCaptionBuilder(BaseCaptionBuilder):
-    def __init__(self, templates_fname: str, data_dir: str, seed: int):
-        super().__init__(templates_fname, data_dir, seed)
+    def __init__(
+        self,
+        templates_fname: str,
+        concepts_fname: str,
+        data_dir: str,
+        seed: int,
+        n_captions_for_validation: int | str = "all",
+        return_aux_ids: bool = False,
+    ) -> None:
+        super().__init__(
+            templates_fname,
+            concepts_fname,
+            data_dir,
+            seed,
+            n_captions_for_validation,
+            return_aux_ids,
+        )
 
     @override
     def sync_with_dataset(self, dataset: BaseDataset) -> None:
@@ -27,19 +42,21 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         corine_columns = self.get_corine_column_keys()
         humanfootprint_columns = self.get_humanfootprint_column_keys()
         aux_columns = {**bioclim_columns, **corine_columns, **humanfootprint_columns}
-        self.column_to_metadata_map = {}
+        self.column_to_metadata_map = {k: {} for k in dataset.use_aux_data.keys()}
 
-        for id, key in enumerate(dataset.aux_names):
-            if "aux_corine_frac" in key and "top" in key:  # to avoid assert statement
-                description, units = None, None
-            else:
-                description, units = aux_columns.get(key) or (None, None)
-                assert description is not None, f"Key {key} not found in aux columns"
-            self.column_to_metadata_map[key] = {
-                "id": id,
-                "description": description,
-                "units": units,
-            }
+        for aux_cat, cols in dataset.use_aux_data.items():
+            for i, c in enumerate(cols):
+                if "top" in aux_cat:
+                    description, units = None, None
+                else:
+                    description, units = aux_columns.get(c) or (None, None)
+
+                self.column_to_metadata_map[aux_cat][c] = {
+                    "id": i,
+                    "description": description,
+                    "units": units,
+                }
+        self.sync_concepts()
 
     def get_corine_column_keys(self):
         """Returns metadata for corine columns."""
@@ -99,28 +116,33 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
     def _build_from_template(
         self,
         template_idx: int,
-        row: List[Any],
-        convert_corine_perc: bool = False,
+        aux: torch.Tensor,
+        top: List[str] | None = None,
+        convert_corine_perc: bool = True,
     ) -> str:
         """Create caption from template and row of auxiliary data."""
         template = self.templates[template_idx]
         tokens = self.tokens_in_template[template_idx]
         replacements = {}
+        if self.return_aux_ids:
+            ids = []
+
         for token in tokens:
-            if "aux_corine_frac" in token and "top" in token:
-                values_dict_top = self.column_to_metadata_map[token]
-                idx_top = values_dict_top["id"]
-                referral_token = row[
-                    idx_top
-                ]  # e.g., token 'aux_corine_frac_lowlevel_top_1' might refer to 'corine_frac_211' in this row
-                referral_token = (
-                    "aux_" + referral_token if "aux_" not in referral_token else referral_token
+            init_token = token
+            if "top" in token:
+                idx = self.column_to_metadata_map["top"][token]["id"]
+                token = f"aux_{top[idx]}"
+            try:
+                values_dict = self.column_to_metadata_map["aux"][token]
+            except KeyError:
+                raise KeyError(
+                    f"Token {token} not found in column_to_metadata_map {self.column_to_metadata_map}. Check if the token in the template matches the column names in the dataset."
                 )
-                values_dict = self.column_to_metadata_map[referral_token]
-            else:
-                values_dict = self.column_to_metadata_map[token]
+
             idx = values_dict["id"]
-            value = row[idx]
+            if self.return_aux_ids:
+                ids.append(idx)
+            value = aux[idx].item()
 
             formatted_desc = values_dict["description"].lower() or ""
             units = values_dict["units"]
@@ -128,16 +150,18 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
 
             if "corine" in token:
                 if convert_corine_perc:
-                    adjective = get_adjective_for_percentage(value)
+                    adjective = sample_adjective_for_percentage(value)
                     formatted_desc = f"{adjective} {formatted_desc}"
                 else:
                     formatted_desc = formatted_desc + f' ({round(value)} {units if units else ""})'
             else:
                 formatted_desc = formatted_desc + f' of {round(value)} {units if units else ""}'
-            replacements[token] = formatted_desc
+            replacements[init_token] = formatted_desc
 
-        template = self._fill(template, replacements)
-        return template
+        filled_template = self._fill(template, replacements)
+        if self.return_aux_ids:
+            return filled_template, ids
+        return filled_template
 
 
 if __name__ == "__main__":

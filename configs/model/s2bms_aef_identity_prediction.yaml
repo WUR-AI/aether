@@ -1,0 +1,40 @@
+_target_: src.models.predictive_model.PredictiveModel
+
+geo_encoder:
+  _target_: src.models.components.geo_encoders.encoder_wrapper.EncoderWrapper
+
+  encoder_branches:
+    - encoder:
+        _target_: src.models.components.geo_encoders.identity_encoder.IdentityEncoder
+        geo_data_name: aef
+        collapse: true
+      projector:
+        _target_: src.models.components.geo_encoders.mlp_projector.MLPProjector
+        nn_layers: 2
+        hidden_dim: 512
+        output_dim: 512
+
+  fusion_strategy: "mean"
+
+prediction_head:
+  _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
+
+trainable_modules: [prediction_head]
+
+metrics: ${metrics}
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.0
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+
+loss_fn:
+  _target_: src.models.components.loss_fns.bce_loss.BCELoss

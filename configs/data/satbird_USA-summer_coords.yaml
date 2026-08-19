@@ -7,7 +7,7 @@ dataset:
   modalities:
     coords:
   use_target_data: true
-  use_aux_data: false
+  use_aux_data: none
   seed: ${seed}
   cache_dir: ${paths.cache_dir}
   study_site: USA-summer

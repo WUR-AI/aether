@@ -1,7 +1,20 @@
 import math
 import os
+import threading
 
 import numpy as np
+from affine import Affine
+
+# Serialises concurrent reads/writes to the per-directory meta.csv log file.
+# A threading.Lock is sufficient here because meta.csv writes always happen in
+# the main process (workers write .npy tiles only); cross-process safety is not
+# needed.
+_meta_csv_lock = threading.Lock()
+
+# Sanity limit on reprojected tile dimensions.  calculate_default_transform
+# across UTM zone boundaries (e.g. a cross-equator reproject) can produce
+# degenerate output sizes that fill gigabytes of memory and peg the CPU.
+_MAX_REPROJECT_DIM = 5000
 import pandas as pd
 import rasterio
 from geotessera import GeoTessera
@@ -12,11 +25,22 @@ from rasterio.transform import from_origin
 from rasterio.warp import Resampling, calculate_default_transform, reproject
 
 from src.data_preprocessing.crs_utils import (
-    create_bbox_with_radius,
     crs_to_pixel_coords,
     get_point_utm_crs,
     point_reprojection,
 )
+
+
+class PartialTileError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
+class NoTileError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
 
 
 def reproject_dataset(src_raster: MemoryFile, dst_crs: str) -> MemoryFile:
@@ -33,6 +57,15 @@ def reproject_dataset(src_raster: MemoryFile, dst_crs: str) -> MemoryFile:
     transform, width, height = calculate_default_transform(
         src_raster.crs, dst_crs, src_raster.width, src_raster.height, *src_raster.bounds
     )
+
+    # Guard against degenerate output dimensions from cross-UTM-zone reprojects
+    # (e.g. a southern-hemisphere tile reprojected into a northern UTM CRS).
+    # Such transforms produce gigabyte-scale arrays and peg the CPU.
+    if width > _MAX_REPROJECT_DIM or height > _MAX_REPROJECT_DIM:
+        raise RuntimeError(
+            f"Reprojection output too large ({width}x{height}); "
+            "likely a cross-UTM-zone transform — skipping tile."
+        )
 
     # Update metadata
     metadata = src_raster.meta.copy()
@@ -58,6 +91,37 @@ def reproject_dataset(src_raster: MemoryFile, dst_crs: str) -> MemoryFile:
     return dst, memfile
 
 
+def get_tiles(lat_center, lon_center, half_size_m=75, year=2024):
+    """Find all 0.1deg tiles (referenced at 0.05deg) that overlap AOI."""
+
+    # Convert half-size from meters to degrees (approximate)
+    half_lat_deg = half_size_m / 111320.0
+    half_lon_deg = half_size_m / (111320.0 * np.cos(np.radians(lat_center)))
+
+    # AOI bounds
+    lat_min = lat_center - half_lat_deg
+    lat_max = lat_center + half_lat_deg
+    lon_min = lon_center - half_lon_deg
+    lon_max = lon_center + half_lon_deg
+
+    tile_size = 0.1
+
+    # Find tile indices overlapping the AOI
+    i_min = int(np.floor(lat_min / tile_size))
+    i_max = int(np.floor(lat_max / tile_size))
+    j_min = int(np.floor(lon_min / tile_size))
+    j_max = int(np.floor(lon_max / tile_size))
+
+    tiles = []
+    for i in range(i_min, i_max + 1):
+        for j in range(j_min, j_max + 1):
+            ref_lat = i * tile_size + 0.05  # tile reference (center)
+            ref_lon = j * tile_size + 0.05
+            tiles.append((year, round(ref_lon, 10), round(ref_lat, 10)))
+
+    return tiles
+
+
 def get_tessera_embeds(
     lon: float,
     lat: float,
@@ -66,6 +130,9 @@ def get_tessera_embeds(
     save_dir: str,
     tile_size: int,
     tessera_con: GeoTessera | None,
+    version: str,
+    padding: int = 100,
+    save_tif=False,
 ) -> None:
     """Obtain tessera embedding tile with specified size for a given coordinates.
 
@@ -76,86 +143,168 @@ def get_tessera_embeds(
     :param save_dir: data directory to save embeddings
     :param tile_size: tile size in pixels
     :param tessera_con: GeoTessera instance
+    :param padding: how many meters to pad initial bbox, fixes some inconsistencies when mosaicing
+    :param save_tif: boolean to indicate if to save tif
     :return: None
     """
 
+    # Skip if tile exists
     embed_tile_name = os.path.join(save_dir, f"tessera_{name_loc}.npy")
     if os.path.exists(embed_tile_name):
         return
 
-    # Local utm projection
-    utm_crs = get_point_utm_crs(lon, lat)
+    # Local utm projection.  Points within 0.15° of the equator may straddle
+    # the UTM zone boundary, causing reproject_dataset() to compute a
+    # cross-hemisphere transform with degenerate output dimensions.  Snapping
+    # to the northern zone keeps all fetched tiles in the same hemisphere and
+    # avoids the cross-zone reprojection entirely.
+    snap_lat = max(lat, 0.0) if abs(lat) < 0.15 else lat
+    utm_crs = get_point_utm_crs(lon, snap_lat)
     lon_utm, lat_utm = point_reprojection(lon, lat, "EPSG:4326", utm_crs)
 
-    # Bounding box
-    radius = math.ceil(tile_size / 2) + 10
-    bbox = create_bbox_with_radius(lon, lat, radius=radius, utm_crs=utm_crs, return_wgs=True)
-
     # Request to tessera
-    tiles_to_fetch = tessera_con.registry.load_blocks_for_region(
-        bounds=bbox.bounds, year=int(year)
+    radius = math.ceil(tile_size / 2) + padding
+    tiles_to_fetch = get_tiles(
+        lat_center=lat, lon_center=lon, half_size_m=radius * 10, year=int(year)
     )
 
     # Mosaic returned tiles for the bbox
     tiles = []
     memfiles = []
 
-    for _, _, _, embedding, crs, transform in tessera_con.fetch_embeddings(tiles_to_fetch):
-        memfile = MemoryFile()
-        memfiles.append(memfile)
+    def _close_all():
+        for t in tiles:
+            try:
+                t.close()
+            except Exception as e:
+                print(f"Failed to close resource: {e}")
+        for mf in memfiles:
+            try:
+                mf.close()
+            except Exception as e:
+                print(f"Failed to close resource: {e}")
 
-        tile = memfile.open(
-            driver="GTiff",
-            height=embedding.shape[0],
-            width=embedding.shape[1],
-            count=embedding.shape[2],
-            dtype=embedding.dtype,
-            crs=crs,
-            transform=transform,
-        )
+    try:
+        for _, _, _, embedding, crs, transform in tessera_con.fetch_embeddings(tiles_to_fetch):
+            memfile = MemoryFile()
+            memfiles.append(memfile)
 
-        for c in range(embedding.shape[2]):
-            tile.write(embedding[:, :, c], c + 1)
+            tile = memfile.open(
+                driver="GTiff",
+                height=embedding.shape[0],
+                width=embedding.shape[1],
+                count=embedding.shape[2],
+                dtype=embedding.dtype,
+                crs=crs,
+                transform=transform,
+            )
 
-        reproject_tile, reproject_memfile = reproject_dataset(tile, utm_crs)
-        tiles.append(reproject_tile)
-        if reproject_memfile:
-            memfiles.append(reproject_memfile)
+            for c in range(embedding.shape[2]):
+                tile.write(embedding[:, :, c], c + 1)
+
+            reproject_tile, reproject_memfile = reproject_dataset(tile, utm_crs)
+            tiles.append(reproject_tile)
+            if reproject_memfile:
+                memfiles.append(reproject_memfile)
+    except Exception as e:
+        print(f"Failed to close resource: {e}")
+        _close_all()
+        raise
+
+    if len(tiles) == 0:
+        _close_all()
+        raise NoTileError(f"No tiles found for {name_loc}")
 
     mosaic, mosaic_transform = merge(tiles)
     mosaic = mosaic.transpose(1, 2, 0)
 
-    for tile in tiles:
-        tile.close()
-    for mf in memfiles:
-        mf.close()
+    _close_all()
 
     # Crop patch tile
-    col, row = crs_to_pixel_coords(lon_utm, lat_utm, mosaic_transform)
+    c, r = crs_to_pixel_coords(lon_utm, lat_utm, mosaic_transform)
     half = tile_size // 2
-    row_min = row - half
-    row_max = row + half
-    col_min = col - half
-    col_max = col + half
-    crop = mosaic[row_min:row_max, col_min:col_max, :]
 
-    # Save array
-    os.makedirs(save_dir, exist_ok=True)
-    np.save(embed_tile_name, crop)
-    print(f"Array saved as {embed_tile_name}")
+    corr_odd = 1 if tile_size % 2 == 1 else 0
+
+    row_min = r - half
+    row_max = r + half + corr_odd  # +1: slice end is exclusive, needed for odd tile_size
+    col_min = c - half
+    col_max = c + half + corr_odd
+
+    h, w = mosaic.shape[0], mosaic.shape[1]
+    if row_min < 0 or col_min < 0 or row_max > h or col_max > w:
+        # retry with bigger padding so the mosaic covers the full crop window
+        if padding > 500:
+            raise NoTileError(f"Padding {padding} > 500")
+        return get_tessera_embeds(
+            lon,
+            lat,
+            name_loc,
+            year,
+            save_dir,
+            tile_size,
+            tessera_con,
+            padding=padding + 100,
+            version=version,
+        )
+
+    crop = mosaic[row_min:row_max, col_min:col_max, :]
+    if not crop.shape == (tile_size, tile_size, 128):
+        if crop.min() == 0.0 and crop.max() == 0.0:
+            raise NoTileError(f"No tiles found for {name_loc}")
+        raise PartialTileError(f"Crop {name_loc}, size is {crop.shape}")
+
+    if crop.min() == 0.0 and crop.max() == 0.0:
+        raise NoTileError(f"Crop {name_loc} has embeddings of 0.0s with tiles: {tiles_to_fetch}")
+
+    if not save_tif:
+        # Save array
+        os.makedirs(save_dir, exist_ok=True)
+        np.save(embed_tile_name, crop)
+        print(f"Array saved as {embed_tile_name}")
+
+    else:
+        # Temp save tif too
+        crop_transform = mosaic_transform * Affine.translation(col_min, row_min)
+        height, width, channels = crop.shape
+
+        with rasterio.open(
+            embed_tile_name[:-4] + ".tif",
+            "w",
+            driver="GTiff",
+            height=height,
+            width=width,
+            count=channels,
+            dtype=crop.dtype,
+            crs=utm_crs,
+            transform=crop_transform,
+        ) as dst:
+            for i in range(channels):
+                dst.write(crop[:, :, i], i + 1)
+        print(f"tif saved to {embed_tile_name[:-4]}.tif")
 
     # Log its metadata
     meta_df = pd.DataFrame(
-        {"id": [name_loc], "year": [year], "lon": [lon], "lat": [lat], "crs": [utm_crs]}
+        {
+            "id": [name_loc],
+            "year": [year],
+            "lon": [lon],
+            "lat": [lat],
+            "crs": [utm_crs],
+            "version": [version],
+        },
     )
 
     meta_file = f"{save_dir}/meta.csv"
 
-    if os.path.exists(meta_file):
-        meta_df = pd.concat([meta_df, pd.read_csv(meta_file)], ignore_index=True)
-
-    meta_df.to_csv(meta_file, index=False)
-    print(f"Meta data logged to {meta_file}")
+    with _meta_csv_lock:
+        try:
+            if os.path.exists(meta_file):
+                meta_df = pd.concat([meta_df, pd.read_csv(meta_file)], ignore_index=True)
+            meta_df.to_csv(meta_file, index=False)
+            print(f"Meta data logged to {meta_file}")
+        except Exception as e:
+            print(f"Warning: could not update meta.csv ({e}). Tile was saved successfully.")
 
 
 def tessera_from_df(
@@ -164,6 +313,8 @@ def tessera_from_df(
     year: int,
     tile_size: int = 256,
     cache_dir: str = "temp/",
+    logs_dir: str = "logs",
+    version="v1",
 ) -> None:
     """Obtains Tessera embeddings from a CSV file for each (lon, lat).
 
@@ -172,19 +323,36 @@ def tessera_from_df(
     :param year: year for the embeddings
     :param tile_size: tile size in meters
     :param cache_dir: path to cache directory
+    :param version: version of the tessera dataset
     :return: None
     """
-
+    assert version in ["v1", "v1.1"]
+    dataset_var = {"v1.1": "cambridge", "1.1": "cambridge", "1.0": "vultr", "v1.0": "vultr"}[
+        version
+    ]
     # Tessera connection
     cache_dir = os.path.join(cache_dir, "tessera")
-    gt = GeoTessera(cache_dir=cache_dir)
-
+    gt = GeoTessera(
+        cache_dir=cache_dir,
+        embeddings_dir=cache_dir,
+        dataset_version=version,
+        dataset_variant=dataset_var,
+    )
     # Iter each coord
     n = len(model_ready_df)
     for i, row in model_ready_df.iterrows():
         print(f"{i}/{n}")
-        # Get tessera embeds
-        get_tessera_embeds(row.lon, row.lat, row.name_loc, year, f"{data_dir}/", tile_size, gt)
+        try:
+            get_tessera_embeds(
+                row.lon, row.lat, row.name_loc, year, f"{data_dir}/", tile_size, gt, version
+            )
+        except Exception as e:
+            if isinstance(e, NoTileError):
+                path = os.path.join(logs_dir, "tessera_skipped.txt")
+                with open(path, "a") as f:
+                    f.write(f"{row.name_loc}\n")
+            else:
+                print(f"{row.name_loc} did not get embedded because: {e}")
 
 
 def inspect_np_arr_as_tiff(
@@ -245,3 +413,32 @@ def inspect_np_arr_as_tiff(
             dst.write(arr_to_write[i], i + 1)
 
     print(f"Tiff version of np array saved to {file_path}")
+
+
+if __name__ == "__main__":
+    # os.chdir("../..")
+
+    print(os.getcwd())
+
+    # df = pd.read_csv("data/heat_guatemala/model_ready_heat_guatemala.csv")
+    # df = pd.read_csv("/lustre/backup/SHARED/AIN/aether/data/s2bms/model_ready_s2bms.csv")
+    df = pd.read_csv("data/s2bms/model_ready_s2bms.csv")
+
+    # df = pd.read_csv("data/s2bms/model_ready_s2bms-unlabelled-20260529.csv")
+    # df = df[df.split == "train"]
+    df.sort_values(by="name_loc", inplace=True, ascending=False)
+    df.reset_index(drop=True, inplace=True)
+
+    if os.path.exists("logs/tessera_skipped.txt"):
+        with open(os.path.join("logs", "tessera_skipped.txt")) as f:
+            skipped = set(f.read().splitlines())
+        df = df[~df.name_loc.isin(skipped)]
+
+    tessera_from_df(
+        df,
+        "data/s2bms/eo/tessera",
+        year=2019,
+        tile_size=256,
+        cache_dir="data/cache",
+        version="v1.1",
+    )

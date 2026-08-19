@@ -1,10 +1,12 @@
 from src.data.butterfly_dataset import ButterflyDataset
+from src.data.heat_guatemala_dataset import HeatGuatemalaDataset
 from src.data.satbird_dataset import SatBirdDataset
+from src.data.yield_africa_dataset import YieldAfricaDataset
 
 
 def test_datasets_generic_properties(request, tmp_path, sample_csv):
     """This test checks that all datasets implement the basic properties and methods."""
-    list_datasets = [ButterflyDataset, SatBirdDataset]
+    list_datasets = [ButterflyDataset, SatBirdDataset, HeatGuatemalaDataset, YieldAfricaDataset]
     use_mock = request.config.getoption("--use-mock")
     if use_mock:
         csv_dir = sample_csv
@@ -17,10 +19,11 @@ def test_datasets_generic_properties(request, tmp_path, sample_csv):
             cache_dir=str(tmp_path),
             modalities={"coords": None},
             use_target_data=True,
-            use_aux_data=True,
+            use_aux_data="all",
             seed=0,
             mock=use_mock,
         )
+        dataset.setup()
 
         assert len(dataset) > 0, f"{ds_class.__name__} is empty."
         sample = dataset[0]
@@ -36,18 +39,31 @@ def test_datasets_generic_properties(request, tmp_path, sample_csv):
         assert hasattr(
             dataset, "target_names"
         ), f"'target_names' attribute missing in {ds_class.__name__}."
-        assert hasattr(
-            dataset, "aux_names"
-        ), f"'aux_names' attribute missing in {ds_class.__name__}."
         assert hasattr(dataset, "records"), f"'records' attribute missing in {ds_class.__name__}."
         assert hasattr(
             dataset, "dataset_name"
         ), f"'dataset_name' attribute missing in {ds_class.__name__}."
-        assert hasattr(dataset, "mode"), f"'mode' attribute missing in {ds_class.__name__}."
+        assert hasattr(
+            dataset, "use_features"
+        ), f"'use_features' attribute missing in {ds_class.__name__}."
+        assert hasattr(
+            dataset, "use_aux_data"
+        ), f"'use_aux_data' attribute missing in {ds_class.__name__}."
+        assert hasattr(
+            dataset, "use_target_data"
+        ), f"'use_target_data' attribute missing in {ds_class.__name__}."
+        assert hasattr(
+            dataset, "tabular_dim"
+        ), f"'tabular_dim' attribute missing in {ds_class.__name__}."
+        assert hasattr(dataset, "setup"), f"'setup' method missing in {ds_class.__name__}."
+        assert hasattr(
+            dataset, "get_records"
+        ), f"'get_records' method missing in {ds_class.__name__}."
 
 
 def test_datamodule_random_split_and_loaders(create_butterfly_dataset):
     dataset, dm = create_butterfly_dataset
+    dm.setup()
 
     assert len(dm.data_train) == 4
     assert len(dm.data_val) == 1
@@ -61,6 +77,7 @@ def test_datamodule_random_split_and_loaders(create_butterfly_dataset):
 def test_random_split_is_deterministic(create_butterfly_dataset):
     dataset1, dm1 = create_butterfly_dataset
     dataset2, dm2 = create_butterfly_dataset
+    dm1.setup(), dm2.setup()
 
     assert dm1.data_train.indices == dm2.data_train.indices
     assert dm1.data_val.indices == dm2.data_val.indices

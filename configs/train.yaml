@@ -4,7 +4,7 @@
 # order of defaults determines the order in which configs override each other
 defaults:
   - _self_
-  - data: butterfly_coords_text
+  - data: butterfly_coords
   - model: predictive_geoclip
   - callbacks: default
   - logger: ${oc.env:LOGGER,wandb}
@@ -12,6 +12,7 @@ defaults:
   - paths: ${oc.env:STORAGE_MODE,local}
   - extras: default
   - hydra: default
+  - metrics: s2bms_predictive
 
   # experiment configs allow for version control of specific hyperparameters
   # e.g. best hyperparameters for given model and datamodule
@@ -42,8 +43,14 @@ train: True
 # lightning chooses best weights based on the metric specified in checkpoint callback
 test: True
 
+validate: True
+
 # simply provide checkpoint path to resume training
 ckpt_path: null
 
 # seed for random number generators in pytorch, numpy and python.random
 seed: 12345
+
+# wandb projects with valid checkpoints
+# Important to keep updating!
+projects:

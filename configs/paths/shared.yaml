@@ -5,11 +5,13 @@
 root_dir: ${oc.env:PROJECT_ROOT,./}
 
 # path to data directory
-data_dir: ${oc.env:DATA_DIR,oc.env:SHARED_ROOT/data/,${paths.root_dir}/data/}
-cache_dir: ${oc.env:CACHE_DIR,${paths.data_dir}/cache}
+data_dir: ${oc.env:DATA_DIR,${oc.env:SHARED_ROOT,${paths.root_dir}}/data}
+cache_dir: ${oc.env:SHARED_CACHE,${paths.data_dir}/cache}
+checkpoint_root: ${paths.data_dir}/checkpoints/
+checkpoint_dir: ${paths.checkpoint_root}/${oc.select:logger.wandb.project,other}_ckpt
 
 # path to logging directory
-log_dir: ${oc.env:SHARED_ROOT}/logs/
+log_dir: ${oc.env:SHARED_ROOT,${paths.root_dir}}/logs/
 
 # path to output directory, created dynamically by hydra
 # path generation pattern is specified in `configs/hydra/local.yaml`
@@ -21,4 +23,4 @@ work_dir: ${hydra:runtime.cwd}
 
 # huggingface cache directory
 # can be overridden via HF_HOME environment variable
-huggingface_cache: ${oc.env:HF_HOME,oc.env:SHARED_CACHE/huggingface}
+huggingface_cache: ${oc.env:HF_HOME,${oc.env:SHARED_CACHE}/huggingface}

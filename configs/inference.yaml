@@ -1,0 +1,52 @@
+defaults:
+  - paths: ${oc.env:STORAGE_MODE,local}
+  - extras: default
+  - hydra: default
+  - data: s2bms_prediction
+  - _self_
+
+# task name, determines output directory path
+task_name: "inference"
+tags: ["dev"]
+seed: 12345
+
+# If set, inference.py will load this merged checkpoint directly.
+#inference_ckpt_path: ${paths.log_dir}${task_name}/2026-04-07_12-56-16/inference_model.ckpt
+
+# If `inference_ckpt_path` is not set, stitch the inference model from:
+# - predictive ckpt (provides prediction_head weights)
+# - alignment ckpt (provides text_encoder weights + geo_encoder)
+predictive_ckpt_path: ${paths.checkpoint_root}/s2bms_prediction_ckpt/1cti8qah_epoch_037.ckpt
+alignment_ckpt_path: ${paths.checkpoint_root}/s2bms_alignment_ckpt/dmts2wpm_epoch_097.ckpt
+
+# If set, inference.py will save a merged inference checkpoint you can reload with
+# `inference_ckpt_path`.
+#save_inference_ckpt_path: ${paths.checkpoint_root}/s2bms_inference_model/${now:%Y-%m-%d}_${now:%H-%M-%S}.ckpt
+inference_ckpt_path: ${paths.checkpoint_root}/s2bms_inference_model/2026-06-09_13-17-38.ckpt
+#save_inference_ckpt_path: null
+save_ckpt: true
+
+training_order: ["prediction_model", "alignment_model"]
+
+data:
+  dataset:
+    modalities:
+      aef_avr:
+        path: ${paths.data_dir}/s2bms/eo/avr_aef_128.csv
+        enable_nans: true
+
+    use_target_data: false
+    use_aux_data: "all"
+    dtype: float32
+    return_name_loc: true
+  caption_builder:
+    _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
+    templates_fname: v5.json
+    concepts_fname: v4.json
+    data_dir: ${paths.data_dir}/s2bms
+    seed: ${seed}
+  num_workers: 8
+  persistent_workers: false
+  pin_memory: false
+  batch_size: 64
+  saved_split_file_name: "s2bms_union_val_test.pth"

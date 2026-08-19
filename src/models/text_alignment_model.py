@@ -1,69 +1,170 @@
+import logging
 from typing import Dict, Tuple, override
 
 import torch
 import torch.nn.functional as F
 
 from src.models.base_model import BaseModel
-from src.models.components.eo_encoders.base_eo_encoder import BaseEOEncoder
+from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
 from src.models.components.loss_fns.base_loss_fn import BaseLossFn
-from src.models.components.pred_heads.linear_pred_head import (
-    BasePredictionHead,
+from src.models.components.metrics.contrastive_validation import (
+    RetrievalContrastiveValidation,
 )
-from src.models.components.text_encoders.base_text_encoder import (
-    BaseTextEncoder,
-)
+from src.models.components.metrics.metrics_wrapper import MetricsWrapper
+from src.models.components.projectors.base_projector import BaseProjector
+from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
+
+log = logging.getLogger(__name__)
 
 
 class TextAlignmentModel(BaseModel):
     def __init__(
         self,
-        eo_encoder: BaseEOEncoder,
+        trainable_modules: list[str],
+        geo_encoder: BaseGeoEncoder,
         text_encoder: BaseTextEncoder,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
-        loss_fn: BaseLossFn,
-        trainable_modules: list[str] | None = None,
-        prediction_head: BasePredictionHead | None = None,
+        loss_fn: BaseLossFn | None = None,
+        metrics: MetricsWrapper | None = None,
+        geo_adapter: BaseProjector | None = None,
+        text_adapter: BaseProjector | None = None,
         num_classes: int | None = None,
+        tabular_dim: int | None = None,
+        ks: list[int] | None = None,
+        match_to_geo: bool = True,
     ) -> None:
         """Implementation of contrastive text-eo modality alignment model.
 
-        :param eo_encoder: eo encoder module (replaceable)
-        :param text_encoder: text encoder module (replaceable)
-        :param optimizer: optimizer to use for training
-        :param scheduler: scheduler to use for training
-        :param loss_fn: loss function to use (contrastive)
-        :param trainable_modules: list of modules to train (parts/modules or modules, modules)
-        :param prediction_head: optional prediction head module
+        :param trainable_modules: which modules to train
+        :param geo_encoder: module for encoding geo data
+        :param text_encoder: module for encoding text data
+        :param optimizer: optimizer for the model weight update
+        :param scheduler: scheduler for the model weight update
+        :param loss_fn: loss function
+        :param metrics: metrics to track for model performance estimation
         :param num_classes: number of target classes
+        :param tabular_dim: number of tabular features
+        :param ks: list of ks
+        :param match_to_geo: whether to match dimensions of text encoder to geo_encoder or visa-
+            versa
         """
-        super().__init__(trainable_modules, optimizer, scheduler, loss_fn, num_classes)
 
-        # Encoders configuration
-        self.eo_encoder = eo_encoder
-        self.text_encoder = text_encoder
-        # TODO: if eo==geoclip_img pass on shared mlp
+        super().__init__(
+            trainable_modules=trainable_modules,
+            geo_encoder=geo_encoder,
+            text_encoder=text_encoder,
+            prediction_head=None,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            loss_fn=loss_fn,
+            metrics=metrics,
+            num_classes=num_classes,
+            tabular_dim=tabular_dim,
+        )
+
+        self.geo_adapter = geo_adapter
+        self.text_adapter = text_adapter
+        # Metrics
+        self.ks = ks or [5, 10, 15]
+        self.log_kwargs = dict(on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+
+        self.match_to_geo = match_to_geo
+
+    @override
+    def _setup(self, stage: str = "fit") -> None:
+        """Set up encoders and missing adapters/projectors based data-bound configurations (through
+        datamodule), This method is called after trainer is initialized and datamodule is
+        available.
+
+        Otherwise, some configuration variables must be made available
+        """
+        # Set up encoders and missing adapters/projectors
+        log.info("-------Model------------")
+        new_modules = [f"geo_encoder.{i}" for i in self.geo_encoder.setup() or []]
+
+        if self.geo_adapter:
+            self.geo_adapter.set_input_dim(self.geo_encoder.output_dim)
+            new_modules.extend([f"geo_adapter.{i}" for i in self.geo_adapter.setup() or []])
+
+        new_modules.extend([f"text_encoder.{i}" for i in self.text_encoder.setup() or []])
+        if self.text_adapter:
+            self.text_adapter.set_input_dim(self.text_encoder.output_dim)
+            new_modules.extend([f"text_adapter.{i}" for i in self.text_adapter.setup() or []])
+
+        self.trainable_modules.extend(new_modules)
 
         # Extra projector for text encoder if eo and text dim not match
-        if self.eo_encoder.output_dim != self.text_encoder.output_dim:
-            self.text_encoder.add_projector(projected_dim=self.eo_encoder.output_dim)
-            self.trainable_modules.append("text_encoder.extra_projector")
+        geo_branch_dim = (
+            self.geo_adapter.output_dim if self.geo_adapter else self.geo_encoder.output_dim
+        )
+        text_branch_dim = (
+            self.text_adapter.output_dim if self.text_adapter else self.text_encoder.output_dim
+        )
 
-        # Prediction head
-        self.prediction_head = prediction_head
-        if self.prediction_head is not None:
-            self.prediction_head.set_dim(
-                input_dim=self.eo_encoder.output_dim, output_dim=num_classes
-            )
-            self.prediction_head.configure_nn()
+        if geo_branch_dim != text_branch_dim:
+            if self.geo_adapter or self.text_adapter:
+                log.info(
+                    f"You opted to use:{' geo' if self.geo_adapter else '' and ' text' if self.text_adapter else ''} adapter",
+                    "but you miss-configured output dimensions:\n"
+                    f"geo: {geo_branch_dim} vs text: {text_branch_dim}\n",
+                    "Please try again.",
+                )
+            elif self.match_to_geo:
+                self.text_encoder.add_projector(projected_dim=self.geo_encoder.output_dim)
+                self.trainable_modules.append("text_encoder.extra_projector")
+            else:
+                self.geo_encoder.add_projector(projected_dim=self.text_encoder.output_dim)
+                self.trainable_modules.append("geo_encoder.extra_projector")
 
-        # Unify dtypes
-        if self.eo_encoder.dtype != self.text_encoder.dtype:
-            self.eo_encoder = self.eo_encoder.to(self.text_encoder.dtype)
-            print(f"Eo encoder dtype changed to {self.eo_encoder.dtype}")
+        log.info("------------------------")
 
-        # Freezing requested parts
-        self.freezer()
+    def _on_x_star(self):
+        # Configure contrastive retrieval evaluation
+        if hasattr(self, "_retrieval_setup_flag"):
+            if self._retrieval_setup_flag:
+                return
+
+        self.setup_retrieval_evaluation(verbose=0)
+        self._retrieval_setup_flag = True
+        log.info("Retrieval evaluation configured")
+
+    def setup_retrieval_evaluation(
+        self,
+        use_saved_threshold_if_available=True,
+        overwrite_existing_thresholds=False,
+        save_newly_computed_threshold=True,
+        compute_train_threshold=True,
+        verbose=1,
+    ):
+        # Configure concept thresholds for contrastive retrieval evaluation:
+        self.trainer.datamodule.setup_conceptcaption_validation_parameters(
+            use_saved_threshold_if_available=use_saved_threshold_if_available,
+            overwrite_existing_thresholds=overwrite_existing_thresholds,
+            save_newly_computed_threshold=save_newly_computed_threshold,
+            compute_train_threshold=compute_train_threshold,
+            verbose=verbose,
+        )
+
+        self.concept_configs = self.trainer.datamodule.concept_configs
+        self.concepts = self.trainer.datamodule.concepts
+        self.concept_names = self.trainer.datamodule.concept_names
+        self.dynamic_k_baselines = self.trainer.datamodule.dynamic_k_baselines
+
+        # Set up loss and metrics for contrastive retrieval evaluation:
+        self.contrastive_val = RetrievalContrastiveValidation(self.ks, self.concept_configs)
+        self.outputs_epoch_memory = []
+
+        for trainable_module in self.trainable_modules:
+            if "text" in trainable_module:
+                self.concept_embeds = None
+                return
+
+        # Encode concepts if text branch is frozen
+        with torch.inference_mode():
+            self.concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
+            self.concept_embeds = F.normalize(self.concept_embeds, dim=1)
+            self.concept_embeds = self.concept_embeds.to(self.device)
 
     @override
     def forward(
@@ -74,113 +175,185 @@ class TextAlignmentModel(BaseModel):
         """Model forward logic."""
 
         # Embed modalities
-        eo_feats = self.eo_encoder(batch)
+        geo_feats = self.geo_encoder(batch)
+        if self.geo_adapter:
+            geo_feats = self.geo_adapter(geo_feats)
         text_feats = self.text_encoder(batch, mode)
-        return eo_feats, text_feats
+        if self.text_adapter:
+            text_feats = self.text_adapter(text_feats)
+
+        # Change dtype of geo data if it does not match text dtype
+        if geo_feats.dtype != text_feats.dtype:
+            geo_feats = geo_feats.to(text_feats.dtype)
+        return geo_feats, text_feats
 
     @override
-    def _step(self, batch: Dict[str, torch.Tensor], mode: str = "train") -> torch.Tensor:
+    def _step(self, batch: Dict[str, torch.Tensor], mode: str = "train"):
         """Model step logic."""
 
         # Embed
-        eo_feats, text_feats = self.forward(batch, mode)
-        local_batch_size = eo_feats.size(0)
+        geo_feats, text_feats = self.forward(batch, mode)
+        if geo_feats.isnan().any():  # debugging
+            log.debug(geo_feats)
+            log.debug(batch["name_loc"])
+            exit()
+        local_batch_size = geo_feats.size(0)
 
         # batch recomposing in ddp
-        if self.trainer.world_size > 1:
-            feats = torch.stack([eo_feats, text_feats], dim=0)
+        if (
+            self.loss_fn is not None
+            and self.loss_fn.name in ["CLIPLoss", "SoftContrastiveLoss"]
+            and self.trainer.world_size > 1
+        ):
+            feats = torch.stack([geo_feats, text_feats], dim=0)
             feats = self.all_gather(feats)
             feats = feats.reshape(2, -1, feats.size(-1))
-            eo_feats, text_feats = feats[0], feats[1]
+            geo_feats, text_feats = feats[0], feats[1]
 
-        # Get similarities
-        with torch.no_grad():
-            _ = self._cos_sim_calc(eo_feats, text_feats, mode)
+        # Get aux values
+        aux_values = batch["aux"].get("aux")
+        aux_ids_per_caption = batch.get("text_aux_ids")
 
         # Get loss
-        loss = self.loss_fn(eo_feats, text_feats)
-        self.log(
-            f"{mode}_loss",
-            loss,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-            sync_dist=True,
-            batch_size=local_batch_size,
-        )
-        if self.loss_fn.__getattr__("log_temp") and mode == "train":
-            self.log(
-                "temp",
-                self.loss_fn.__getattr__("log_temp").exp(),
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                sync_dist=True,
-                batch_size=local_batch_size,
+        if self.loss_fn is not None:
+            loss = self.loss_fn(
+                geo_feats,
+                text_feats,
+                mode=mode,
+                aux_values=aux_values,
+                aux_ids_per_caption=aux_ids_per_caption,
+            )
+            if self.loss_fn.name == "SigLIPLoss" and self.trainer.world_size > 1:
+                raise NotImplementedError("SigLIPLoss is not implemented in distributed training.")
+
+            # Logging
+            self.log(f"{mode}_loss", loss, batch_size=local_batch_size, **self.log_kwargs)
+            if hasattr(self.loss_fn, "log_temp") and mode == "train":
+                self.log(
+                    "temp",
+                    self.loss_fn.__getattr__("log_temp").exp(),
+                    batch_size=local_batch_size,
+                    **self.log_kwargs,
+                )
+        else:
+            loss = None
+
+        # Get similarities
+        if self.metrics is not None:
+            with torch.no_grad():
+                metrics = self.metrics(
+                    mode=mode,
+                    geo_feats=geo_feats,
+                    text_feats=text_feats,
+                    local_batch_size=local_batch_size,
+                )
+            self.log_dict(metrics, batch_size=local_batch_size, **self.log_kwargs)
+
+        if mode in ["val", "test"]:
+            self.outputs_epoch_memory.append(
+                {
+                    # Store on CPU to avoid holding the whole epoch on GPU.
+                    "geo_feats": geo_feats.detach().cpu(),
+                    "aux_vals": aux_values.detach().cpu() if aux_values is not None else None,
+                }
             )
 
         return loss
 
-    def _cos_sim_calc(self, eo_feats, text_feats, mode, log=True):
-        """Calculate cosine similarity between eo and text embeddings and logs it."""
-        # Similarity matrix
-        cos_sim_matrix = F.cosine_similarity(eo_feats[:, None, :], text_feats[None, :, :], dim=-1)
+    def _on_epoch_end(self, mode: str, verbose=0):
 
-        local_batch_size = eo_feats.size(0)
+        # Combine batches
+        geo_feats = torch.cat([x["geo_feats"] for x in self.outputs_epoch_memory], dim=0)
+        geo_feats = geo_feats.to(self.device, non_blocking=True)
 
-        # Average for positive and negative pairs
-        # TODO change label option if we change what gets treated to be pos/neg
-        id_matrix = torch.eye(cos_sim_matrix.shape[0], dtype=torch.bool)
-        pos_sim = cos_sim_matrix[id_matrix]
-        neg_sim = cos_sim_matrix[~id_matrix]
+        aux_vals = torch.cat([x["aux_vals"] for x in self.outputs_epoch_memory], dim=0).to(
+            self.device, non_blocking=True
+        )
 
-        # Average
-        avr_sim = torch.mean(cos_sim_matrix)
-        sub_neg_sim = neg_sim[
-            torch.randperm(len(neg_sim))[: len(pos_sim)]
-        ]  # pick same amount of negatives as positives
-        balanced_sim = torch.cat([pos_sim, sub_neg_sim], dim=0)
-        balanced_avr_sim = torch.mean(balanced_sim)
+        # Rank on similarity
+        similarity = self.concept_similarities(geo_feats)
 
-        if log:
-            self.log(
-                f"{mode}_avr_sim",
-                avr_sim,
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                sync_dist=True,
-                batch_size=local_batch_size,
-            )
-            self.log(
-                f"{mode}_avr_sim_balanced",
-                balanced_avr_sim,
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                sync_dist=True,
-                batch_size=local_batch_size,
-            )
-            self.log(
-                f"{mode}_pos_sim",
-                torch.mean(pos_sim),
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                sync_dist=True,
-                batch_size=local_batch_size,
-            )
-            self.log(
-                f"{mode}_neg_sim",
-                torch.mean(neg_sim),
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                sync_dist=True,
-                batch_size=local_batch_size,
-            )
-        return avr_sim, pos_sim, neg_sim
+        concept_scores = self.contrastive_val(similarity, aux_values=aux_vals)
 
+        avr_scores = {f"{mode}_avr_top-{k}": [] for k in self.ks if k != "dynamic_k"}
+        avr_scores[f"{mode}_avr_top-dyn_k"] = []
+        avr_scores[f"{mode}_avr_top-dyn_k_index"] = []
+        for i, result in concept_scores.items():  # loop through concepts
+            if verbose:
+                log.info(
+                    f'\nConcept "{self.concepts[i]}" average top-k accuracies in {mode} split:'
+                )
+            for k, v in result.items():  # loop through k values
+                if k == "dynamic_k":
+                    self.log(f"{mode}_dyn_k_{self.concept_names[i]}", v, **self.log_kwargs)
+                    indexed_v = (v - self.dynamic_k_baselines[mode][self.concept_names[i]]) / (
+                        100 - self.dynamic_k_baselines[mode][self.concept_names[i]]
+                    )
+                    self.log(
+                        f"{mode}_dyn_k_index_{self.concept_names[i]}", indexed_v, **self.log_kwargs
+                    )
 
-if __name__ == "__main__":
-    _ = TextAlignmentModel(None, None, None, None, None, None, None)
+                    avr_scores[f"{mode}_avr_top-dyn_k"].append(v)
+                    avr_scores[f"{mode}_avr_top-dyn_k_index"].append(indexed_v)
+                else:
+                    avr_scores[f"{mode}_avr_top-{k}"].append(v)
+
+                if verbose:
+                    log.info(f"Top-{k}: {v:.1f}%")
+
+        for k, v in avr_scores.items():
+            avr_scores[k] = sum(v) / len(v)
+
+        self.log_dict(avr_scores)
+
+        # Reset memory
+        self.outputs_epoch_memory.clear()
+
+    @override
+    def on_validation_epoch_end(self):
+        if self.loss_fn is not None:
+            val_loss = self.trainer.callback_metrics["val_loss"]
+            if self._best_loss is None or val_loss < self._best_loss:
+                self._best_loss = val_loss.detach()
+            self.log("best_val_loss", self._best_loss, sync_dist=False)
+
+        return self._on_epoch_end("val")
+
+    @override
+    def on_test_epoch_end(self):
+        return self._on_epoch_end("test")
+
+    def concept_similarities(self, geo_embeds, concept=None) -> torch.Tensor:
+        device_type = geo_embeds.device.type
+        is_bf16 = self.trainer.precision == "bf16-mixed" and device_type == "cuda"
+
+        # Get concept embeddings
+        if concept is not None:
+            # If only one concept is provided
+            if isinstance(concept, str):
+                concept = [concept]
+
+            with torch.inference_mode():
+                with torch.autocast(
+                    device_type=device_type, dtype=torch.bfloat16, enabled=is_bf16
+                ):
+                    concept_embeds = self.text_encoder({"text": concept}, mode="train")
+            concept_embeds = F.normalize(concept_embeds, dim=1)
+
+        elif self.concept_embeds is not None:
+            concept_embeds = self.concept_embeds
+        else:
+            with torch.inference_mode():
+                with torch.autocast(
+                    device_type=device_type, dtype=torch.bfloat16, enabled=is_bf16
+                ):
+                    concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
+            concept_embeds = F.normalize(concept_embeds, dim=1)
+            if self.text_adapter:
+                concept_embeds = self.text_adapter(concept_embeds)
+
+        # Similarity
+        geo_embeds = F.normalize(geo_embeds, dim=1)
+        similarity_matrix = concept_embeds @ geo_embeds.T
+
+        return similarity_matrix

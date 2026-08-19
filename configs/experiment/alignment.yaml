@@ -4,11 +4,47 @@
 # python train.py experiment=example
 
 defaults:
-  - override /model: geoclip_alignment
-  - override /data: butterfly_coords_text
+  - override /model: s2bms_alignment
+  - override /data: s2bms_prediction
+  - override /metrics: s2bms_alignment
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
+
+model:
+  geo_encoder:
+    _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
+    geo_data_name: coords
+  geo_adapter:
+    _target_: src.models.components.projectors.mlp_projector.MLPProjector
+    nn_layers: 2
+    hidden_dim: 512
+    output_dim: 768
+  text_encoder:
+    _target_: src.models.components.text_encoders.clip_text_encoder.ClipTextEncoder
+    hf_cache_dir: ${paths.huggingface_cache}
+    use_geoclip_projector: false
+  loss_fn:
+    _target_: src.models.components.loss_fns.clip_loss.ClipLoss
+    temperature: 0.07
+  trainable_modules: [loss_fn.log_temp]
+
+data:
+  dataset:
+    modalities:
+      coords:
+    use_target_data: false
+    use_aux_data: "all"
+    dtype: float32
+  caption_builder:
+    _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
+    templates_fname: v5.json
+    concepts_fname: v4.json
+    data_dir: ${paths.data_dir}/s2bms
+    seed: ${seed}
+    n_captions_for_validation: 50
+  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  batch_size: 32
 
 tags: ["alignment", "geoclip_coords", "geoclip_text"]
 
@@ -17,9 +53,6 @@ seed: 12345
 trainer:
   min_epochs: 10
   max_epochs: 100
-
-data:
-  batch_size: 64
 
 logger:
   wandb:

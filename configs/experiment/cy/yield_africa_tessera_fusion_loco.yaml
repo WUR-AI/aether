@@ -1,0 +1,38 @@
+# @package _global_
+# configs/experiment/yield_africa_tessera_fusion_loco.yaml
+# TESSERA + tabular fusion model evaluated with leave-one-country-out split.
+# Default held-out country: KEN (largest, most representative test set).
+#
+# Requires:
+#   1. TESSERA tiles pre-fetched:
+#        python src/data_preprocessing/yield_africa_tessera_preprocess.py --data_dir <data_dir>
+#   2. LOCO split files pre-generated:
+#        python src/data_preprocessing/yield_africa_loco_splits.py --data_dir <data_dir>
+#
+# To evaluate on a different held-out country:
+#   python src/train.py experiment=yield_africa_tessera_fusion_loco \
+#     data.saved_split_file_name=split_loco_RWA.pth
+
+defaults:
+  - override /model: yield_tessera_fusion_reg
+  - override /data: yield_africa_tessera_loco
+  - override /metrics: yield_africa_regression
+
+tags: ["yield_africa", "tessera_fusion", "regression", "loco"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 150
+
+data:
+  batch_size: 64
+  dataset:
+    use_features: true
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "yield_africa"
+  aim:
+    experiment: "yield_africa"
