@@ -23,8 +23,8 @@ if os.environ.get("TOKENIZERS_PARALLELISM") is None:
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
-@hydra.main(version_base="1.3", config_path="../configs", config_name="inference.yaml")
-def main(cfg: DictConfig) -> Optional[float]:
+@hydra.main(version_base="1.3", config_path="../../configs", config_name="inference.yaml")
+def main(cfg: DictConfig, save_results=False) -> Optional[float]:
     """Main entry point for training.
 
     :param cfg: DictConfig configuration composed by Hydra.
@@ -54,8 +54,8 @@ def main(cfg: DictConfig) -> Optional[float]:
 
         print("Concept caption embeddings shape:", text_embeds.shape)
 
-        filepath_inference_captions = (
-            "/Users/tplas/data/aether_data/s2bms/inference_captions/habitat_preferences.json"
+        filepath_inference_captions = os.path.join(
+            cfg.paths.data_dir, "s2bms/inference_captions/habitat_preferences.json"
         )
         with open(filepath_inference_captions) as f:
             inference_captions = json.load(f)
@@ -138,17 +138,18 @@ def main(cfg: DictConfig) -> Optional[float]:
             }
         }
 
-        timestamp = du.create_timestamp()
-        results_folder = os.path.join(cfg.paths.data_dir, "outputs")
-        if not os.path.exists(results_folder):
-            os.makedirs(results_folder)
-        results_path = os.path.join(results_folder, f"inference_results_{timestamp}.pkl")
-        with open(results_path, "wb") as f:
-            pickle.dump(results_store, f)
-        print(f"Saved inference results to {results_path}")
+        if save_results:
+            timestamp = du.create_timestamp()
+            results_folder = os.path.join(cfg.paths.data_dir, "outputs")
+            if not os.path.exists(results_folder):
+                os.makedirs(results_folder)
+            results_path = os.path.join(results_folder, f"inference_results_{timestamp}.pkl")
+            with open(results_path, "wb") as f:
+                pickle.dump(results_store, f)
+            print(f"Saved inference results to {results_path}")
 
-    return
+    return results_store
 
 
 if __name__ == "__main__":
-    main()
+    _ = main()
