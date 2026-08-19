@@ -130,6 +130,8 @@ class BaseDataset(Dataset, ABC):
                 "pattern": "^feat_.*",
                 #     'columns' : []
             }
+        elif isinstance(use_features, dict):
+            self.use_features = use_features
         else:
             self.use_features = None
 
@@ -199,11 +201,10 @@ class BaseDataset(Dataset, ABC):
             if "pattern" in self.use_features:
                 pattern = re.compile(self.use_features["pattern"])
                 feat_names = [x for x in self.df.columns if pattern.match(x)]
+            elif "columns" in self.use_features:
+                feat_names = self.use_features["columns"]
             else:
-                feat_names = self.use_features.get(
-                    "columns",
-                    ValueError('use_features should have "pattern" or "columns" defined'),
-                )
+                raise ValueError('use_features should have "pattern" or "columns" defined')
             self.feat_names = feat_names
             self._feat_norm_setup()
             columns.extend(feat_names)
@@ -537,7 +538,7 @@ class BaseDataset(Dataset, ABC):
 
         if modality == "aef_avr":
             emb_cols = [f"emb_{i}" for i in range(64)]
-        else:
+        elif modality == "tessera_avr":
             emb_cols = [f"emb_{i}" for i in range(128)]
 
         lookup_values = df[emb_cols].to_numpy()
@@ -548,5 +549,7 @@ class BaseDataset(Dataset, ABC):
 
         if modality == "aef_avr":
             self.aef_avr = lookup
-        else:
+            self.tessera_avr = None
+        elif modality == "tessera_avr":
             self.tessera_avr = lookup
+            self.aef_avr = None
