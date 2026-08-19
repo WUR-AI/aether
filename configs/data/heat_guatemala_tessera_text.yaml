@@ -1,0 +1,65 @@
+# Alignment data config for the Guatemala LST use case (Tessera + expert-legend captions).
+#
+# Requirements before running:
+#   1. The model-ready CSV the dataset loads from ${paths.data_dir} must contain the
+#      aux_* columns produced by scripts/build_aux_from_original.py (numeric + *_label).
+#   2. Tessera tiles at ${paths.data_dir}/heat_guatemala/eo/tessera/tessera_<name_loc>.npy
+#      (10x10, 128-band) — see the tessera preprocessing step.
+_target_: src.data.base_datamodule.BaseDataModule
+
+dataset:
+  _target_: src.data.heat_guatemala_dataset.HeatGuatemalaDataset
+  data_dir: ${paths.data_dir}
+  modalities:
+    tessera:
+      year: 2024
+      size: 10
+      format: npy
+  use_target_data: false        # alignment is contrastive geo<->text; LST enters only as a concept
+  use_features: false           # Tessera-only EO branch (your results: fusion hurts), avoids circularity
+  use_aux_data:
+    aux:                        # numeric raw values -> concept theta_k / retrieval ground truth
+      columns:
+        - aux_ndvi_mean
+        - aux_ndwi_mean
+        - aux_forest_cover_perc
+        - aux_tree_cover_perc
+        - aux_builtup_age_years
+        - aux_slope_perc
+        - aux_socioeconomic
+        - aux_lst
+    top:                        # expert-legend label strings -> caption text
+      columns:
+        - aux_ndvi_label
+        - aux_ndwi_label
+        - aux_forest_label
+        - aux_age_label
+        - aux_slope_label
+        - aux_socio_label
+        - aux_height_label
+        - aux_density_label
+        - aux_landuse
+        - aux_blocktype
+        - aux_interzone
+  seed: ${seed}
+  cache_dir: ${paths.cache_dir}
+
+caption_builder:
+  _target_: src.data.heat_guatemala_caption_builder.HeatGuatemalaCaptionBuilder
+  templates_fname: v1.json
+  concepts_fname: v1.json
+  data_dir: ${paths.data_dir}/heat_guatemala
+  seed: ${seed}
+
+batch_size: 64
+num_workers: 8
+pin_memory: true
+
+#split_mode: "spatial_clusters"      # honest val/test: hold out whole areas (city blocks autocorrelate)
+#spatial_split_distance_m: 500
+#split_mode: "random"
+split_mode: "from_file"
+saved_split_file_name: "split_indices_heat_guatemala_2026-02-20-1148.pth"
+train_val_test_split: [0.7, 0.15, 0.15]
+save_split: false
+seed: ${seed}

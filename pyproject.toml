@@ -33,18 +33,22 @@ dependencies = [
     "peft>=0.18.1",
     "llm2vec",
     "setuptools<81",
-    "geotessera>=0.8.0",
+    "geotessera>=0.9.0",
     "ipykernel>=7.2.0",
     "xgboost>=3.2.0",
     "albumentations",
     "satclip @ git+https://github.com/gabrieletijunaityte/satclip",
+    "notebook>=7.6.0",
+    "pandas-stubs>=2.3.3,<3.1.0",
+    "open-clip-torch[baselines]>=3.3.0",
+    "pillow>=12.2.0",
 ]
 
 [project.optional-dependencies]
 create-data = [
     "geemap>=0.36.6",
     "pipreqs>=0.5.0",
-    "earthaccess>=0.11.0",
+#    "earthaccess>=0.11.0", #updated geotessera is incompatible with this one
     "pyhdf>=0.11.4",
 ]
 

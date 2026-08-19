@@ -1,3 +1,4 @@
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, final
 
@@ -11,11 +12,13 @@ from src.models.components.pred_heads.base_pred_head import BasePredictionHead
 from src.models.components.text_encoders.base_text_encoder import BaseTextEncoder
 from src.utils.logging_utils import log_model_loading
 
+log = logging.getLogger(__name__)
+
 
 class BaseModel(LightningModule, ABC):
     def __init__(
         self,
-        trainable_modules: list[str],
+        trainable_modules: list[str] | None,
         geo_encoder: BaseGeoEncoder | None,
         text_encoder: BaseTextEncoder | None,
         prediction_head: BasePredictionHead | None,
@@ -56,7 +59,7 @@ class BaseModel(LightningModule, ABC):
             ]
         )
 
-        self.trainable_modules = trainable_modules
+        self.trainable_modules = trainable_modules or []
         if geo_encoder:
             self.geo_encoder = geo_encoder
         if text_encoder:
@@ -74,19 +77,24 @@ class BaseModel(LightningModule, ABC):
         self.tabular_dim = tabular_dim
 
         self.setup_flag = False
+        self._best_loss = None
 
     @final
     def setup(self, stage: str) -> None:
         """Updates model based data-bound configurations (through datamodule), This method is
         called after trainer is initialized and datamodule is available."""
         if self.setup_flag:
-            print("Model is already set up!")
+            log.info("Model is already set up!")
             return
 
         # If trainer is attached get num_classes and tabular_dim from datamodule (data-dependent)
         if self._trainer is not None:
             self.num_classes = self.trainer.datamodule.num_classes
             self.tabular_dim = self.trainer.datamodule.tabular_dim
+
+        # set up loss if needed
+        if self.loss_fn is not None:
+            self.loss_fn.setup(datamodule=self.trainer.datamodule, device=self.device)
 
         # Per model logic of setting up
         self._setup(stage)
@@ -106,11 +114,11 @@ class BaseModel(LightningModule, ABC):
     @final
     def full_freezer(self):
         """Freeze the whole network."""
-        print("--------Frozen--------")
+        log.info("--------Frozen--------")
         for name, param in self.named_parameters():
             param.requires_grad = False
-        print("Full model")
-        print("------------------------")
+        log.info("Full model")
+        log.info("------------------------")
 
         for name, module in self.named_modules():
             module.eval()
@@ -155,10 +163,10 @@ class BaseModel(LightningModule, ABC):
             else:
                 module.eval()
 
-        print("------Set to train------")
+        log.info("------Set to train------")
         for m in sorted(expanded_trainable):
-            print(f"  {m}")
-        print("------------------------")
+            log.info(f"  {m}")
+        log.info("------------------------")
         self.trainable_modules = list(expanded_trainable)
 
     @abstractmethod
@@ -262,6 +270,14 @@ class BaseModel(LightningModule, ABC):
             if any(k.startswith(part) for part in self.trainable_modules)
         }
 
+        # Also save all non-None buffers (normalisation stats such as target_mean,
+        # target_std, feat_mean, feat_std are not trainable parameters so they
+        # never match the trainable_modules filter above, but they must survive
+        # checkpointing so resumed runs and standalone inference stay correct).
+        for name, buf in self.named_buffers():
+            if buf is not None:
+                checkpoint["state_dict"][name] = buf
+
         # Update model configurations
         checkpoint["hyper_parameters"].update(
             {
@@ -288,9 +304,28 @@ class BaseModel(LightningModule, ABC):
     def on_load_checkpoint(self, checkpoint):
         """Load pre-trained parts of the model."""
         res = self.load_state_dict(checkpoint["state_dict"], strict=False)
-        print("Model loaded from a checkpoint.")
+        log.info("Model loaded from a checkpoint.")
         log_model_loading("Model from checkpoint", res)
 
     # TODO feels illegal
     def load_state_dict(self, state_dict, strict=True):
         return super().load_state_dict(state_dict, strict=False)
+
+    @final
+    def on_fit_start(self):
+        self._on_x_star()
+
+    @final
+    def on_test_start(self):
+        self._on_x_star()
+
+    @final
+    def on_validate_start(self):
+        self._on_x_star()
+
+    @final
+    def on_predict_start(self):
+        self._on_x_star()
+
+    def _on_x_star(self):
+        pass
