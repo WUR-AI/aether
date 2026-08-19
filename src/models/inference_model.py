@@ -2,6 +2,7 @@ import os
 from typing import Dict, Tuple, override
 
 import hydra
+import omegaconf
 import torch
 import torch.nn.functional as F
 
@@ -173,7 +174,9 @@ def _is_prefix_trained(trainable_modules: list[str], prefix: str) -> bool:
     return any(m.split(".")[0] == prefix for m in trainable_modules)
 
 
-def load_inference_model(inference_ckpt_path: str, cache_path: str | None) -> InferenceModel:
+def load_inference_model(
+    inference_ckpt_path: str, cache_path: str | None, patch_mlp_path: bool = True
+) -> InferenceModel:
     """Loads inference model from a merged checkpoint.
 
     :param inference_ckpt_path: path to inference model weights
@@ -182,7 +185,20 @@ def load_inference_model(inference_ckpt_path: str, cache_path: str | None) -> In
     inference_ckpt = torch.load(inference_ckpt_path, map_location="cpu", weights_only=False)
     if cache_path:
         inference_ckpt["hyper_parameters"]["text_encoder"]["hf_cache_dir"] = cache_path
-    model = hydra.utils.instantiate(inference_ckpt["hyper_parameters"])
+
+    if patch_mlp_path:
+        # Older checkpoints may have the MLPProjector path as `src.models.components.geo_encoders.mlp_projector.MLPProjector`, but it has been moved to `src.models.components.projectors_adapters.mlp_projector.MLPProjector`. This patch updates the path in the hyperparameters.
+        ckpt_cfg = inference_ckpt["hyper_parameters"]
+        yaml_str = omegaconf.OmegaConf.to_yaml(ckpt_cfg)
+        yaml_str = yaml_str.replace(
+            "src.models.components.geo_encoders.mlp_projector.MLPProjector",
+            "src.models.components.projectors_adapters.mlp_projector.MLPProjector",  # ← update this
+        )
+        ckpt_cfg = omegaconf.OmegaConf.create(yaml_str)
+        model = hydra.utils.instantiate(ckpt_cfg)
+    else:
+        model = hydra.utils.instantiate(inference_ckpt["hyper_parameters"])
+
     model.setup("inference")
     res = model.load_state_dict(inference_ckpt["state_dict"], strict=False)
     log_model_loading("inference_ckpt", res)
