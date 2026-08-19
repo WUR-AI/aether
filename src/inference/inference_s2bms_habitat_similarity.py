@@ -23,7 +23,11 @@ if os.environ.get("TOKENIZERS_PARALLELISM") is None:
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
-@hydra.main(version_base="1.3", config_path="../../configs", config_name="inference.yaml")
+@hydra.main(
+    version_base="1.3",
+    config_path="../../configs/",
+    config_name="inference_s2bms_habitat_similarity.yaml",
+)
 def main(cfg: DictConfig, save_results=False) -> Optional[float]:
     """Main entry point for training.
 
