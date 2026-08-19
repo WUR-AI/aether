@@ -40,6 +40,9 @@ if os.environ.get("TOKENIZERS_PARALLELISM") is None:
 log = RankedLogger(__name__, rank_zero_only=True)
 
 OmegaConf.register_new_resolver("str", str, replace=True)
+OmegaConf.register_new_resolver(
+    "ifelse", lambda cond, t, f="": t if cond else f
+)  # e.g., use: ${ifelse:${model.parameter},_name}
 
 
 @task_wrapper
