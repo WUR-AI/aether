@@ -3,7 +3,7 @@
 # to execute this experiment run:
 # python train.py experiment=example
 
-# S2 rgb with resnet (18 or 50) encoder pretrained by SSL4EO and MLP prediction head, for tile sizes 128 and 256, each with 3 random seeds
+# Tessera with resnet (18 or 50) encoder and MLP prediction head, for tile sizes 128 and 256, each with 3 random seeds
 
 defaults:
   - override /model: s2bms_prediction
@@ -12,38 +12,38 @@ defaults:
 
 tags:
   - prediction
-  - s2
-  - s2_${str:${data.dataset.modalities.s2.size}}
+  - tessera
+  - tessera_${str:${data.dataset.modalities.tessera.size}}
   - ${str:${seed}}
 
-experiment_name: ssl4eo_rn${str:${model.geo_encoder.resnet_version}}_s2_${str:${data.dataset.modalities.s2.size}}_${str:${data.dataset.modalities.s2.channels}}_mlp
+experiment_name: tessera_${str:${data.dataset.modalities.tessera.size}}_rn${str:${model.geo_encoder.resnet_version}}_deeper_mlp
 
 model:
   geo_encoder:
     _target_: src.models.components.geo_encoders.cnn_encoder.CNNEncoder
-    geo_data_name: s2
-    input_n_bands: 3
+    geo_data_name: tessera
+    input_n_bands: 128
+    pretrained_cnn:
   prediction_head:
     _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
+    nn_layers: 3
   trainable_modules: [geo_encoder, prediction_head]
 
 data:
   dataset:
     modalities:
-      s2:
-        format: tif
-        dtype: float32
-        preprocessing: div_10000
-        channels: rgb
+      tessera:
+        format: npy
     use_target_data: true
     use_aux_data: false
     dtype: float32
   caption_builder:
-  num_workers: 4
+  pin_memory: true
+  num_workers: 14
   batch_size: 128
   persistent_workers: true
-  prefetch_factor: 2
-  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  prefetch_factor: 4
+  saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
   wandb:
@@ -58,5 +58,5 @@ hydra:
   sweeper:
     params:
       seed: 12345, 404, 654
-      ++data.dataset.modalities.s2.size: 128, 256
-      ++model.geo_encoder.resnet_version: 18, 50
+      ++data.dataset.modalities.tessera.size: 128, 256
+      ++model.geo_encoder.resnet_version: 18, 34, 50

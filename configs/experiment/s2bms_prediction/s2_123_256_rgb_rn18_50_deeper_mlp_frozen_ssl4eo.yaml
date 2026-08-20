@@ -16,15 +16,17 @@ tags:
   - s2_${str:${data.dataset.modalities.s2.size}}
   - ${str:${seed}}
 
-experiment_name: rn${str:${model.geo_encoder.resnet_version}}_ssl4eo_${str:${data.dataset.modalities.s2.size}}_${str:${data.dataset.modalities.s2.channels}}_mlp
+experiment_name: s2_${str:${data.dataset.modalities.s2.size}}_rgb_rn${str:${model.geo_encoder.resnet_version}}_frozen_ssl4eo_deeper_mlp
 
 model:
   geo_encoder:
     _target_: src.models.components.geo_encoders.cnn_encoder.CNNEncoder
     geo_data_name: s2
     input_n_bands: 3
+    pretrained_cnn: SSL4EO_RGB_MOCO
   prediction_head:
     _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
+    nn_layers: 3
   trainable_modules: [prediction_head]
 
 data:
@@ -33,17 +35,18 @@ data:
       s2:
         format: tif
         dtype: float32
-        preprocessing: div_10000
         channels: rgb
+        preprocessing: div_10000
     use_target_data: true
     use_aux_data: false
     dtype: float32
   caption_builder:
-  num_workers: 4
+  pin_memory: true
+  num_workers: 14
   batch_size: 128
   persistent_workers: true
-  prefetch_factor: 2
-  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  prefetch_factor: 4
+  saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
   wandb:

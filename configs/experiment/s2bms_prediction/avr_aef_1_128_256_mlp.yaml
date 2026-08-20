@@ -3,7 +3,7 @@
 # to execute this experiment run:
 # python train.py experiment=example
 
-# tabular only
+# AEF with average encoder and MLP prediction head, for tile sizes 128 and 256, each with 3 random seeds
 
 defaults:
   - override /model: s2bms_prediction
@@ -12,40 +12,33 @@ defaults:
 
 tags:
   - prediction
-  - tabular
+  - aef
+  - aef_${str:${data.dataset.modalities.aef_avr.size}}
   - ${str:${seed}}
 
-experiment_name: tabular_baseline
+experiment_name: avr_aef_${str:${data.dataset.modalities.aef_avr.size}}_mlp
 
 model:
-  normalize_features: false
-  standardize_targets: false
   geo_encoder:
-    _target_: src.models.components.geo_encoders.tabular_encoder.TabularEncoder
-    output_dim: 256
-    dropout_prob: 0.2
-    geo_data_name: tabular
-
-  trainable_modules: [geo_encoder, prediction_head]
+    _target_: src.models.components.geo_encoders.identity_encoder.IdentityEncoder
+    geo_data_name: aef_avr
+  trainable_modules: [prediction_head]
   prediction_head:
     _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
-    nn_layers: 2
-    hidden_dim: 256
-    dropout: 0.2
 
 data:
   dataset:
     modalities:
-      coords:
-    use_features:
-      pattern: "^aux_(?!.*top).*"
+      aef_avr:
+        path: ${paths.data_dir}/s2bms/eo/avr_aef_${data.dataset.modalities.aef_avr.size}.csv
+        enable_nans: true
     use_target_data: true
     use_aux_data: false
   caption_builder:
   pin_memory: true
-  persistent_workers: True
-  num_workers: 11
+  num_workers: 14
   batch_size: 128
+  persistent_workers: true
   saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
@@ -61,3 +54,4 @@ hydra:
   sweeper:
     params:
       seed: 12345, 404, 654
+      ++data.dataset.modalities.aef_avr.size: 1, 128, 256

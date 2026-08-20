@@ -3,7 +3,7 @@
 # to execute this experiment run:
 # python train.py experiment=example
 
-# Tessera with average encoder and linear prediction head, for tile sizes 128 and 256, each with 3 random seeds
+# Satclip and linear prediction head, with 3 random seeds
 
 defaults:
   - override /model: s2bms_prediction
@@ -12,35 +12,33 @@ defaults:
 
 tags:
   - prediction
-  - tessera
-  - tessera_${str:${data.dataset.modalities.tessera.size}}
+  - satclip
   - ${str:${seed}}
 
-experiment_name: avr_tessera_${str:${data.dataset.modalities.tessera.size}}_linear
+experiment_name: satclip_linear
 
 model:
   geo_encoder:
-    _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
-    geo_data_name: tessera
+    _target_: src.models.components.geo_encoders.satclip.SatClipCoordinateEncoder
+    geo_data_name: coords
+    hf_cache_dir: ${paths.huggingface_cache}
   trainable_modules: [prediction_head]
   prediction_head:
     _target_: src.models.components.pred_heads.linear_pred_head.LinearPredictionHead
-    hidden_dim: 512
 
 data:
   dataset:
     modalities:
-      tessera:
-        format: npy
-        enable_nans: true
+      coords:
     use_target_data: true
     use_aux_data: false
+    dtype: float64
   caption_builder:
-  pin_memory: false
+  pin_memory: true
   num_workers: 14
   batch_size: 128
-  persistent_workers: false
-  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  persistent_workers: true
+  saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
   wandb:
@@ -55,4 +53,3 @@ hydra:
   sweeper:
     params:
       seed: 12345, 404, 654
-      +data.dataset.modalities.tessera.size: 128, 256
