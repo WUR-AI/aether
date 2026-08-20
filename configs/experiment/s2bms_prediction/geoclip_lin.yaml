@@ -3,7 +3,7 @@
 # to execute this experiment run:
 # python train.py experiment=example
 
-# Center point aef prediction
+# Geoclip with linear prediction head, with 3 random seeds
 
 defaults:
   - override /model: s2bms_prediction
@@ -12,26 +12,23 @@ defaults:
 
 tags:
   - prediction
-  - aef
-  - aef_point
+  - geoclip
   - ${str:${seed}}
 
-experiment_name: aef_point_prediction
+experiment_name: geoclip_linear
 
 model:
   geo_encoder:
-    _target_: src.models.components.geo_encoders.identity_encoder.IdentityEncoder
-    geo_data_name: aef_avr
+    _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
+    geo_data_name: coords
   trainable_modules: [prediction_head]
   prediction_head:
-    _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
+    _target_: src.models.components.pred_heads.linear_pred_head.LinearPredictionHead
 
 data:
   dataset:
     modalities:
-      aef_avr:
-        path: ${paths.data_dir}/s2bms/eo/avr_aef_1.csv
-        size: 1
+      coords:
     use_target_data: true
     use_aux_data: false
   caption_builder:
@@ -54,4 +51,3 @@ hydra:
   sweeper:
     params:
       seed: 12345, 404, 654
-#      seed: 12345
