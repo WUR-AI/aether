@@ -4,17 +4,18 @@ set -a
 source "$(dirname "$0")/../.env"
 set +a
 
-N=10000        # max total points
-P=50           # number of processes
+N_START=0      # start index
+N=40000        # max total points
+P=30           # number of processes
 CHUNK=$((N / P))
 
 for ((i=0; i<P; i++)); do
-    START=$((i * CHUNK))
-    END=$(( (i+1) * CHUNK ))
+    START=$((i * CHUNK + N_START))
+    END=$(( (i+1) * CHUNK + N_START))
 
     # last chunk takes the remainder
     if [ $i -eq $((P-1)) ]; then
-        END=$N
+        END=$((N + N_START))
     fi
 
     echo "Launching $START -> $END"

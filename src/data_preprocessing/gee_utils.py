@@ -315,6 +315,23 @@ def download_gee_image(
     assert type(path_save) and os.path.exists(
         path_save
     ), f"path_save must be a valid path, got {path_save}"
+
+    filename = create_filename(
+        base_name=name,
+        collection_name=collection_name,
+        year=year,
+        sentinel_month_start=sentinel_month_start,
+        sentinel_month_end=sentinel_month_end,
+    )
+    filepath = os.path.join(path_save, filename)
+    if os.path.exists(filepath):
+        if verbose:
+            print(f"File {filepath} already exists, skipping download.")
+        return (
+            "path-exists",
+            filepath,
+        )  # don't return None because that signals a bad download downstream
+
     if save_average_only:
         resize_image = True
     gsd_resolution = 10
@@ -338,14 +355,6 @@ def download_gee_image(
 
     if verbose:
         print("Image selected. Saving now.")
-    filename = create_filename(
-        base_name=name,
-        collection_name=collection_name,
-        year=year,
-        sentinel_month_start=sentinel_month_start,
-        sentinel_month_end=sentinel_month_end,
-    )
-    filepath = os.path.join(path_save, filename)
 
     if verbose:
         print(f"Downloading image to {filepath} ...")
@@ -420,10 +429,10 @@ def download_list_coord(
     if not os.path.exists(path_save):
         os.makedirs(path_save)
         print(f"Created folder {path_save}")
-    else:
-        print(
-            f"WARNING: folder {path_save} already exists. OVERWRITING any existing files with same names!"
-        )
+    # else:
+    #     print(
+    #         f"WARNING: folder {path_save} already exists. OVERWRITING any existing files with same names!"
+    #     )
     if name_list is not None:
         assert len(name_list) == len(
             coord_list
@@ -465,6 +474,8 @@ def download_list_coord(
                 im = None
             if im is None:
                 inds_none.append(f"{i}_{im_collection}")
+            elif type(im) is str and im == "path-exists":
+                pass
 
     if len(inds_none) > 0:
         print(
