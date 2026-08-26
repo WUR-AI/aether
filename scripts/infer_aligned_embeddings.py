@@ -96,11 +96,13 @@ def build_geotessera(cache_dir: str, version: str):
         return GeoTessera(cache_dir=cache_dir, embeddings_dir=cache_dir)
 
 
-def fetch_tile(name_loc, lat, lon, tile_dir, year, tile_size, version, gt):
-    """Return one Tessera tile as (bands, size, size), fetching it if needed.
+def fetch_pooled(name_loc, lat, lon, tile_dir, year, tile_size, version, gt):
+    """Return one spatially-pooled Tessera embedding (bands,), fetching if needed.
 
     Mirrors ``BaseDataset.load_npy``: tiles are stored (H, W, bands) on disk and
-    transposed to channels-first for the encoder.
+    transposed to channels-first. Pooling happens here rather than after
+    stacking, because across 13k locations the full tiles are ~1.7 GB while the
+    pooled vectors are ~7 MB.
     """
     path = os.path.join(tile_dir, f"tessera_{name_loc}.npy")
 
@@ -119,7 +121,11 @@ def fetch_tile(name_loc, lat, lon, tile_dir, year, tile_size, version, gt):
     arr = np.load(path).transpose(2, 0, 1).astype(np.float32, copy=False)
     if arr.shape[0] != TESSERA_N_BANDS:
         raise ValueError(f"{path}: expected {TESSERA_N_BANDS} bands, got {arr.shape[0]}")
-    return arr
+
+    # Same operation as AverageEncoder.forward: nanmean over the spatial dims,
+    # with an all-NaN channel folded back to 0.
+    tile = torch.from_numpy(arr)
+    return torch.nan_to_num(tile.nanmean(dim=(-2, -1)), nan=0.0)
 
 
 # ----------------------------------------------------------------------------
@@ -163,14 +169,9 @@ def load_text_encoder(state_dict, hf_cache_dir):
     return encoder
 
 
-def embed_geo(tiles, projector, device, normalize):
-    """Average-pool tiles over space and apply the trained projection.
-
-    Reproduces ``AverageEncoder.forward``: nanmean over the spatial dims with
-    all-NaN channels folded back to 0.
-    """
-    x = torch.from_numpy(np.stack(tiles)).to(device)
-    pooled = torch.nan_to_num(x.nanmean(dim=(-2, -1)), nan=0.0)
+def embed_geo(pooled_vecs, projector, device, normalize):
+    """Apply the trained projection to spatially-pooled Tessera vectors."""
+    pooled = torch.stack(pooled_vecs).to(device)
 
     with torch.no_grad():
         aligned = projector(pooled) if projector is not None else pooled
@@ -268,15 +269,15 @@ def main(argv=None):
     normalize = not args.no_normalize
 
     gt = None  # opened lazily: nothing to fetch when every tile is already cached
-    tiles, kept, skipped = [], [], []
-    for row in points.itertuples(index=False):
+    pooled_vecs, kept, skipped = [], [], []
+    for n_done, row in enumerate(points.itertuples(index=False), start=1):
         try:
             if gt is None and not os.path.exists(
                 os.path.join(args.tile_dir, f"tessera_{row.name_loc}.npy")
             ):
                 gt = build_geotessera(args.cache_dir, args.tessera_version)
-            tiles.append(
-                fetch_tile(
+            pooled_vecs.append(
+                fetch_pooled(
                     row.name_loc,
                     row.lat,
                     row.lon,
@@ -291,11 +292,13 @@ def main(argv=None):
         except (NoTileError, PartialTileError, FileNotFoundError, ValueError) as e:
             log.warning("Skipping %s: %s", row.name_loc, e)
             skipped.append(row.name_loc)
+        if n_done % 2000 == 0:
+            log.info("  %d/%d points read", n_done, len(points))
 
-    if not tiles:
+    if not pooled_vecs:
         raise SystemExit("No Tessera tiles could be obtained for any requested point.")
 
-    pooled, aligned = embed_geo(tiles, projector, device, normalize)
+    pooled, aligned = embed_geo(pooled_vecs, projector, device, normalize)
     names = [r.name_loc for r in kept]
     log.info(
         "Embedded %d point(s) -> %s%s.",
@@ -318,13 +321,31 @@ def main(argv=None):
 
     if args.out:
         os.makedirs(os.path.dirname(os.path.abspath(args.out)) or ".", exist_ok=True)
+        lats = [r.lat for r in kept]
+        lons = [r.lon for r in kept]
         if args.out.endswith(".csv"):
-            cols = [f"emb_{i}" for i in range(aligned.shape[1])]
-            pd.DataFrame(aligned, columns=cols).assign(name_loc=names).to_csv(
-                args.out, index=False
-            )
+            # name_loc, lat, lon, the raw pooled Tessera vector, then the aligned one.
+            pd.concat(
+                [
+                    pd.DataFrame({"name_loc": names, "lat": lats, "lon": lons}),
+                    pd.DataFrame(
+                        pooled, columns=[f"tessera_{i:03d}" for i in range(pooled.shape[1])]
+                    ),
+                    pd.DataFrame(
+                        aligned, columns=[f"aligned_{i:03d}" for i in range(aligned.shape[1])]
+                    ),
+                ],
+                axis=1,
+            ).to_csv(args.out, index=False)
         else:
-            np.savez(args.out, name_loc=np.array(names), aligned=aligned, tessera_avg=pooled)
+            np.savez(
+                args.out,
+                name_loc=np.array(names),
+                lat=np.array(lats),
+                lon=np.array(lons),
+                aligned=aligned,
+                tessera_avg=pooled,
+            )
         log.info("Wrote %s", args.out)
     else:
         for name, vec in zip(names, aligned):
