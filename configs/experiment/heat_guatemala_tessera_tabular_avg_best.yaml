@@ -1,0 +1,38 @@
+# @package _global_
+defaults:
+  - override /model: heat_tessera_tabular_avg_best
+  - override /data: heat_guatemala
+  - override /metrics: guatemala_regression
+
+tags: ["heat_island", "guatemala", "full_fusion_avg", "tessera", "regression"]
+seed: 12345
+
+trainer:
+  min_epochs: 1
+  max_epochs: 50
+
+data:
+  batch_size: 64
+  dataset:
+    modalities:
+      coords: {}
+      tessera:
+        year: 2024
+        size: 10
+        format: npy
+
+callbacks:
+  model_checkpoint:
+    monitor: val_r2
+    mode: max
+  early_stopping:
+    monitor: val_r2
+    mode: max
+    patience: 20
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "heat_island"
+  aim:
+    experiment: "heat_island"

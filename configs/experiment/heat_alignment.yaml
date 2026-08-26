@@ -1,0 +1,25 @@
+# @package _global_
+# Run: python src/train.py experiment=heat_alignment
+# Smoke test (weak, expected): python src/train.py experiment=heat_alignment \
+#     model=geoclip_alignment data.dataset.modalities='{coords: {}}'
+defaults:
+  - override /model: heat_tessera_alignment
+  - override /data: heat_guatemala_tessera_text
+  - override /metrics: contrastive_similarities
+
+tags: ["alignment", "heat_island", "guatemala", "tessera"]
+seed: 12345
+
+trainer:
+  min_epochs: 10
+  max_epochs: 100
+
+data:
+  batch_size: 64
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "heat_alignment"
+  aim:
+    experiment: "heat_alignment"
