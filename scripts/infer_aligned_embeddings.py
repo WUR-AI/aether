@@ -169,6 +169,11 @@ def load_text_encoder(state_dict, hf_cache_dir):
     return encoder
 
 
+def _as_vector_strings(mat, precision=6):
+    """Render each row as a bracketed list so a whole vector fits in one cell."""
+    return ["[" + ", ".join(f"{v:.{precision}g}" for v in row) + "]" for row in mat]
+
+
 def embed_geo(pooled_vecs, projector, device, normalize):
     """Apply the trained projection to spatially-pooled Tessera vectors."""
     pooled = torch.stack(pooled_vecs).to(device)
@@ -229,7 +234,13 @@ def parse_args(argv=None):
     tes.add_argument("--cache-dir", default="data/cache", help="GeoTessera cache directory")
 
     out = p.add_argument_group("output")
-    out.add_argument("--out", help="write embeddings here (.npz, or .csv for aligned only)")
+    out.add_argument("--out", help="write embeddings here (.npz, or .csv)")
+    out.add_argument(
+        "--wide-columns",
+        action="store_true",
+        help="csv only: one column per dimension (tessera_000.., aligned_000..) "
+        "instead of the whole vector in a single cell",
+    )
     out.add_argument(
         "--no-normalize",
         action="store_true",
@@ -324,19 +335,27 @@ def main(argv=None):
         lats = [r.lat for r in kept]
         lons = [r.lon for r in kept]
         if args.out.endswith(".csv"):
-            # name_loc, lat, lon, the raw pooled Tessera vector, then the aligned one.
-            pd.concat(
-                [
-                    pd.DataFrame({"name_loc": names, "lat": lats, "lon": lons}),
-                    pd.DataFrame(
-                        pooled, columns=[f"tessera_{i:03d}" for i in range(pooled.shape[1])]
-                    ),
-                    pd.DataFrame(
-                        aligned, columns=[f"aligned_{i:03d}" for i in range(aligned.shape[1])]
-                    ),
-                ],
-                axis=1,
-            ).to_csv(args.out, index=False)
+            frame = pd.DataFrame({"name_loc": names, "lat": lats, "lon": lons})
+            if args.wide_columns:
+                # One column per dimension, for tools that want a flat matrix.
+                frame = pd.concat(
+                    [
+                        frame,
+                        pd.DataFrame(
+                            pooled, columns=[f"tessera_{i:03d}" for i in range(pooled.shape[1])]
+                        ),
+                        pd.DataFrame(
+                            aligned, columns=[f"aligned_{i:03d}" for i in range(aligned.shape[1])]
+                        ),
+                    ],
+                    axis=1,
+                )
+            else:
+                # Whole vector per cell, as a bracketed list. Read it back with
+                # json.loads (or ast.literal_eval) on the column.
+                frame["tessera_embedding"] = _as_vector_strings(pooled)
+                frame["aligned_embedding"] = _as_vector_strings(aligned)
+            frame.to_csv(args.out, index=False)
         else:
             np.savez(
                 args.out,
