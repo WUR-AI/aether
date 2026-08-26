@@ -158,7 +158,7 @@ def load_text_encoder(state_dict, hf_cache_dir):
     text_sd = {
         k[len("text_encoder.") :]: v
         for k, v in state_dict.items()
-        if k.startswith("text_encoder.")
+        if k.startswith("text_encoder.") and not k.endswith("position_ids")
     }
     missing, unexpected = encoder.load_state_dict(text_sd, strict=False)
     # The frozen CLIP tower is not stored in the checkpoint, so it is expected to

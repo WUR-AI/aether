@@ -1,0 +1,54 @@
+{
+  "_comment": "Caption vocabulary for the Guatemala UHI demo. Each concept is scored by encoding every caption with the alignment model's text branch, averaging, L2-normalising, and taking the dot product with a location's aligned embedding. Only concepts with a positive skill index on the test split are included - see heat_guatemala_concept_evaluation.csv.",
+  "_checkpoint": "data/checkpoints/other_ckpt/epoch_035.ckpt",
+  "concepts": {
+    "vegetation_greenness": {
+      "label": "Vegetation greenness",
+      "recommended": true,
+      "skill_index": 0.7476,
+      "captions": [
+        "an area with high vegetation greenness",
+        "a location with lush green vegetation",
+        "a green area with healthy dense vegetation"
+      ]
+    },
+    "forest_cover": {
+      "label": "Forest cover",
+      "recommended": true,
+      "skill_index": 0.5409,
+      "captions": [
+        "an area with dense forest cover",
+        "a location covered by forest",
+        "a heavily forested area with many trees"
+      ]
+    },
+    "builtup_age": {
+      "label": "Established urban fabric",
+      "recommended": true,
+      "skill_index": 0.4780,
+      "captions": [
+        "a long-established built-up area",
+        "an old urban area built many decades ago",
+        "a mature consolidated urban neighbourhood"
+      ]
+    },
+    "cool_area": {
+      "label": "Cool area",
+      "recommended": false,
+      "skill_index": 0.4238,
+      "_note": "Optional. The model never saw temperature wording in training - aux_lst was deliberately excluded from the caption templates so the target could not leak. Cool areas are found indirectly, via their correlation with vegetation. Present it that way, not as temperature understanding.",
+      "captions": [
+        "one of the coolest areas in the city",
+        "a location with low land surface temperature",
+        "a cool shaded part of the urban area"
+      ]
+    }
+  },
+  "_excluded": {
+    "_note": "These scored at or below baseline on the test split. They will still return confident-looking numbers, which is exactly why they must stay out of the demo vocabulary.",
+    "tree_cover": 0.2178,
+    "lst_max_hottest": -0.1336,
+    "ndwi_water": -0.3533,
+    "slope": -0.0006
+  }
+}
