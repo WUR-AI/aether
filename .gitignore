@@ -229,3 +229,5 @@ notebooks/01-TvdP-tmp.ipynb
 *.tif # for now
 ..env.swp
 /data/yield_africa/model_ready_yield_africa.csv
+figs/
+results/
