@@ -93,9 +93,8 @@ class BaseModel(LightningModule, ABC):
             self.tabular_dim = self.trainer.datamodule.tabular_dim
 
         # set up loss if needed. Only BaseLossFn subclasses define setup(); the
-        # predictive models are configured with torch losses directly (nn.MSELoss,
-        # nn.BCEWithLogitsLoss, ...), which have no such hook.
-        if self.loss_fn is not None and hasattr(self.loss_fn, "setup"):
+        # predictive models are configured with torch losses directly.
+        if isinstance(self.loss_fn, BaseLossFn):
             self.loss_fn.setup(datamodule=self.trainer.datamodule, device=self.device)
 
         # Per model logic of setting up

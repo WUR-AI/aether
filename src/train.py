@@ -139,9 +139,6 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
 
     train_metrics = trainer.callback_metrics
 
-    # NB: only the wandb bookkeeping needs a wandb_logger; trainer.validate/test
-    # themselves do not, so they must not be gated on it (with LOGGER=none that
-    # silently skips the stage the user asked for via cfg.test / cfg.validate).
     if cfg.get("validate"):
         # Run validation with the best ckpt
         log.info("Validating the best ckpt!")
