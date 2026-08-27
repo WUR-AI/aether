@@ -1,0 +1,23 @@
+defaults:
+  - paths: ${oc.env:STORAGE_MODE,local}
+  - extras: default
+  - hydra: default
+  - data: s2bms_prediction
+  - _self_
+
+# task name, determines output directory path
+task_name: "inference"
+tags: ["dev"]
+seed: 12345
+
+geo_data:
+  aef_avr:
+    path: ${paths.outputs_dir}/sample_avr_aef_128.csv # can be a subset or just one entry
+    enable_nans: true
+#    dimension:
+#    dtype:
+
+inference_ckpt_path: ${paths.checkpoint_root}/s2bms_inference_model/example.ckpt
+#save_output: ${paths.outputs_dir}/inference_logs/${now:%Y-%m-%d}_${now:%H-%M-%S}.csv
+
+device: mps
