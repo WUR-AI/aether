@@ -25,22 +25,11 @@
     "builtup_age": {
       "label": "Established urban fabric",
       "recommended": true,
-      "skill_index": 0.4780,
+      "skill_index": 0.478,
       "captions": [
         "a long-established built-up area",
         "an old urban area built many decades ago",
         "a mature consolidated urban neighbourhood"
-      ]
-    },
-    "cool_area": {
-      "label": "Cool area",
-      "recommended": false,
-      "skill_index": 0.4238,
-      "_note": "Optional. The model never saw temperature wording in training - aux_lst was deliberately excluded from the caption templates so the target could not leak. Cool areas are found indirectly, via their correlation with vegetation. Present it that way, not as temperature understanding.",
-      "captions": [
-        "one of the coolest areas in the city",
-        "a location with low land surface temperature",
-        "a cool shaded part of the urban area"
       ]
     }
   },
@@ -49,6 +38,8 @@
     "tree_cover": 0.2178,
     "lst_max_hottest": -0.1336,
     "ndwi_water": -0.3533,
-    "slope": -0.0006
+    "slope": -0.0006,
+    "cool_area_r_vs_measured_lst": 0.217,
+    "_cool_area_note": "Removed after validation: similarity to 'coolest areas' correlates POSITIVELY with measured LST (r=+0.217), i.e. it points at hotter places. It tracks established urban fabric, not coolness. Captions kept here for reference only: one of the coolest areas in the city | a location with low land surface temperature | a cool shaded part of the urban area"
   }
 }
