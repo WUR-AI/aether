@@ -74,14 +74,11 @@ def main(cfg: DictConfig) -> Optional[pd.DataFrame]:
 
     projector = load_geo_projector(cfg.alignment_ckpt_path).to(device)
     head, normalizer = load_prediction_branch(cfg.predictive_ckpt_path)
-    head = head.to(device)
-    if normalizer is not None:
-        normalizer = normalizer.to(device)
+    head, normalizer = head.to(device), normalizer.to(device)
 
     with torch.no_grad():
         aligned = F.normalize(projector(pooled), dim=-1)
-        feats = normalizer(pooled) if normalizer is not None else pooled
-        pred_lst = head(feats).squeeze(-1)
+        pred_lst = head(normalizer(pooled)).squeeze(-1)
 
     target_lst = target_lst.numpy()
     pred_lst = pred_lst.cpu().numpy()

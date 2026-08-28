@@ -14,7 +14,7 @@ seed: 12345
 # Aligned embeddings come from the alignment run, LST predictions from the
 # predictive run. Both consume the same pooled Tessera vector.
 alignment_ckpt_path: ${paths.checkpoint_dir}/epoch_035.ckpt
-predictive_ckpt_path: ${paths.checkpoint_dir}/epoch_059.ckpt
+predictive_ckpt_path: ${paths.checkpoint_dir}/epoch_093.ckpt
 
 concepts_file: ${paths.root_dir}/outputs/demo_concepts.json
 split: test

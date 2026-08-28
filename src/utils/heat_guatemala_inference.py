@@ -62,11 +62,18 @@ def load_text_encoder(ckpt_path, hf_cache_dir):
 
 
 def load_prediction_branch(ckpt_path):
-    """Predictive model's head, plus the LayerNorm it was trained behind.
+    """Predictive model's head plus the feature normalisation it was trained behind.
 
-    Mirrors PredictiveModel.forward: pooled features -> optional LayerNorm ->
-    prediction head. The head consumes the pooled Tessera vector, not the aligned
-    embedding, so the two branches share an input but not a representation.
+    Mirrors PredictiveModel.forward: pooled features -> normalisation -> head. The
+    head consumes the pooled Tessera vector, not the aligned embedding, so the two
+    branches share an input but not a representation.
+
+    Two normalisation eras exist and a checkpoint does not say which it used, so it
+    is inferred from the weights. Checkpoints carrying `normalizer.*` were trained
+    behind a trainable nn.LayerNorm; older ones were trained behind a plain L2
+    F.normalize and carry no such weights. Picking the wrong one does not error --
+    it silently returns nonsense (R2 around -8000 on the Guatemala test split), so
+    the choice is logged.
     """
     sd = _state_dict(ckpt_path)
     head_keys = sorted(k for k in sd if k.startswith("prediction_head.net."))
@@ -86,14 +93,24 @@ def load_prediction_branch(ckpt_path):
             idx += 1  # skip the activation, which holds no parameters
     head = nn.Sequential(*[m for layer in layers[:-1] for m in (layer, nn.ReLU())], layers[-1])
 
-    normalizer = None
     if "normalizer.weight" in sd:
         normalizer = nn.LayerNorm(sd["normalizer.weight"].shape[0])
         normalizer.load_state_dict(
             {"weight": sd["normalizer.weight"], "bias": sd["normalizer.bias"]}
         )
         normalizer.eval()
+        log.info(f"{ckpt_path}: using trained LayerNorm feature normalisation.")
+    else:
+        normalizer = _L2Normalize()
+        log.info(f"{ckpt_path}: no normalizer weights, falling back to L2 normalisation.")
     return head.eval(), normalizer
+
+
+class _L2Normalize(nn.Module):
+    """The pre-LayerNorm feature normalisation, kept for older checkpoints."""
+
+    def forward(self, x):
+        return F.normalize(x, dim=-1)
 
 
 def concept_vectors(text_encoder, concepts, device):
