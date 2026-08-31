@@ -139,6 +139,26 @@ python src/train.py experiment=prediction
 
 Please see the [Hydra](https://hydra.cc/) and [Hydra-Lightning template](https://github.com/ashleve/lightning-hydra-template) documentation for further examples of how to configure training runs.
 
+## Inference
+
+For inference:
+
+1. Copy the provided `inference/` folder into the root directory.
+2. Edit the `configs/packaged_inference.yaml` with:
+   - Change the checkpoint to the desired model version, e.g.: `inference_ckpt_path: ${paths.root_dir}/inference/s2bms/v1/example.ckpt`
+   - Change which locations you want to evaluate through:
+     ```yaml
+     geo_data:
+       aef_avr:
+         path: ${paths.root_dir}/inference/s2bms/avr_aef_256.csv # can be a subset or just one entry
+     ```
+   - Change the device to what is available to you: `device: mps/cuda/cpu`
+   - If you want to save results (cosine similarities and predictions) use `save_output:  ${paths.root_dir}/inference/s2bms/v1/${now:%Y-%m-%d}_${now:%H-%M-%S}.csv` parameter.
+3. Run the inference with:
+   ```python
+   python3 src/packaged_inference.py
+   ```
+
 ## Directory structure
 
 We follow the directory structure from the [Hydra-Lightning template](https://github.com/ashleve/lightning-hydra-template), which looks like:
