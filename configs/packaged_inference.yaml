@@ -1,0 +1,33 @@
+defaults:
+  - paths: ${oc.env:STORAGE_MODE,local}
+  - extras: default
+  - hydra: default
+  - data: s2bms_prediction
+  - _self_
+
+# task name, determines output directory path
+task_name: "inference"
+tags: ["dev"]
+seed: 12345
+
+geo_data:
+  aef_avr:
+    path: ${paths.root_dir}/inference/s2bms/avr_aef_256.csv # can be a subset or just one entry
+    enable_nans: true
+#    dimension:
+#    dtype:
+
+inference_ckpt_path: ${paths.root_dir}/inference/s2bms/v1/example.ckpt
+
+device: mps
+
+# Merging
+#predictive_ckpt_path: ${paths.checkpoint_root}/s2bms_prediction_ckpt/qiqe3b3d_epoch_033.ckpt
+#alignment_ckpt_path: ${paths.checkpoint_root}/s2bms_alignment_ckpt/5dwqrxbk_epoch_018.ckpt
+#training_order: ["prediction_model", "alignment_model"]
+#
+## If set, inference.py will save a merged inference checkpoint you can reload with
+## `inference_ckpt_path`.
+#save_ckpt: true
+##save_inference_ckpt_path: ${paths.checkpoint_root}/s2bms_inference_model/${now:%Y-%m-%d}_${now:%H-%M-%S}.csv
+#save_inference_ckpt_path: ${paths.root_dir}/inference/v1/example.ckpt
