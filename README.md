@@ -155,7 +155,7 @@ For inference:
    - Change the device to what is available to you: `device: mps/cuda/cpu`
    - If you want to save results (cosine similarities and predictions) use `save_output:  ${paths.root_dir}/inference/s2bms/v1/${now:%Y-%m-%d}_${now:%H-%M-%S}.csv` parameter.
 3. Run the inference with:
-   ```python
+   ```bash
    python3 src/packaged_inference.py
    ```
 
