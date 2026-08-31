@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from dotenv import load_dotenv
 from omegaconf import DictConfig
 
-from src.models.inference_model import load_inference_model
+from src.models.inference_model import load_inference_model, merge_inference_model
 from src.utils import extras
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
@@ -18,6 +18,17 @@ load_dotenv()
 # Disable tokenizers parallelism to avoid warnings when using multiprocessing
 if os.environ.get("TOKENIZERS_PARALLELISM") is None:
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+
+def get_model(cfg):
+    # If a merged inference ckpt is provided, just load it.
+    inference_ckpt_path = cfg.get("inference_ckpt_path")
+    if inference_ckpt_path:
+        model = load_inference_model(inference_ckpt_path, cfg.paths.cache_dir)
+    else:
+        model = merge_inference_model(cfg, save_ckpt=True)
+
+    return model
 
 
 def get_geo_data(cfg, device="cpu"):
@@ -37,7 +48,13 @@ def get_geo_data(cfg, device="cpu"):
     emb_cols = [f"emb_{i}" for i in range(dim)]
 
     geo_data = torch.tensor(df[emb_cols].to_numpy(), dtype=dtype, device=device)
-    return {"eo": {modality: geo_data}, "name_loc": df.name_loc.to_list()}
+    return {
+        "eo": {modality: geo_data},
+        "name_loc": df.name_loc.to_list(),
+        "lat": df.lat.to_list(),
+        "lon": df.lon.to_list(),
+        "split": df.split.to_list(),
+    }
 
 
 @torch.no_grad()
@@ -53,11 +70,7 @@ def main(cfg: DictConfig, save_results: bool = False) -> Optional[float]:
     # (e.g. ask for tags if none are provided in cfg, print cfg tree, etc.)
     extras(cfg)
 
-    inference_ckpt_path = cfg.get("inference_ckpt_path")
-    assert os.path.exists(inference_ckpt_path), FileNotFoundError(
-        f"{inference_ckpt_path} does not exist."
-    )
-    model = load_inference_model(inference_ckpt_path, cfg.paths.cache_dir)
+    model = get_model(cfg)
     model.to(cfg.device)
 
     # TODO: do what you need with the inference model
@@ -74,7 +87,9 @@ def main(cfg: DictConfig, save_results: bool = False) -> Optional[float]:
 
     # supply geo data as csv file
     if cfg.get("geo_data"):
-        b = get_geo_data(cfg, device=cfg.get("device", "cpu"))
+        b = get_geo_data(
+            cfg, device=cfg.get("device", "cpu")
+        )  # batch has name_loc, lat, lon and split arguments
         geo_embeds, pred = model.forward_geo(b)
 
     geo_embeds = F.normalize(geo_embeds, dim=1)
