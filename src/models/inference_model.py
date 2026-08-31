@@ -10,12 +10,14 @@ from src.models.base_model import BaseModel
 from src.models.components.geo_encoders.base_geo_encoder import BaseGeoEncoder
 from src.models.components.metrics.metrics_wrapper import MetricsWrapper
 from src.models.components.pred_heads.linear_pred_head import BasePredictionHead
+from src.models.components.projectors.base_projector import BaseProjector
 from src.models.components.text_encoders.base_text_encoder import (
     BaseTextEncoder,
 )
 from src.utils import RankedLogger
 from src.utils.errors import FileNotSpecified
 from src.utils.logging_utils import log_model_loading
+from utils.errors import IllegalArgumentCombination
 
 log = RankedLogger(__name__, rank_zero_only=True)
 
@@ -23,13 +25,14 @@ log = RankedLogger(__name__, rank_zero_only=True)
 class InferenceModel(BaseModel):
     def __init__(
         self,
-        geo_encoder: BaseGeoEncoder | None,
-        geo_encoder_prediction: BaseGeoEncoder | None,
-        text_encoder: BaseTextEncoder | None,
-        prediction_head: BasePredictionHead | None,
-        num_classes: int | None,
+        geo_encoder: BaseGeoEncoder,
+        text_encoder: BaseTextEncoder,
+        prediction_head: BasePredictionHead,
+        num_classes: int,
+        geo_adapter: BaseProjector | None = None,
+        text_adapter: BaseProjector | None = None,
         metrics: MetricsWrapper | None = None,
-        ks: list[int] | None = [5, 10, 15],
+        ks: list[int] | None = None,
         match_to_geo: bool = True,
         **kwargs,
     ) -> None:
@@ -58,12 +61,12 @@ class InferenceModel(BaseModel):
             tabular_dim=None,
         )
 
-        if geo_encoder_prediction:
-            self.geo_encoder_prediction = geo_encoder_prediction
+        self.geo_adapter = geo_adapter
+        self.text_adapter = text_adapter
 
         # Params from alignment model
         self.match_to_geo = match_to_geo
-        self.ks = ks
+        self.ks = ks or [5, 10, 15]
 
     @override
     def _setup(self, stage: str) -> None:
@@ -71,32 +74,40 @@ class InferenceModel(BaseModel):
         if stage != "inference":
             raise ValueError(f"Trying to {stage} inference model")
 
-        print("-------Model------------")
+        log.info("-------Model------------")
         # Configure encoders
-        if hasattr(self, "geo_encoder"):
+        if self.geo_encoder:
             self.geo_encoder.setup()
-        if hasattr(self, "text_encoder"):
-            self.text_encoder.setup()
-        if hasattr(self, "geo_encoder_prediction"):
-            self.geo_encoder_prediction.setup()
+        if self.geo_adapter:
+            self.geo_adapter.set_input_dim(self.geo_encoder.output_dim)
+            self.geo_adapter.setup()
 
-        if hasattr(self, "text_encoder") and hasattr(self, "geo_encoder"):
-            # Configure optional extra projection so text embeddings match geo embeddings.
-            if self.text_encoder.output_dim != self.geo_encoder.output_dim:
-                if self.match_to_geo:
-                    self.text_encoder.add_projector(projected_dim=self.geo_encoder.output_dim)
-                else:
-                    self.geo_encoder.add_projector(projected_dim=self.text_encoder.output_dim)
+        if self.text_encoder:
+            self.text_encoder.setup()
+        if self.text_adapter:
+            self.text_adapter.set_input_dim(self.text_encoder.output_dim)
+            self.text_adapter.setup()
+
+        # Sanity check for dimension matching
+        geo_branch_dim = (
+            self.geo_adapter.output_dim if self.geo_adapter else self.geo_encoder.output_dim
+        )
+        text_branch_dim = (
+            self.text_adapter.output_dim if self.text_adapter else self.text_encoder.output_dim
+        )
+
+        if geo_branch_dim != text_branch_dim:
+            raise IllegalArgumentCombination(
+                "Provided prediction and alignment model checkpoints are not mergeable"
+            )
+
         # Configure prediction head
-        if hasattr(self, "prediction_head") and self.prediction_head.net is None:
+        if self.prediction_head and self.prediction_head.net is None:
             if self.num_classes is None:
                 raise ValueError(
                     "InferenceModel requires `num_classes` to build the prediction head."
                 )
-            if hasattr(self, "geo_encoder_prediction"):
-                input_dim = self.geo_encoder_prediction.output_dim
-            else:
-                self.geo_encoder.output_dim
+            input_dim = self.geo_encoder.output_dim
             self.prediction_head.set_dim(input_dim=input_dim, output_dim=self.num_classes)
             self.prediction_head.setup()
         print("------------------------")
@@ -112,17 +123,19 @@ class InferenceModel(BaseModel):
 
     def forward_text(self, text: list[str]) -> torch.Tensor:
         batch = {"text": text}
-        return self.text_encoder(batch, "train")
+        text_feats = self.text_encoder(batch, "train")
+        if self.text_adapter:
+            text_feats = self.text_adapter(text_feats)
+        return text_feats
 
     def forward_geo(self, batched_eo) -> Tuple[torch.Tensor, torch.Tensor | None]:
         geo_feats = self.geo_encoder(batched_eo)
-        pred = None
-        if hasattr(self, "prediction_head"):
-            if hasattr(self, "geo_encoder_prediction"):
-                geo_feats_pr = self.geo_encoder_prediction(batched_eo)
-                pred = self.prediction_head(geo_feats_pr)
-            else:
-                pred = self.prediction_head(geo_feats)
+
+        if self.prediction_head:
+            pred = self.prediction_head(geo_feats)
+
+        if self.geo_adapter:
+            geo_feats = self.geo_adapter(geo_feats)
         return geo_feats, pred
 
     @override
@@ -130,21 +143,15 @@ class InferenceModel(BaseModel):
         self,
         batch: Dict[str, torch.Tensor],
     ) -> Tuple[torch.Tensor | None, torch.Tensor | None, torch.Tensor | None]:
-        if hasattr(self, "geo_encoder"):
-            geo_feats, pred = self.forward_geo(batch)
 
-        if hasattr(self, "text_encoder"):
-            text_feats = self.text_encoder(batch, "test")
+        geo_feats, pred = self.forward_geo(batch)
+        text_feats = self.text_encoder(batch, "test")
 
         # Change dtype of geo data if it does not match text dtype
-        if (
-            hasattr(self, "text_encoder")
-            and hasattr(self, "geo_encoder")
-            and geo_feats.dtype != text_feats.dtype
-        ):
+        if geo_feats.dtype != text_feats.dtype:
             geo_feats = geo_feats.to(text_feats.dtype)
 
-            return pred, geo_feats, text_feats
+        return pred, geo_feats, text_feats
 
     def concept_similarities(self, geo_embeds, concept=None) -> torch.Tensor:
         # Get concept embeddings
@@ -157,9 +164,6 @@ class InferenceModel(BaseModel):
 
         elif self.concept_embeds is not None:
             concept_embeds = self.concept_embeds
-        else:
-            with torch.no_grad():
-                concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
 
         # Similarity
         geo_embeds = F.normalize(geo_embeds, dim=1)
@@ -225,19 +229,13 @@ def merge_inference_model(cfg, save_ckpt=False) -> InferenceModel | None:
     align_ckpt = torch.load(align_ckpt_path, map_location="cpu", weights_only=False)
 
     inference_hparams = {}
-    geo_encoder_prediction_flag = False
     # Sanity check: ensure geo encoder configs match.
     if pred_ckpt["hyper_parameters"].get("geo_encoder") != align_ckpt["hyper_parameters"].get(
         "geo_encoder"
     ):
-        log.warning("Geo encoder configs differ between checkpoints; results may be invalid.")
-        if input("Do you want to proceed? y/n").lower() != "y":
-            return None
-        if input("Use separate geo_encoders for prediction and alignment? y/n").lower() == "y":
-            inference_hparams["geo_encoder_prediction"] = pred_ckpt["hyper_parameters"].get(
-                "geo_encoder"
-            )
-            geo_encoder_prediction_flag = True
+        raise IllegalArgumentCombination(
+            "Geo encoder configs differ between checkpoints; results may be invalid."
+        )
 
     pred_trainable_modules = pred_ckpt["hyper_parameters"].get("trainable_modules", [])
     align_trainable_modules = align_ckpt["hyper_parameters"].get("trainable_modules", [])
@@ -265,43 +263,50 @@ def merge_inference_model(cfg, save_ckpt=False) -> InferenceModel | None:
     model: InferenceModel = hydra.utils.instantiate(inference_hparams)
     model.setup("inference")
 
-    # Load alignment weights first (text encoder).
-    text_state = {
-        k: v for k, v in align_ckpt["state_dict"].items() if k.startswith("text_encoder.")
-    }
-    if text_state:
-        res = model.load_state_dict(text_state, strict=False)
-        log_model_loading("text_encoder", res)
+    collected_states = {}
 
-    if geo_encoder_prediction_flag:
-        geo_state = {
-            k: v for k, v in align_ckpt["state_dict"].items() if k.startswith("geo_encoder.")
+    # Get text encoder
+    collected_states.update(
+        {
+            k: v
+            for k, v in align_ckpt["state_dict"].items()
+            if k.startswith("text_encoder.")
+            and k != "text_encoder.model.text_model.embeddings.position_ids"
         }
-        geo_pred_state = {
-            k: v for k, v in pred_ckpt["state_dict"].items() if k.startswith("geo_encoder.")
-        }
-        if geo_pred_state:
-            res = model.load_state_dict(geo_pred_state, strict=False)
-            log_model_loading("geo_encoder_pred", res)
-    elif cfg.training_order[0] == "prediction_model" and not geo_align_encoder_trained:
-        geo_state = {
-            k: v for k, v in pred_ckpt["state_dict"].items() if k.startswith("geo_encoder.")
-        }
+    )
+
+    # Get text adapter
+    collected_states.update(
+        {k: v for k, v in align_ckpt["state_dict"].items() if k.startswith("text_adapter.")}
+    )
+
+    # Get geo_encoder
+    if cfg.training_order[0] == "prediction_model" and not geo_align_encoder_trained:
+        collected_states.update(
+            {k: v for k, v in pred_ckpt["state_dict"].items() if k.startswith("geo_encoder.")}
+        )
     else:
-        geo_state = {
-            k: v for k, v in align_ckpt["state_dict"].items() if k.startswith("geo_encoder.")
-        }
-    if geo_state:
-        res = model.load_state_dict(geo_state, strict=False)
-        log_model_loading("geo_encoder", res)
+        collected_states.update(
+            {
+                k: v
+                for k, v in align_ckpt["state_dict"].items()
+                if k.startswith("geo_encoder.") or k.startswith("geo_adapter.")
+            }
+        )
 
-    # Load prediction head weights from predictive ckpt.
-    head_state = {
-        k: v for k, v in pred_ckpt["state_dict"].items() if k.startswith("prediction_head.")
-    }
-    if head_state:
-        res = model.load_state_dict(head_state, strict=False)
-        log_model_loading("Predictive_head", res)
+    # Get geo_adapter
+    collected_states.update(
+        {k: v for k, v in align_ckpt["state_dict"].items() if k.startswith("geo_adapter.")}
+    )
+
+    # Get prediction head weights from predictive ckpt.
+    collected_states.update(
+        {k: v for k, v in pred_ckpt["state_dict"].items() if k.startswith("prediction_head.")}
+    )
+
+    # Load collected states
+    res = model.load_state_dict(collected_states, strict=False)
+    log_model_loading("Inference Model", res)
 
     # Save model
     if save_ckpt:
