@@ -18,26 +18,25 @@ seed: 12345
 tags:
   - baseline
   - alignment
-  - geoclip
+  - remoteclip
 
-experiment_name: geoclip_baseline
+experiment_name: GeoRSCLIP_${str:${model.model_name}}_baseline
 projects: s2bms_alignment
 
 model:
-  geo_encoder:
-    _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
-    geo_data_name: coords
-  text_encoder:
-    _target_: src.models.components.text_encoders.clip_text_encoder.ClipTextEncoder
-    hf_cache_dir: ${paths.huggingface_cache}
-    use_geoclip_projector: true
-  loss_fn:
+  _target_: src.models.georsclip.build_GeoRSCLIP_model
+  hf_cache_dir: ${paths.huggingface_cache}
   trainable_modules: []
+  preprocessing: ${data.dataset.modalities.s2.preprocessing}
 
 data:
   dataset:
     modalities:
-      coords:
+      s2:
+        size: 224
+        channels: rgb
+        format: tif
+        preprocessing: div_2000
     use_target_data: false
     use_aux_data: "all"
     use_unlabelled_data: false
@@ -59,3 +58,9 @@ logger:
     tags: ${tags}
     group: "alignment"
     project: "s2bms_aef_alignment_baselines"
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      ++model.model_name: ViT-B-32, ViT-H-14
