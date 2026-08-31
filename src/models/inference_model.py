@@ -15,7 +15,7 @@ from src.models.components.text_encoders.base_text_encoder import (
     BaseTextEncoder,
 )
 from src.utils import RankedLogger
-from src.utils.errors import FileNotSpecifie, FileNotSpecified
+from src.utils.errors import FileNotSpecified
 from src.utils.logging_utils import log_model_loading
 from utils.errors import IllegalArgumentCombination
 
