@@ -1,0 +1,29 @@
+# @package _global_
+
+defaults:
+  - override /data: heat_krakow_tessera_text
+  - override /model: heat_krakow_fusion_alignment
+  - override /callbacks: default
+  - override /trainer: default
+
+# Experiment identification
+task_name: "heat_krakow_alignment"
+tags: ["krakow", "lst", "tessera", "coords", "fusion", "alignment"]
+
+# Datamodule overrides
+datamodule:
+  batch_size: 32
+  num_workers: 4
+
+# Model parameters (Geo & Text Encoder Setup)
+model:
+  optimizer:
+    _target_: torch.optim.AdamW
+    lr: 1e-4
+    weight_decay: 0.01
+
+trainer:
+  min_epochs: 1
+  max_epochs: 50
+  accelerator: gpu
+  devices: 1

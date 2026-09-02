@@ -1,0 +1,40 @@
+_target_: src.models.text_alignment_model.TextAlignmentModel
+
+geo_encoder:
+  _target_: src.models.components.geo_encoders.encoder_wrapper.EncoderWrapper
+  fusion_strategy: concat
+  encoder_branches:
+    - encoder:
+        _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
+    - encoder:
+        _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
+        geo_data_name: tessera
+text_encoder:
+  _target_: src.models.components.text_encoders.clip_text_encoder.ClipTextEncoder
+  hf_cache_dir: ${paths.huggingface_cache}
+
+# Matching and trainable module settings
+match_to_geo: false
+trainable_modules:
+  - text_encoder.projector
+  - geo_encoder.encoder_branches.1
+  - loss_fn.log_temp
+
+metrics: null
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.0
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+
+loss_fn:
+  _target_: src.models.components.loss_fns.clip_loss.ClipLoss
+  temperature: 0.07

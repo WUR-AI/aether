@@ -1,0 +1,202 @@
+[
+    {
+        "concept_caption": "Hot surface above the urban heat-stress limit",
+        "is_max": true,
+        "col": "target_lst",
+        "id": 0,
+        "theta_k": 33.433387756347656,
+        "accuracy_baseline_train": 7.180138111114502,
+        "accuracy_baseline_val": 7.002706050872803,
+        "accuracy_baseline_test": 7.424319744110107
+    },
+    {
+        "concept_caption": "Areas with no vegetation",
+        "is_max": false,
+        "col": "feat_ndvi_20240829",
+        "id": 1,
+        "theta_k": 0.15630985796451569,
+        "accuracy_baseline_train": 11.315694808959961,
+        "accuracy_baseline_val": 11.079160690307617,
+        "accuracy_baseline_test": 11.364789009094238
+    },
+    {
+        "concept_caption": "Healthy vegetation in moist environment",
+        "is_max": true,
+        "col": "feat_ndwi_20240829",
+        "id": 2,
+        "theta_k": -0.1660308837890625,
+        "accuracy_baseline_train": 10.906126022338867,
+        "accuracy_baseline_val": 10.943842887878418,
+        "accuracy_baseline_test": 10.823609352111816
+    },
+    {
+        "concept_caption": "Anthropogenic structures with intensive red colour",
+        "is_max": true,
+        "col": "feat_ari_20240829",
+        "id": 3,
+        "theta_k": 0.14349378645420074,
+        "accuracy_baseline_train": 5.541862964630127,
+        "accuracy_baseline_val": 5.209743022918701,
+        "accuracy_baseline_test": 5.428716659545898
+    },
+    {
+        "concept_caption": "Dense, healthy vegetation",
+        "is_max": true,
+        "col": "feat_nbr_20240829",
+        "id": 4,
+        "theta_k": 0.20608046650886536,
+        "accuracy_baseline_train": 3.725987672805786,
+        "accuracy_baseline_val": 3.7889041900634766,
+        "accuracy_baseline_test": 4.160325050354004
+    },
+    {
+        "concept_caption": "High density of tall blocks of flats",
+        "is_max": true,
+        "col": "feat_meanbuildingsheight",
+        "id": 5,
+        "theta_k": 16.044946670532227,
+        "accuracy_baseline_train": 5.733961582183838,
+        "accuracy_baseline_val": 5.6326117515563965,
+        "accuracy_baseline_test": 5.750041961669922
+    },
+    {
+        "concept_caption": "Built-up areas with little or no green infrastructure",
+        "is_max": true,
+        "col": "feat_buildingscoverha",
+        "id": 6,
+        "theta_k": 0.268550306558609,
+        "accuracy_baseline_train": 7.346864700317383,
+        "accuracy_baseline_val": 7.171853542327881,
+        "accuracy_baseline_test": 7.745645046234131
+    },
+    {
+        "concept_caption": "Built-up areas with little or no green infrastructure",
+        "is_max": true,
+        "col": "feat_buildingscoverpercent",
+        "id": 7,
+        "theta_k": 0.33154356479644775,
+        "accuracy_baseline_train": 7.346864700317383,
+        "accuracy_baseline_val": 7.171853542327881,
+        "accuracy_baseline_test": 7.745645046234131
+    },
+    {
+        "concept_caption": "Areas fully covered with anthropogenic structures",
+        "is_max": true,
+        "col": "feat_copernicusmeanimperviousdensity2021",
+        "id": 8,
+        "theta_k": 35.460235595703125,
+        "accuracy_baseline_train": 22.069589614868164,
+        "accuracy_baseline_val": 22.158321380615234,
+        "accuracy_baseline_test": 22.543548583984375
+    },
+    {
+        "concept_caption": "Highly populated areas",
+        "is_max": true,
+        "col": "feat_res_per_1ha",
+        "id": 9,
+        "theta_k": 25.989999771118164,
+        "accuracy_baseline_train": 27.73468780517578,
+        "accuracy_baseline_val": 27.82476234436035,
+        "accuracy_baseline_test": 27.49873161315918
+    },
+    {
+        "concept_caption": "Areas located on the hills above the river valley",
+        "is_max": true,
+        "col": "feat_dem_5m",
+        "id": 10,
+        "theta_k": 253.7055206298828,
+        "accuracy_baseline_train": 10.340703010559082,
+        "accuracy_baseline_val": 10.791609764099121,
+        "accuracy_baseline_test": 10.485371589660645
+    },
+    {
+        "concept_caption": "Steep slopes of natural or anthropogenic terrain features",
+        "is_max": true,
+        "col": "feat_slope_5m",
+        "id": 11,
+        "theta_k": 7.012476444244385,
+        "accuracy_baseline_train": 10.500181198120117,
+        "accuracy_baseline_val": 10.385656356811523,
+        "accuracy_baseline_test": 10.29934024810791
+    },
+    {
+        "concept_caption": "Terrain features that rise above the neighbourhood",
+        "is_max": true,
+        "col": "feat_tpi_5m",
+        "id": 13,
+        "theta_k": 0.019795430824160576,
+        "accuracy_baseline_train": 3.8564696311950684,
+        "accuracy_baseline_val": 3.636671304702759,
+        "accuracy_baseline_test": 3.8897342681884766
+    },
+    {
+        "concept_caption": "Jagged terrain with uneven areas",
+        "is_max": true,
+        "col": "feat_tri_5m",
+        "id": 14,
+        "theta_k": 1.8499562740325928,
+        "accuracy_baseline_train": 9.144618034362793,
+        "accuracy_baseline_val": 9.235453605651855,
+        "accuracy_baseline_test": 8.89565372467041
+    },
+    {
+        "concept_caption": "Shaded areas with little incoming solar radiation throughout the year",
+        "is_max": false,
+        "col": "feat_annualsolarradiation",
+        "id": 15,
+        "theta_k": 693.439697265625,
+        "accuracy_baseline_train": 9.09387493133545,
+        "accuracy_baseline_val": 9.624492645263672,
+        "accuracy_baseline_test": 9.419922828674316
+    },
+    {
+        "concept_caption": "Tall, dense forests",
+        "is_max": true,
+        "col": "feat_meancanopyheight",
+        "id": 16,
+        "theta_k": 15.03244686126709,
+        "accuracy_baseline_train": 10.583544731140137,
+        "accuracy_baseline_val": 10.943842887878418,
+        "accuracy_baseline_test": 11.2125825881958
+    },
+    {
+        "concept_caption": "Areas covered entirely with dense forests",
+        "is_max": true,
+        "col": "feat_forestcoverha",
+        "id": 17,
+        "theta_k": 0.362540602684021,
+        "accuracy_baseline_train": 24.19354820251465,
+        "accuracy_baseline_val": 24.62787437438965,
+        "accuracy_baseline_test": 23.456789016723633
+    },
+    {
+        "concept_caption": "High vegeataion volume and biomass",
+        "is_max": true,
+        "col": "feat_vegetationvoxelnumber",
+        "id": 19,
+        "theta_k": 17026.263671875,
+        "accuracy_baseline_train": 17.763683319091797,
+        "accuracy_baseline_val": 18.048038482666016,
+        "accuracy_baseline_test": 17.85895538330078
+    },
+    {
+        "concept_caption": "Areas dominated by high vegetation with no buildings",
+        "is_max": true,
+        "col": "feat_hvv2bv",
+        "id": 21,
+        "theta_k": 94.12316131591797,
+        "accuracy_baseline_train": 35.49474334716797,
+        "accuracy_baseline_val": 34.489173889160156,
+        "accuracy_baseline_test": 35.22746658325195
+    },
+    {
+        "concept_caption": "Areas covered with dense forests",
+        "is_max": true,
+        "col": "feat_copernicusmeantreecoverdensity2023",
+        "id": 22,
+        "theta_k": 21.72222137451172,
+        "accuracy_baseline_train": 21.692642211914062,
+        "accuracy_baseline_val": 22.02300453186035,
+        "accuracy_baseline_test": 21.93471908569336
+    }
+]
