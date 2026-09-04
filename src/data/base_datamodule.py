@@ -39,6 +39,7 @@ class BaseDataModule(LightningDataModule):
         caption_builder: BaseCaptionBuilder = None,
         seed: int = 12345,
         spatial_split_distance_m: int = 1000,
+        use_collate_fn: bool = False,
     ) -> None:
         """Datamodule class which handles dataset splits and batching.
 
@@ -66,10 +67,15 @@ class BaseDataModule(LightningDataModule):
         self.dataset: BaseDataset = dataset
 
         # Caption generation
-        self.use_collate_fn: bool = self.dataset.use_aux_data is not None
-        if self.use_collate_fn:
-            assert caption_builder is not None, "Caption_builder cannot be None"
+        if caption_builder is not None:
+            assert (
+                self.dataset.use_aux_data is not None
+            ), "use_aux_data is required for CaptionBuilder."
+            self.use_collate_fn = True
             self.caption_builder = caption_builder
+        else:
+            self.caption_builder = None
+            self.use_collate_fn = use_collate_fn
         self._setup_flag = False
 
     @property
@@ -95,6 +101,15 @@ class BaseDataModule(LightningDataModule):
             # Set up the dataset (download requested modalities)
             self.dataset.setup()
             self.split_data()
+
+            if self.use_collate_fn:
+                self.setup_concept_caption_validation_parameters(
+                    use_saved_threshold_if_available=True,
+                    overwrite_existing_thresholds=False,
+                    save_newly_computed_threshold=True,
+                    compute_train_threshold=True,
+                    verbose=1,
+                )
             self._setup_flag = True
 
     @property
@@ -531,7 +546,7 @@ class BaseDataModule(LightningDataModule):
 
         return split_indices
 
-    def setup_conceptcaption_validation_parameters(
+    def setup_concept_caption_validation_parameters(
         self,
         use_saved_threshold_if_available=True,
         overwrite_existing_thresholds=False,
@@ -728,6 +743,43 @@ class BaseDataModule(LightningDataModule):
             self.caption_builder.update_concept_thresholds(self.concept_configs)
 
         return None
+
+    def split_concepts(self, return_mode="both"):
+        assert return_mode in ["fit", "test"]
+        if not hasattr(self, "_concepts_split_flag"):
+            configs = self.concept_configs
+
+            self.concept_configs = []
+            self.concepts = []
+            self.concept_names = []
+
+            self.test_concept_configs = []
+            self.test_concepts = []
+            self.test_concept_names = []
+            for c in configs:
+                name = f"{c['col'].replace('aux_', '')}_{'max' if c.get('is_max') else 'min'}"
+                if not c.get("val_av"):
+                    self.concepts.append(c["concept_caption"])
+                    self.concept_names.append(name)
+                    self.concept_configs.append(c)
+                else:
+                    name = name.replace("test-", "")
+                    self.test_concepts.append(c["concept_caption"])
+                    self.test_concept_names.append(name)
+                    self.test_concept_configs.append(c)
+            self._concepts_split_flag = True
+
+        # In training only use validation ones
+        if return_mode == "fit":
+            return self.concept_configs, self.concepts, self.concept_names
+        # In testing use validation plus test ones
+        if return_mode == "test":
+            if not hasattr(self, "_test_concept_flag"):
+                self.test_concept_configs.extend(self.concept_configs)
+                self.test_concepts.extend(self.concepts)
+                self.test_concept_names.extend(self.concept_names)
+                self._test_concept_flag = True
+            return self.test_concept_configs, self.test_concepts, self.test_concept_names
 
     def train_dataloader(self) -> DataLoader[Any]:
         """Create and return the train dataloader.

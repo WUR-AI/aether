@@ -119,36 +119,30 @@ class TextAlignmentModel(BaseModel):
 
         log.info("------------------------")
 
-    def _on_x_star(self):
+    def _on_x_star(self, mode: str):
         # Configure contrastive retrieval evaluation
+        if mode == "predict":
+            return
+
+        if mode == "test":
+            self._retrieval_setup_flag = False
+            # reset concepts, so test ones are also included
+
         if hasattr(self, "_retrieval_setup_flag"):
             if self._retrieval_setup_flag:
                 return
 
-        self.setup_retrieval_evaluation(verbose=0)
+        self.setup_retrieval_evaluation(mode=mode)
         self._retrieval_setup_flag = True
         log.info("Retrieval evaluation configured")
 
-    def setup_retrieval_evaluation(
-        self,
-        use_saved_threshold_if_available=True,
-        overwrite_existing_thresholds=False,
-        save_newly_computed_threshold=True,
-        compute_train_threshold=True,
-        verbose=1,
-    ):
+    def setup_retrieval_evaluation(self, mode: str = "val"):
         # Configure concept thresholds for contrastive retrieval evaluation:
-        self.trainer.datamodule.setup_conceptcaption_validation_parameters(
-            use_saved_threshold_if_available=use_saved_threshold_if_available,
-            overwrite_existing_thresholds=overwrite_existing_thresholds,
-            save_newly_computed_threshold=save_newly_computed_threshold,
-            compute_train_threshold=compute_train_threshold,
-            verbose=verbose,
-        )
+        mode = "fit" if mode in ["val", "train"] else mode
 
-        self.concept_configs = self.trainer.datamodule.concept_configs
-        self.concepts = self.trainer.datamodule.concepts
-        self.concept_names = self.trainer.datamodule.concept_names
+        self.concept_configs, self.concepts, self.concept_names = (
+            self.trainer.datamodule.split_concepts(return_mode=mode)
+        )
         self.dynamic_k_baselines = self.trainer.datamodule.dynamic_k_baselines
 
         # Set up loss and metrics for contrastive retrieval evaluation:
