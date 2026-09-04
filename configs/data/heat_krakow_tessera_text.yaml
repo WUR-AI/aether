@@ -2,9 +2,9 @@
 #
 # Requirements before running:
 #   1. The model-ready CSV the dataset loads from ${paths.data_dir} must contain the
-#      aux_* columns.
+#      feat_* and aux_*_label columns.
 #   2. Tessera tiles at ${paths.data_dir}/heat_krakow/eo/tessera/tessera_<name_loc>.npy
-#      (10x10, 128-band) — see the tessera preprocessing step.
+#      (10x10, 128-band).
 _target_: src.data.base_datamodule.BaseDataModule
 
 dataset:
@@ -16,11 +16,11 @@ dataset:
       size: 10
       format: npy
     coords: {}
-  use_target_data: false # alignment is contrastive geo<->text; LST enters only as a concept
-  use_features: false # Tessera-only EO branch (your results: fusion hurts), avoids circularity
+  use_target_data: false
+  use_features: false
   use_unlabelled_data: false
   use_aux_data:
-    aux: # numeric raw values -> concept theta_k / retrieval ground truth
+    aux:
       columns:
         - target_lst
         - feat_ndvi_20240829
@@ -97,7 +97,7 @@ dataset:
         - feat_copernicusclcplusbackbone2023class__water
         - feat_copernicusherbaceousvegpresence2023__herbaceous_vegetation_present
         - feat_copernicusherbaceousvegpresence2023__no_herbaceous_vegetation
-    top: # expert-legend label strings -> caption text
+    top:
       columns:
         - aux_ndvi_20240829_label
         - aux_ndwi_20240829_label
@@ -133,7 +133,7 @@ dataset:
 caption_builder:
   _target_: src.data.heat_krakow_caption_builder.HeatKrakowCaptionBuilder
   templates_fname: v1.json
-  concepts_fname: v1.json
+  concepts_fname: v2.json
   data_dir: ${paths.data_dir}/heat_krakow
   seed: ${seed}
 
@@ -143,6 +143,4 @@ pin_memory: true
 
 split_mode: "from_file"
 saved_split_file_name: "heat_krakow_split_20260522_1120.pth"
-train_val_test_split: [0.7, 0.15, 0.15]
-save_split: false
 seed: ${seed}

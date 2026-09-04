@@ -5,34 +5,14 @@
     "col": "target_lst"
   },
   {
-    "concept_caption": "Cold surface below the urban heat-stress level",
-    "is_max": false,
-    "col": "target_lst"
-  },
-  {
     "concept_caption": "Areas with abundant vegetation in good condition",
     "is_max": true,
-    "col": "feat_ndvi_20240829"
-  },
-  {
-    "concept_caption": "Areas with no vegetation",
-    "is_max": false,
     "col": "feat_ndvi_20240829"
   },
   {
     "concept_caption": "Healthy vegetation in moist environment",
     "is_max": true,
     "col": "feat_ndwi_20240829"
-  },
-  {
-    "concept_caption": "Dry areas or sealed anthropogenic surfaces",
-    "is_max": false,
-    "col": "feat_ndwi_20240829"
-  },
-  {
-    "concept_caption": "Anthropogenic structures with intensive red colour",
-    "is_max": true,
-    "col": "feat_ari_20240829"
   },
   {
     "concept_caption": "Areas covered with healthy, green vegetation",
@@ -45,38 +25,18 @@
     "col": "feat_nbr_20240829"
   },
   {
-    "concept_caption": "Dry soil or areas with anthropogenic surfaces",
-    "is_max": false,
-    "col": "feat_ndwi_20240829"
-  },
-  {
     "concept_caption": "High density of tall blocks of flats",
     "is_max": true,
     "col": "feat_meanbuildingsheight"
   },
   {
-    "concept_caption": "Unbuilt areas",
-    "is_max": false,
-    "col": "feat_meanbuildingsheight"
-  },
-  {
     "concept_caption": "Built-up areas with little or no green infrastructure",
     "is_max": true,
     "col": "feat_buildingscoverha"
   },
   {
-    "concept_caption": "Areas without buildings",
-    "is_max": false,
-    "col": "feat_buildingscoverha"
-  },
-  {
     "concept_caption": "Built-up areas with little or no green infrastructure",
     "is_max": true,
-    "col": "feat_buildingscoverpercent"
-  },
-  {
-    "concept_caption": "Areas with no buildings",
-    "is_max": false,
     "col": "feat_buildingscoverpercent"
   },
   {
@@ -85,24 +45,9 @@
     "col": "feat_copernicusmeanimperviousdensity2021"
   },
   {
-    "concept_caption": "Natural areas with no impervious surfaces",
-    "is_max": false,
-    "col": "feat_copernicusmeanimperviousdensity2021"
-  },
-  {
-    "concept_caption": "Highly populated areas",
-    "is_max": true,
-    "col": "feat_res_per_1ha"
-  },
-  {
-    "concept_caption": "Sparsely populated areas or areas without permanent residents",
+    "concept_caption": "Sparsely populated areas, or areas without permanent residents",
     "is_max": false,
     "col": "feat_res_per_1ha"
-  },
-  {
-    "concept_caption": "Areas located on the hills above the river valley",
-    "is_max": true,
-    "col": "feat_dem_5m"
   },
   {
     "concept_caption": "Areas situated in the Vistula river valley",
@@ -115,18 +60,8 @@
     "col": "feat_slope_5m"
   },
   {
-    "concept_caption": "Flat terrain",
-    "is_max": false,
-    "col": "feat_slope_5m"
-  },
-  {
     "concept_caption": "Terrain features that rise above the neighbourhood",
     "is_max": true,
-    "col": "feat_tpi_5m"
-  },
-  {
-    "concept_caption": "Terrain features lower than the neighbouring area",
-    "is_max": false,
     "col": "feat_tpi_5m"
   },
   {
@@ -135,18 +70,8 @@
     "col": "feat_tri_5m"
   },
   {
-    "concept_caption": "Flat terrain with little variability",
-    "is_max": false,
-    "col": "feat_tri_5m"
-  },
-  {
     "concept_caption": "High potential incoming solar radiation throughout the year",
     "is_max": true,
-    "col": "feat_annualsolarradiation"
-  },
-  {
-    "concept_caption": "Shaded areas with little incoming solar radiation throughout the year",
-    "is_max": false,
     "col": "feat_annualsolarradiation"
   },
   {
@@ -155,33 +80,18 @@
     "col": "feat_meancanopyheight"
   },
   {
-    "concept_caption": "No forest cover",
-    "is_max": false,
-    "col": "feat_meancanopyheight"
-  },
-  {
-    "concept_caption": "Areas covered entirely with dense forests",
-    "is_max": true,
-    "col": "feat_forestcoverha"
-  },
-  {
     "concept_caption": "Areas with no forest cover",
     "is_max": false,
     "col": "feat_forestcoverha"
   },
   {
-    "concept_caption": "High vegeataion volume and biomass",
+    "concept_caption": "High vegetation volume and biomass",
     "is_max": true,
     "col": "feat_vegetationvoxelnumber"
   },
   {
     "concept_caption": "Areas dominated by high vegetation with no buildings",
     "is_max": true,
-    "col": "feat_hvv2bv"
-  },
-  {
-    "concept_caption": "Areas dominated by buildings with little or no green infrastructure",
-    "is_max": false,
     "col": "feat_hvv2bv"
   },
   {
