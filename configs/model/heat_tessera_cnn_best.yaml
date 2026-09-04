@@ -4,8 +4,6 @@ geo_encoder:
   geo_data_name: tessera
   resnet_version: 34
   pretrained_cnn: imagenet
-  freezing_strategy: all
-  output_dim: 256
 prediction_head:
   _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
   nn_layers: 2

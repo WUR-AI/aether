@@ -386,30 +386,31 @@ class BaseDataModule(LightningDataModule):
             ds_records_names = [i["name_loc"] for i in self.dataset.records]
             records_name_to_idx = {name: idx for idx, name in enumerate(ds_records_names)}
 
-            train_indices = np.array(
-                [records_name_to_idx[n] for n in train_indices if n in records_name_to_idx]
-            )
-            val_indices = np.array(
-                [
-                    (
-                        records_name_to_idx[n]
-                        if n in records_name_to_idx
-                        else MissingDataError("Validation split is missing data")
+            def _to_record_indices(name_locs, mode):
+                """Map a pd.Series of name_locs onto record indices.
+
+                Validation and test splits are a contract: the saved split only
+                contains locations that have every modality available, so a
+                name_loc missing from the records means the split and the data no
+                longer match and the run must stop. The train split may legitimately
+                be shorter, so unmatched entries there are dropped with a warning.
+                """
+                indices = [records_name_to_idx[n] for n in name_locs if n in records_name_to_idx]
+                n_missing = len(name_locs) - len(indices)
+
+                if n_missing and mode != "train":
+                    raise MissingDataError(f"{mode} split is missing data")
+                if n_missing:
+                    log.warning(
+                        f"{mode} split: dropped {n_missing}/{len(name_locs)} name_locs "
+                        f"that are not present in the dataset records."
                     )
-                    for n in val_indices
-                ]
-            )
+                return np.array(indices, dtype=np.int64)
+
+            train_indices = _to_record_indices(train_indices, "train")
+            val_indices = _to_record_indices(val_indices, "val")
             if test_indices is not None:
-                test_indices = np.array(
-                    [
-                        (
-                            records_name_to_idx[n]
-                            if n in records_name_to_idx
-                            else MissingDataError("Validation split is missing data")
-                        )
-                        for n in test_indices
-                    ]
-                )
+                test_indices = _to_record_indices(test_indices, "test")
 
             log.info(f"Dataset was split using indices from file: {self.saved_split_file_path}")
         else:

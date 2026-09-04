@@ -1,0 +1,28 @@
+# Aligned Tessera embeddings for the Guatemala UHI use case.
+# Run: python src/inference/inference_heat_guatemala_embeddings.py
+defaults:
+  - paths: ${oc.env:STORAGE_MODE,local}
+  - extras: default
+  - hydra: default
+  - _self_
+
+task_name: "inference"
+tags: ["inference", "heat_island", "guatemala", "tessera"]
+seed: 12345
+
+alignment_ckpt_path: ${paths.checkpoint_dir}/epoch_035.ckpt
+
+points_csv: ${paths.data_dir}/heat_guatemala/model_ready_heat_guatemala.csv
+limit: null                     # process only the first N rows, for a quick check
+
+tile_dir: ${paths.data_dir}/heat_guatemala/eo/tessera
+year: 2024
+tile_size: 10
+# v1.1 covers very little of Guatemala City (11 tiles for 2024 in the 1x1 degree
+# box); every tile in this use case came from v1.
+tessera_version: v1
+
+output_csv: ${paths.root_dir}/outputs/heat_guatemala_aligned_embeddings.csv
+wide_columns: false             # true: one column per dimension instead of one cell per vector
+normalize: true                 # the contrastive loss normalises, so keep this on for cosine
+device: cuda

@@ -139,7 +139,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
 
     train_metrics = trainer.callback_metrics
 
-    if cfg.get("validate") and wandb_logger is not None:
+    if cfg.get("validate"):
         # Run validation with the best ckpt
         log.info("Validating the best ckpt!")
         ckpt_path = trainer.checkpoint_callback.best_model_path
@@ -155,9 +155,10 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         )
 
         val_metrics = trainer.callback_metrics
-        wandb_logger.log_metrics({f"best_{k}": v for k, v in val_metrics.items()})
+        if wandb_logger is not None:
+            wandb_logger.log_metrics({f"best_{k}": v for k, v in val_metrics.items()})
 
-    if cfg.get("test") and wandb_logger is not None:
+    if cfg.get("test"):
         log.info("Starting testing!")
         ckpt_path = trainer.checkpoint_callback.best_model_path
         if ckpt_path == "":
