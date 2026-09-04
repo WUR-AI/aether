@@ -275,7 +275,7 @@ class BaseModel(LightningModule, ABC):
         # never match the trainable_modules filter above, but they must survive
         # checkpointing so resumed runs and standalone inference stay correct).
         for name, buf in self.named_buffers():
-            if buf is not None:
+            if buf is not None and ".embeddings.position_ids" not in name:
                 checkpoint["state_dict"][name] = buf
 
         # Update model configurations
