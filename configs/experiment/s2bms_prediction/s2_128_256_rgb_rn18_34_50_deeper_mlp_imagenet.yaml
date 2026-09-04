@@ -3,7 +3,7 @@
 # to execute this experiment run:
 # python train.py experiment=example
 
-# S2 4c tiles (128 and 256 size) with Imagenet Resnet and MLP prediction head, with 3 random. RN also trainable
+# S2 rgb tiles (128 and 256 size) with Imagenet Resnet and MLP prediction head, with 3 random. RN also trainable
 
 defaults:
   - override /model: s2bms_prediction
@@ -16,15 +16,17 @@ tags:
   - s2_${str:${data.dataset.modalities.s2.size}}
   - ${str:${seed}}
 
-experiment_name: rn${str:${model.geo_encoder.resnet_version}}_s2_${str:${data.dataset.modalities.s2.size}}_${str:${data.dataset.modalities.s2.channels}}_mlp
+experiment_name: s2_${str:${data.dataset.modalities.s2.size}}_rgb_rn${str:${model.geo_encoder.resnet_version}}_imagenet_deeper_mlp
 
 model:
   geo_encoder:
     _target_: src.models.components.geo_encoders.cnn_encoder.CNNEncoder
     geo_data_name: s2
-    input_n_bands: 4
+    input_n_bands: 3
+    pretrained_cnn: imagenet
   prediction_head:
     _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
+    nn_layers: 3
   trainable_modules: [geo_encoder, prediction_head]
 
 data:
@@ -33,17 +35,18 @@ data:
       s2:
         format: tif
         dtype: float32
-        channels: 4c
+        channels: rgb
         preprocessing: zscored
     use_target_data: true
     use_aux_data: false
     dtype: float32
   caption_builder:
-  num_workers: 4
-  batch_size: 256
+  pin_memory: true
+  num_workers: 14
+  batch_size: 128
   persistent_workers: true
-  prefetch_factor: 2
-  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  prefetch_factor: 4
+  saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
   wandb:
@@ -59,4 +62,4 @@ hydra:
     params:
       seed: 12345, 404, 654
       ++data.dataset.modalities.s2.size: 128, 256
-      ++model.geo_encoder.resnet_version: 50, 18
+      ++model.geo_encoder.resnet_version: 18, 34, 50
