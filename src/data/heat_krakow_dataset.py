@@ -16,19 +16,16 @@ from src.data.base_dataset import BaseDataset
 
 log = logging.getLogger(__name__)
 
-# Compatibility Patche for experiment_tracking.py)
+# Compatibility Patch for experiment_tracking.py
 _orig_parse_data_name = et.parse_data_name
-
 
 def _patched_parse_data_name(run=None, cfg=None):
     if cfg is not None and isinstance(cfg, DictConfig):
         cfg = OmegaConf.to_container(cfg, resolve=True)
     return _orig_parse_data_name(run=run, cfg=cfg)
 
-
 et.parse_data_name = _patched_parse_data_name
 
-_orig_compose_experiment_name = et.compose_experiment_name
 
 # Patch torch.nn.Module to support base_model's loss_fn.setup() call safely
 if not hasattr(nn.Module, "setup"):
