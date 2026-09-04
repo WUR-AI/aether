@@ -16,7 +16,7 @@ from src.data.base_dataset import BaseDataset
 
 log = logging.getLogger(__name__)
 
-# Compatibility Patch for experiment_tracking.py (DictConfig -> dict)
+# Compatibility Patche for experiment_tracking.py)
 _orig_parse_data_name = et.parse_data_name
 
 
@@ -27,6 +27,8 @@ def _patched_parse_data_name(run=None, cfg=None):
 
 
 et.parse_data_name = _patched_parse_data_name
+
+_orig_compose_experiment_name = et.compose_experiment_name
 
 # Patch torch.nn.Module to support base_model's loss_fn.setup() call safely
 if not hasattr(nn.Module, "setup"):
@@ -40,7 +42,6 @@ class HeatKrakowDataset(BaseDataset):
         self,
         data_dir: str,
         modalities: dict,
-        use_unlabelled_data: bool = False,
         use_target_data: bool = True,
         use_aux_data: Any = None,
         use_features: bool = True,
@@ -50,10 +51,9 @@ class HeatKrakowDataset(BaseDataset):
         dtype: str = "float32",
         return_name_loc: bool = False,
         csv_name: str = "model_ready_heat_krakow.csv",
+        **kwargs,
     ) -> None:
-        if use_unlabelled_data:
-            csv_name = "model_ready_heat_krakow.csv"
-        elif mock:
+        if mock:
             csv_name = None
         else:
             csv_name = "model_ready_heat_krakow.csv"
