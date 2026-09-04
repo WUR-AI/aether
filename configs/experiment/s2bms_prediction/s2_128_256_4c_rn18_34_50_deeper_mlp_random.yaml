@@ -3,7 +3,7 @@
 # to execute this experiment run:
 # python train.py experiment=example
 
-# Tessera with resnet (18 or 50) encoder and MLP prediction head, for tile sizes 128 and 256, each with 3 random seeds
+# S2 4c tiles (128 and 256 size) with Imagenet Resnet and MLP prediction head, with 3 random. RN also trainable
 
 defaults:
   - override /model: s2bms_prediction
@@ -12,36 +12,41 @@ defaults:
 
 tags:
   - prediction
-  - tessera
-  - tessera_${str:${data.dataset.modalities.tessera.size}}
+  - s2
+  - s2_${str:${data.dataset.modalities.s2.size}}
   - ${str:${seed}}
 
-experiment_name: rn${str:${model.geo_encoder.resnet_version}}_tessera_${str:${data.dataset.modalities.tessera.size}}_mlp
+experiment_name: s2_${str:${data.dataset.modalities.s2.size}}_4c_rn${str:${model.geo_encoder.resnet_version}}_deeper_mlp
 
 model:
   geo_encoder:
     _target_: src.models.components.geo_encoders.cnn_encoder.CNNEncoder
-    geo_data_name: tessera
-    input_n_bands: 128
+    geo_data_name: s2
+    input_n_bands: 4
     pretrained_cnn:
   prediction_head:
     _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
+    nn_layers: 3
   trainable_modules: [geo_encoder, prediction_head]
 
 data:
   dataset:
     modalities:
-      tessera:
-        format: npy
+      s2:
+        format: tif
+        dtype: float32
+        channels: 4c
+        preprocessing: zscored
     use_target_data: true
     use_aux_data: false
     dtype: float32
   caption_builder:
-  num_workers: 4
+  pin_memory: true
+  num_workers: 14
   batch_size: 128
   persistent_workers: true
-  prefetch_factor: 2
-  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  prefetch_factor: 4
+  saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
   wandb:
@@ -56,5 +61,5 @@ hydra:
   sweeper:
     params:
       seed: 12345, 404, 654
-      ++data.dataset.modalities.tessera.size: 128, 256
-      ++model.geo_encoder.resnet_version: 18, 50
+      ++data.dataset.modalities.s2.size: 128, 256
+      ++model.geo_encoder.resnet_version: 18, 34, 50

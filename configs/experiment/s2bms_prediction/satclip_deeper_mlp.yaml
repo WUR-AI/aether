@@ -15,7 +15,7 @@ tags:
   - satclip
   - ${str:${seed}}
 
-experiment_name: satclip_mlp
+experiment_name: satclip_deeper_mlp
 
 model:
   geo_encoder:
@@ -25,6 +25,7 @@ model:
   trainable_modules: [prediction_head]
   prediction_head:
     _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
+    nn_layers: 3
 
 data:
   dataset:
@@ -34,9 +35,11 @@ data:
     use_aux_data: false
     dtype: float64
   caption_builder:
+  pin_memory: true
   num_workers: 14
   batch_size: 128
-  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  persistent_workers: true
+  saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
   wandb:

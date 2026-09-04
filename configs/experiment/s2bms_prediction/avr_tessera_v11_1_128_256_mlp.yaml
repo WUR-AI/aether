@@ -3,7 +3,7 @@
 # to execute this experiment run:
 # python train.py experiment=example
 
-# Geoclip with MLP prediction head, with 3 random seeds
+# Tessera with average encoder and MLP prediction head, for tile sizes 128 and 256, each with 3 random seeds
 
 defaults:
   - override /model: s2bms_prediction
@@ -12,15 +12,16 @@ defaults:
 
 tags:
   - prediction
-  - geoclip
+  - tessera_avr
+  - tessera_${str:${data.dataset.modalities.tessera_avr.size}}
   - ${str:${seed}}
 
-experiment_name: geoclip_mlp
+experiment_name: avr_tessera_${str:${data.dataset.modalities.tessera_avr.size}}_mlp
 
 model:
   geo_encoder:
-    _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
-    geo_data_name: coords
+    _target_: src.models.components.geo_encoders.identity_encoder.IdentityEncoder
+    geo_data_name: tessera_avr
   trainable_modules: [prediction_head]
   prediction_head:
     _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
@@ -28,13 +29,17 @@ model:
 data:
   dataset:
     modalities:
-      coords:
+      tessera_avr:
+        path: ${paths.data_dir}/s2bms/eo/avr_tessera_${data.dataset.modalities.tessera_avr.size}.csv
+        enable_nans: true
     use_target_data: true
     use_aux_data: false
   caption_builder:
+  pin_memory: true
   num_workers: 14
   batch_size: 128
-  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  persistent_workers: true
+  saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
   wandb:
@@ -49,3 +54,4 @@ hydra:
   sweeper:
     params:
       seed: 12345, 404, 654
+      +data.dataset.modalities.tessera_avr.size: 1, 128, 256

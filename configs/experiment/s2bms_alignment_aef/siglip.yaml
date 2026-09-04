@@ -3,19 +3,19 @@
 # to execute this experiment run:
 # python train.py experiment=example
 
-# Siglip
+# SigLIP with labelled data
 
 defaults:
-  #  - /callbacks@callbacks.batch_size_finder: batch_size_finder
   - override /model: s2bms_alignment
   - override /data: s2bms_prediction
   - override /metrics: s2bms_alignment
 
 tags:
   - alignment
+  - avr_aef_128
   - ${str:${seed}}
 
-experiment_name: siglip
+experiment_name: siglip_b${str:${data.batch_size}}_labelled_bias${str:${model.loss_fn.bias}}
 projects: s2bms_alignment
 
 model:
@@ -39,11 +39,11 @@ data:
   dataset:
     modalities:
       aef_avr:
-        path: ${paths.data_dir}/s2bms/eo/avr_aef_128_unlabelled.csv
+        path: ${paths.data_dir}/s2bms/eo/avr_aef_128.csv
         enable_nans: true
     use_target_data: false
     use_aux_data: "all"
-    use_unlabelled_data: true
+    use_unlabelled_data: false
     dtype: float32
   caption_builder:
     _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
@@ -57,7 +57,7 @@ data:
   persistent_workers: true
   pin_memory: true
   prefetch_factor: 6
-  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
   wandb:
@@ -68,9 +68,14 @@ logger:
     experiment: "alignment"
 
 callbacks:
-  model.checkpoint:
+  model_checkpoint:
     monitor: "val_avr_top-dyn_k_index"
     mode: "max"
+  early_stopping:
+    monitor: "val_avr_top-dyn_k_index"
+    patience: 20
+    mode: "max"
+    min_delta: 0.001
 
 hydra:
   mode: MULTIRUN
@@ -78,4 +83,5 @@ hydra:
     params:
       seed: 12345 #, 404, 654
       ++callbacks.early_stopping.patience: 20
-      ++data.batch_size: 512
+      ++data.batch_size: 128 #, 256, 512, 1028 #32, 64,
+      ++model.loss_fn.bias: -10.0, 10.0

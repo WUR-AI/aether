@@ -179,6 +179,8 @@ class ButterflyDataset(BaseDataset):
         elif self.modalities["s2"].get("preprocessing") == "div_2000":
             im = np.clip(im, 0, 2000)
             im = im / 2000.0
+        else:
+            log.warning("Data is not scaled.")
 
         im = im.astype(dtype=np_dtype)
 

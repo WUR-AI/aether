@@ -3,7 +3,7 @@
 # to execute this experiment run:
 # python train.py experiment=example
 
-# Geoclip with linear prediction head, with 3 random seeds
+# Geoclip with MLP prediction head, with 3 random seeds
 
 defaults:
   - override /model: s2bms_prediction
@@ -15,7 +15,7 @@ tags:
   - geoclip
   - ${str:${seed}}
 
-experiment_name: geoclip_linear
+experiment_name: geoclip_mlp
 
 model:
   geo_encoder:
@@ -23,7 +23,7 @@ model:
     geo_data_name: coords
   trainable_modules: [prediction_head]
   prediction_head:
-    _target_: src.models.components.pred_heads.linear_pred_head.LinearPredictionHead
+    _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
 
 data:
   dataset:
@@ -32,9 +32,11 @@ data:
     use_target_data: true
     use_aux_data: false
   caption_builder:
+  pin_memory: true
   num_workers: 14
   batch_size: 128
-  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  persistent_workers: true
+  saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
   wandb:
