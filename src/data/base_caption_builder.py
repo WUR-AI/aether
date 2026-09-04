@@ -21,6 +21,7 @@ class BaseCaptionBuilder(ABC):
         concepts_fname: str,
         data_dir: str,
         seed: int,
+        n_captions_for_train: int = 1,
         n_captions_for_validation: int | str = "all",
         return_aux_ids: bool = False,
     ) -> None:
@@ -52,7 +53,8 @@ class BaseCaptionBuilder(ABC):
         self.seed = seed
         random.seed(self.seed)
 
-        self.n = n_captions_for_validation
+        self.n_captions_for_train = n_captions_for_train
+        self.n_captions_for_validation = n_captions_for_validation
 
         if isinstance(n_captions_for_validation, int) and n_captions_for_validation > len(self):
             raise IllegalArgumentCombination(
@@ -117,6 +119,8 @@ class BaseCaptionBuilder(ABC):
         :param aux_values: a batch of auxiliary values to use for random sampling.
         :return: a batch of text captions and optionally aux col ids used for each of the caption.
         """
+        if self.n_captions_for_train > 1:
+            return self.sample_multiple_or_all(aux_values, n=self.n_captions_for_train)
         batch_size = len(aux_values["aux"])
 
         # Location captions holders
@@ -147,9 +151,10 @@ class BaseCaptionBuilder(ABC):
             return formatted_location_captions, ids
         return formatted_location_captions
 
-    def sample_multiple_or_all(self, aux_values) -> Tuple[List[str], List[int] | None]:
+    def sample_multiple_or_all(self, aux_values, n=None) -> Tuple[List[str], List[int] | None]:
         """Return self.n captions from randomly sampled templates for each data point.
 
+        :param n: number of captions to return
         :param aux_values: a batch of auxiliary values to use for random sampling.
         :return: a batch of text captions and optionally aux col ids used for each of the caption.
         """
@@ -168,10 +173,14 @@ class BaseCaptionBuilder(ABC):
             row_top = aux_values.get("top")[i] if aux_values.get("top") else None
 
             # Sample templates
-            if self.n == "all":
+            if n is not None and isinstance(n, int):
+                template_ids = random.choices(range(len(self.templates)), k=n)
+            elif self.n_captions_for_validation == "all":
                 template_ids = list(range(len(self)))
             else:
-                template_ids = random.choices(range(len(self.templates)), k=self.n)
+                template_ids = random.choices(
+                    range(len(self.templates)), k=self.n_captions_for_validation
+                )
 
             # Get filled in templates for location
             filled_in_location_templates = []
