@@ -28,6 +28,7 @@ class ButterflyDataset(BaseDataset):
         mock: bool = False,
         dtype: str = "float32",
         return_name_loc: bool = False,
+        csv_name: str | None = None,
     ) -> None:
         """A dataset implementation for the Butterfly diversity use case.
 
@@ -46,7 +47,9 @@ class ButterflyDataset(BaseDataset):
         assert not (
             use_unlabelled_data and use_target_data
         ), "Joint use of unlabelled and target data is not supported yet."
-        if use_unlabelled_data:
+        if csv_name is not None:
+            csv_name = csv_name
+        elif use_unlabelled_data:
             # csv_name = 'model_ready_s2bms-unlabelled-20260529.csv'
             csv_name = "model_ready_s2bms-unlabelled-merged.csv"
         elif mock:
