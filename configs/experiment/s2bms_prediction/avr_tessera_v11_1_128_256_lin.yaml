@@ -12,11 +12,11 @@ defaults:
 
 tags:
   - prediction
-  - tessera
+  - tessera_avr
   - tessera_${str:${data.dataset.modalities.tessera_avr.size}}
   - ${str:${seed}}
 
-experiment_name: avr_tessera_${str:${data.dataset.modalities.tessera_avr.size}}_linear_v1.1
+experiment_name: avr_tessera_${str:${data.dataset.modalities.tessera_avr.size}}_linear
 
 model:
   geo_encoder:
@@ -30,7 +30,7 @@ data:
   dataset:
     modalities:
       tessera_avr:
-        path: ${paths.data_dir}/s2bms/eo/avr_tessera_${str:${data.dataset.modalities.tessera_avr.size}}.csv
+        path: ${paths.data_dir}/s2bms/eo/avr_tessera_${data.dataset.modalities.tessera_avr.size}.csv
         enable_nans: true
     use_target_data: true
     use_aux_data: false
@@ -54,4 +54,4 @@ hydra:
   sweeper:
     params:
       seed: 12345, 404, 654
-      +data.dataset.modalities.tessera_avr.size: 128, 256
+      +data.dataset.modalities.tessera_avr.size: 1, 128, 256

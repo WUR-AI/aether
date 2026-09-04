@@ -3,7 +3,7 @@
 # to execute this experiment run:
 # python train.py experiment=example
 
-# Satclip and MLP prediction head, with 3 random seeds
+# Geoclip with linear prediction head, with 3 random seeds
 
 defaults:
   - override /model: s2bms_prediction
@@ -12,19 +12,18 @@ defaults:
 
 tags:
   - prediction
-  - satclip
+  - geoclip
   - ${str:${seed}}
 
-experiment_name: satclip_mlp
+experiment_name: geoclip_linear
 
 model:
   geo_encoder:
-    _target_: src.models.components.geo_encoders.satclip.SatClipCoordinateEncoder
+    _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
     geo_data_name: coords
-    hf_cache_dir: ${paths.huggingface_cache}
   trainable_modules: [prediction_head]
   prediction_head:
-    _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
+    _target_: src.models.components.pred_heads.linear_pred_head.LinearPredictionHead
 
 data:
   dataset:
@@ -32,11 +31,12 @@ data:
       coords:
     use_target_data: true
     use_aux_data: false
-    dtype: float64
   caption_builder:
+  pin_memory: true
   num_workers: 14
   batch_size: 128
-  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
+  persistent_workers: true
+  saved_split_file_name: "s2bms_union_val_test.pth"
 
 logger:
   wandb:
