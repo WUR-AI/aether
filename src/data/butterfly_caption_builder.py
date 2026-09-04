@@ -23,15 +23,17 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         data_dir: str,
         seed: int,
         n_captions_for_validation: int | str = "all",
+        n_captions_for_train: int = 1,
         return_aux_ids: bool = False,
     ) -> None:
         super().__init__(
-            templates_fname,
-            concepts_fname,
-            data_dir,
-            seed,
-            n_captions_for_validation,
-            return_aux_ids,
+            templates_fname=templates_fname,
+            concepts_fname=concepts_fname,
+            data_dir=data_dir,
+            seed=seed,
+            n_captions_for_train=n_captions_for_train,
+            n_captions_for_validation=n_captions_for_validation,
+            return_aux_ids=return_aux_ids,
         )
 
     @override
