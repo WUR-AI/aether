@@ -49,4 +49,4 @@ data:
   persistent_workers: false
   pin_memory: false
   batch_size: 64
-  saved_split_file_name: "split_indices_s2bms_2024-08-14-1459_union_aef_tsr_val_test.pth"
+  saved_split_file_name: "s2bms_union_val_test.pth"

@@ -120,8 +120,9 @@ class ButterflyDataset(BaseDataset):
         avail_files = os.listdir(dst_dir)
 
         mask = self.df["s2_path"].apply(lambda p: os.path.basename(p) in avail_files)
-
-        if (~mask).any() and self._ignore_single_missing_data_points:
+        if mask.all():
+            return
+        elif (~mask).any() and self._ignore_single_missing_data_points:
             self.df = self.df[mask]
             log.info(f"Dropped {(~mask).sum()} locations because they had missing s2 tiles.")
         else:
@@ -175,7 +176,7 @@ class ButterflyDataset(BaseDataset):
         elif self.modalities["s2"].get("preprocessing") == "div_10000":
             im = im / 10000.0
             im = im.clip(0, 1)
-        else:
+        elif self.modalities["s2"].get("preprocessing") == "div_2000":
             im = np.clip(im, 0, 2000)
             im = im / 2000.0
 
@@ -230,9 +231,11 @@ class ButterflyDataset(BaseDataset):
                     formatted_row["aux"][aux_cat] = [row[v] for v in vals]
 
         if self.use_features and self.feat_names:
-            formatted_row["eo"]["tabular"] = torch.tensor(
-                [row[k] for k in self.feat_names], dtype=torch.float32
-            )
+            raw = torch.tensor([row[k] for k in self.feat_names], dtype=torch.float32)
+            if self._feat_mean is not None and self._feat_std is not None:
+                formatted_row["eo"]["tabular"] = (raw - self._feat_mean) / self._feat_std
+            else:
+                formatted_row["eo"]["tabular"] = raw
 
         if self.return_name_loc:
             formatted_row["name_loc"] = row["name_loc"]

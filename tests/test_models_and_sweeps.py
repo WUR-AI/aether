@@ -18,7 +18,7 @@ def test_prediction_experiment(tmp_path: Path) -> None:
     command = [
         "-m",
         "src.train",
-        "experiment=prediction",
+        "experiment=s2bms_prediction/prediction",
         "hydra.sweep.dir=" + str(tmp_path),
         "++trainer.fast_dev_run=true",
     ] + overrides
@@ -53,7 +53,7 @@ def test_hydra_sweep(tmp_path: Path) -> None:
         "-m",
         "src.train",
         "--multirun",
-        "experiment=prediction",
+        "experiment=s2bms_prediction/prediction",
         "hydra.sweep.dir=" + str(tmp_path),
         "model.optimizer.lr=0.005,0.01",
         "++trainer.fast_dev_run=true",

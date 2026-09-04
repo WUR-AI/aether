@@ -21,10 +21,11 @@ DEVICE = "mps"
 
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="inference.yaml")
-def main(cfg: DictConfig) -> Optional[float]:
+def main(cfg: DictConfig, save_results: bool = False) -> Optional[float]:
     """Main entry point for training.
 
     :param cfg: DictConfig configuration composed by Hydra.
+    :param save_results: Whether to save inference results.
     :return: Optional[float] with optimized metric value.
     """
     # apply extra utilities

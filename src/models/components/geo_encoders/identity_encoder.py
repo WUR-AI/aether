@@ -17,14 +17,19 @@ class IdentityEncoder(BaseGeoEncoder):
         """
         super().__init__()
 
-        self.dict_n_bands_default = {"aef": 64, "tessera": 128, "aef_avr": 64, "tessera_avr": 128}
+        self.dict_n_bands_default = {
+            "aef": 64,
+            "tessera": 128,
+            "aef_avr": 64,
+            "tessera_avr": 128,
+            "s2bms_target": 87,
+        }
         self.allowed_geo_data_names: list[str] = list(self.dict_n_bands_default.keys())
         assert (
             geo_data_name in self.allowed_geo_data_names
         ), f"geo_data_name must be one of {self.allowed_geo_data_names}, got {geo_data_name}"
-        self.geo_data_name = geo_data_name
-
         self.output_dim = self.dict_n_bands_default[geo_data_name]
+        self.geo_data_name = geo_data_name if "target" not in geo_data_name else "tabular"
 
     @override
     def _setup(self) -> List[str]:

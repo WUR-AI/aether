@@ -38,6 +38,10 @@ dependencies = [
     "xgboost>=3.2.0",
     "albumentations",
     "satclip @ git+https://github.com/gabrieletijunaityte/satclip",
+    "notebook>=7.6.0",
+    "pandas-stubs>=2.3.3,<3.1.0",
+    "open-clip-torch[baselines]>=3.3.0",
+    "pillow>=12.2.0",
 ]
 
 [project.optional-dependencies]

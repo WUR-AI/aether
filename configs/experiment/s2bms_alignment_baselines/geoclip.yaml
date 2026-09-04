@@ -1,0 +1,61 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+# Geoclip with linear prediction head, with 3 random seeds
+
+defaults:
+  - override /model: s2bms_alignment
+  - override /data: s2bms_prediction
+  - override /metrics: s2bms_alignment
+
+baseline: true
+ckpt_path:
+validate: true
+seed: 12345
+
+tags:
+  - baseline
+  - alignment
+  - geoclip
+
+experiment_name: geoclip_baseline
+projects: s2bms_alignment
+
+model:
+  geo_encoder:
+    _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
+    geo_data_name: coords
+  text_encoder:
+    _target_: src.models.components.text_encoders.clip_text_encoder.ClipTextEncoder
+    hf_cache_dir: ${paths.huggingface_cache}
+    use_geoclip_projector: true
+  loss_fn:
+  trainable_modules: []
+
+data:
+  dataset:
+    modalities:
+      coords:
+    use_target_data: false
+    use_aux_data: "all"
+    use_unlabelled_data: false
+    dtype: float32
+  caption_builder:
+    _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
+    templates_fname: v6.json
+    concepts_fname: v4.json
+    data_dir: ${paths.data_dir}/s2bms
+    seed: ${seed}
+    n_captions_for_validation: 50
+  num_workers: 1
+  persistent_workers: true
+  saved_split_file_name: "s2bms_union_val_test.pth"
+  batch_size: 128
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "alignment"
+    project: "s2bms_aef_alignment_baselines"

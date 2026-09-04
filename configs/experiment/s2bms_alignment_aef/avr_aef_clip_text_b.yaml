@@ -1,0 +1,83 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+# Avr aef 128 + geoclip
+
+defaults:
+  #  - /callbacks@callbacks.batch_size_finder: batch_size_finder
+  - override /model: s2bms_alignment
+  - override /data: s2bms_prediction
+  - override /metrics: s2bms_alignment
+
+tags:
+  - alignment
+  - aef
+  - aef_128
+  - ${str:${seed}}
+
+experiment_name: b${str:${data.batch_size}}
+projects: s2bms_alignment
+
+model:
+  geo_encoder:
+    _target_: src.models.components.geo_encoders.identity_encoder.IdentityEncoder
+    geo_data_name: aef_avr
+  geo_adapter:
+    _target_: src.models.components.projectors.mlp_projector.MLPProjector
+    nn_layers: 2
+    hidden_dim: 512
+    output_dim: 768
+  text_encoder:
+    _target_: src.models.components.text_encoders.clip_text_encoder.ClipTextEncoder
+    hf_cache_dir: ${paths.huggingface_cache}
+    use_geoclip_projector: false
+  loss_fn:
+    #     _target_: src.models.components.loss_fns.soft_contrastive_loss.SoftContrastiveLoss
+    #     stats_file: ${paths.data_dir}/s2bms/aux_stats/labelled.json
+    _target_: src.models.components.loss_fns.clip_loss.ClipLoss
+    temperature: 0.07
+  trainable_modules: [loss_fn.log_temp]
+
+data:
+  dataset:
+    modalities:
+      aef_avr:
+        path: ${paths.data_dir}/s2bms/eo/avr_aef_128.csv
+        enable_nans: true
+    use_target_data: false
+    use_aux_data: "all"
+    use_unlabelled_data: false
+    dtype: float32
+  caption_builder:
+    _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
+    templates_fname: v5.json
+    concepts_fname: v4.json
+    data_dir: ${paths.data_dir}/s2bms
+    seed: ${seed}
+    n_captions_for_validation: 50
+
+  num_workers: 14
+  persistent_workers: true
+  pin_memory: true
+  prefetch_factor: 6
+  saved_split_file_name: "s2bms_union_val_test.pth"
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "alignment"
+    project: "s2bms_aef_alignment"
+  aim:
+    experiment: "alignment"
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      seed: 12345 #, 404, 654
+      #      ++model.loss_fn.sigma: 0.25 #, 0.5, 1
+      #      ++data.caption_builder.return_aux_ids: true
+      ++callbacks.early_stopping.patience: 20
+      ++data.batch_size: 32, 64, 128, 256, 512

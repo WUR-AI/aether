@@ -11,6 +11,7 @@ class MLPPredictionHead(BasePredictionHead):
         self,
         nn_layers: int = 2,
         hidden_dim: int = 256,
+        dropout: float = 0.0,
         input_dim: int | None = None,
         output_dim: int | None = None,
     ) -> None:
@@ -24,6 +25,7 @@ class MLPPredictionHead(BasePredictionHead):
         super().__init__()
         self.nn_layers = nn_layers
         self.hidden_dim = hidden_dim
+        self.dropout = dropout
 
         if input_dim and output_dim:
             self.set_dim(input_dim, output_dim)
@@ -38,12 +40,17 @@ class MLPPredictionHead(BasePredictionHead):
         """Configures specific prediction head."""
         assert type(self.input_dim) is int, self.input_dim
         assert type(self.output_dim) is int, self.output_dim
+
         layers = []
         input_dim = self.input_dim
+
         for i in range(self.nn_layers - 1):
             layers.append(nn.Linear(input_dim, self.hidden_dim))
             layers.append(nn.ReLU())
+            if self.dropout > 0.0:
+                layers.append(nn.Dropout(self.dropout))
             input_dim = self.hidden_dim
+
         layers.append(nn.Linear(input_dim, self.output_dim))
         self.net = nn.Sequential(*layers)
         return

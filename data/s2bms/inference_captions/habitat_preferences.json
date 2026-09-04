@@ -1,0 +1,265 @@
+[
+    {
+        "inference_captions": [
+            "Isolated shrub or scrub patches interspersed within open grassland matrix",
+            "Dense low-growing herbaceous vegetation with high spectral diversity indicating forb-rich grassland",
+            "Fine-scale mosaic of closely cropped and taller grassland patches"
+        ],
+        "common_name": "Adonis blue",
+        "latin_name": "Lysandra bellargus",
+        "target_id": 32
+    },
+    {
+        "inference_captions": [
+            "Deciduous woodland with dense shrub layer visible in canopy structure",
+            "Dense scrub or thorny shrub thicket along woodland margin",
+            "Linear woody vegetation strip bordering open land or internal woodland ride",
+            "Low-lying flat to gently undulating landscape typical of English Midlands clay belt"
+        ],
+        "common_name": "Black hairstreak",
+        "latin_name": "Satyrium pruni",
+        "target_id": 54,
+        "comment": "wrong target id?? dont use"
+    },
+    {
+        "inference_captions": [
+            "Dry sparse grassland on pale chalk substrate with low vegetation cover",
+            "Open heathland with low shrubby vegetation on acidic soils",
+            "Scattered scrub patches within open grassland or brownfield landscape",
+            "Disturbed post-industrial land with sparse vegetation and exposed substrate",
+            "Open clearing or linear ride within deciduous woodland",
+            "Coastal open sandy or chalky slope with sparse low vegetation",
+            "Heterogeneous open grassland with frequent bare soil patches and low vegetation density"
+        ],
+        "common_name": "Dingy skipper",
+        "latin_name": "Erynnis tages",
+        "target_id": 19
+    },
+    {
+        "inference_captions": [
+            "Dry sparse grassland on calcareous substrate with mixed sward height",
+            "Mosaic of open grassland with scrub patches along field or slope margins",
+            "Deciduous ancient woodland with open internal clearings or glades",
+            "North or west-facing grassland slope with higher moisture retention",
+            "Heterogeneous grassland-scrub mosaic with varying vegetation density",
+            "Linear open corridor within deciduous woodland matrix"
+        ],
+        "common_name": "Duke of Burgundy",
+        "latin_name": "Hamearis lucina",
+        "target_id": 25
+    },
+    {
+        "inference_captions": [
+            "Open lowland heathland with sparse low shrubby vegetation on dry acidic soils",
+            "Coastal sand dune system with sparse vegetation and exposed sandy substrate",
+            "Coastal saltmarsh with sparse halophytic vegetation and open ground",
+            "Sparse scattered scrub within open heathland or coastal grassland",
+            "Disturbed post-industrial or derelict land with sparse vegetation and exposed substrate",
+            "Open dry calcareous grassland with sparse low vegetation cover",
+            "Exposed coastal cliff edge with sparse grassland and bare rocky substrate",
+            "Exposed bare rocky or stony ground with minimal vegetation cover",
+            "Open canopy deciduous woodland on thin stony substrate with sparse ground cover"
+
+        ],
+        "common_name": "Grayling",
+        "latin_name": "Hipparchia semele",
+        "target_id": 27
+    },
+    {
+        "inference_captions": [
+            "Dry unimproved calcareous grassland with diverse low herb vegetation",
+            "Deciduous woodland with open internal rides and clearings visible in canopy",
+            "Disturbed post-industrial land with sparse vegetation within or adjacent to urban area",
+            "Scattered young scrub patches within open grassland or woodland edge",
+            "Open lowland heathland with sparse vegetation on acidic soils",
+            "Low-lying damp grassland with moderate vegetation cover",
+            "Coastal sand dune system with sparse open vegetation",
+            "Heterogeneous grassland mosaic with varied sward height and scrub patches"
+        ],
+        "common_name": "Grizzled skipper",
+        "latin_name": "Pyrgus malvae",
+        "target_id": 50
+    },
+    {
+        "inference_captions": [
+            "Sheltered valley within upland heathland landscape dominated by low ericaceous shrubs",
+            "Recently cleared or open-canopy deciduous woodland with low regenerating vegetation",
+            "Short sparse herb-rich grassland on stony substrate in south-west England",
+            "Heathland with partial bracken cover amongst low ericaceous shrub vegetation",
+            "Linear open corridor within deciduous woodland connecting cleared areas",
+            "Open upland landscape at moderate elevation with heathland vegetation"
+        ],
+        "common_name": "Heath fritillary",
+        "latin_name": "Melitaea athalia",
+        "target_id": 37
+    },
+    {
+        "inference_captions": [
+            "Dense bracken-covered hillside with interspersed grassy patches on open slope",
+            "Open south-facing slope with low dense vegetation below three hundred metres elevation",
+            "Recently coppiced or cleared deciduous woodland with open canopy on limestone substrate",
+            "Scattered scrub patches within open bracken or grassland landscape",
+            "Heterogeneous mosaic of bracken and grassland on flat or gently undulating open ground",
+            "Exposed limestone pavement or rock outcrop within scrub or open woodland landscape"
+        ],
+        "common_name": "High brown fritillary",
+        "latin_name": "Argynnis adippe",
+        "target_id": 5,
+        "comment": "used target_Argynnis_p"
+    }
+,
+    {
+        "inference_captions": [
+            "Open lowland raised bog with saturated peat surface and bog moss vegetation",
+            "Open upland blanket bog on waterlogged peat with cottongrass and bog moss",
+            "Wet acidic moorland with mixed heath and mire vegetation in upland landscape",
+            "Open bog or moorland landscape free from conifer afforestation",
+            "Waterlogged open peatland with high surface water content visible as wet spectral signature",
+            "Low to moderate elevation upland bog below five hundred metres in northern Britain",
+            "Drained or disturbed mire dominated by large rank cottongrass tussocks with reduced moss cover"
+        ],
+        "common_name": "Large heath",
+        "latin_name": "Coenonympha tullia",
+        "target_id": 14,
+        "comment": "used target_Coenonymph, but also target_Coenonym_1 exists"
+    }
+,
+    {
+        "inference_captions": [
+            "Damp tussocky grassland with wet heath vegetation on low productivity soils",
+            "Unimproved calcareous grassland on sloping ground with mixed sward height",
+            "Scattered scrub patches within open damp or calcareous grassland matrix",
+            "Large open clearing greater than one hectare within deciduous woodland",
+            "Extensive connected network of open grassland and heath patches across landscape",
+            "West or south-facing grassland slope in lowland England",
+            "Low productivity wet grassland with seasonally waterlogged soils and rush or sedge vegetation"
+        ],
+        "common_name": "Marsh fritillary",
+        "latin_name": "Euphydryas aurinia",
+        "target_id": 21
+    }
+,
+    {
+        "inference_captions": [
+            "Well-drained unimproved grassland on thin base-rich or calcareous soils with low productivity",
+            "Scattered light scrub patches within open unimproved grassland on slopes or coastal sites",
+            "Sheltered coastal valley with unimproved grassland and scrub on steep sides",
+            "Coastal sand dune system with sparse to moderate grassland vegetation",
+            "Disused quarry with exposed pale substrate and early successional grassland vegetation",
+            "Steep slope with thin soil cover and unimproved grassland or bare rock patches",
+            "Exposed limestone pavement with sparse grassland in joints and open rocky surface",
+            "Mixed mosaic of encroaching scrub and unimproved grassland on lightly managed slope"
+        ],
+        "common_name": "Northern brown argus",
+        "latin_name": "Aricia artaxerxes",
+        "target_id": 7
+    }
+,
+    {
+        "inference_captions": [
+            "Open lowland heathland with mosaic of heather, gorse and bare sandy ground at different successional stages",
+            "Short open calcareous grassland with sparse low vegetation on well-drained limestone substrate",
+            "Coastal sand dune system with sparse open vegetation and exposed sandy substrate",
+            "Short wet heathland with Cross-leaved Heath dominant on seasonally waterlogged acidic soils",
+            "Disused quarry with exposed substrate and sparse early successional vegetation within or adjacent to urban fringe",
+            "Recently burned heathland with exposed dark ash substrate and sparse early regrowth vegetation",
+            "Open boggy ground with wet heath and mire vegetation in lowland or coastal setting",
+            "Structurally diverse heathland with patches of bare ground, short heath and tall mature heather",
+            "Coastal cliff or slope with thin eroding soils and sparse open vegetation"
+        ],
+        "common_name": "Silver-studded blue",
+        "latin_name": "Plebeius argus",
+        "target_id": 47
+    }
+,
+    {
+        "inference_captions": [
+            "Broadleaved deciduous woodland dominated by oak with open canopy structure",
+            "Mixed broadleaved and conifer woodland with thinned canopy and developing understorey",
+            "Linear open ride or glade within deciduous woodland visible as canopy gap",
+            "Dense wooded hedgerow network or sheltered lane within agricultural landscape adjacent to woodland",
+            "Partially shaded deciduous woodland interior with moderate canopy cover and sparse ground flora",
+            "Deciduous woodland with partial canopy closure allowing light penetration to ground layer",
+            "Dense closed-canopy ash or beech woodland with deep shade and sparse ground flora"
+        ],
+        "common_name": "Silver-washed fritillary",
+        "latin_name": "Argynnis paphia",
+        "target_id": 5
+    }
+,
+    {
+        "inference_captions": [
+            "Damp low-productivity grassland with wet flushes on moorland fringe in northern or western",
+            "Open damp acidic moorland with mixed heath and grass vegetation in upland landscape",
+            "Open sunny glade or clearing within deciduous or mixed woodland with damp lush vegetation",
+            "Open grassland with bracken stands and scattered scrub patches on moorland edge or hillside",
+            "Scattered scrub patches within open damp grassland or moorland providing wind shelter",
+            "Open wood-pasture with scattered trees and grazed ground vegetation at woodland edge in Scottish upland landscape",
+            "Wet hollow within coastal sand dune system with damp slack vegetation",
+            "Open coastal cliff grassland with sparse vegetation on exposed slope",
+            "Conifer plantation with cleared stream edge corridor five to ten metres wide providing open habitat",
+            "Heterogeneous mosaic of bracken and damp grassland on hillside or moorland fringe"
+        ],
+        "common_name": "Small pearl-bordered fritillary",
+        "latin_name": "Boloria selene",
+        "target_id": 8
+    }
+,
+    {
+        "inference_captions": [
+            "Dense sheltered hedgerow network in lowland agricultural landscape with mature deciduous trees",
+            "Mixed scrub and tall shrub vegetation with mature deciduous trees in sheltered lowland setting",
+            "Deciduous woodland with open internal rides and elm trees along ride margins",
+            "Large isolated mature deciduous tree within open agricultural or parkland landscape",
+            "Mixed species mature hedgerow with broadleaved trees including ash and field maple in lowland farmland",
+            "Broad unmanaged field margin with tall herb and scrub vegetation adjacent to arable or pasture land"
+        ],
+        "common_name": "White-letter hairstreak",
+        "latin_name": "Satyrium w-album",
+        "target_id": 53
+    }
+,
+    {
+        "inference_captions": [
+            "Deciduous or mixed woodland with open sunny rides and herb-rich verge vegetation",
+            "Mosaic of tall grassland and scattered scrub patches on abandoned common or disused land",
+            "Dense mature hedgerow network adjacent to scrub or grassland in lowland landscape",
+            "Neglected common land with rank grassland, scrub encroachment and open patches",
+            "Disused railway corridor with scrub, tall grassland and herb-rich verge vegetation",
+            "Disused quarry with early successional scrub and tall grassland vegetation on disturbed substrate",
+            "Coastal undercliff with naturally disturbed scrub-grassland mosaic maintained by cliff falls and soil slippage",
+            "Woodland ride edge with partial canopy shading between ten and fifty percent cover",
+            "Woodland ditch with associated bank and herb-rich verge vegetation along ride edge",
+            "Structurally diverse mixed-age deciduous or conifer forest with maintained open ride network"
+        ],
+        "common_name": "Wood white",
+        "latin_name": "Leptidea sinapis",
+        "target_id": 30
+    }
+,
+    {
+        "inference_captions": [
+            "caption",
+            "caption",
+            "caption",
+            "caption"
+        ],
+        "common_name": "NAME",
+        "latin_name": "NAME",
+        "target_id": 0
+    }
+,
+    {
+        "inference_captions": [
+            "caption",
+            "caption",
+            "caption",
+            "caption"
+        ],
+        "common_name": "NAME",
+        "latin_name": "NAME",
+        "target_id": 0
+    }
+
+
+]

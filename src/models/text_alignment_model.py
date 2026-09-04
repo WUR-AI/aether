@@ -193,61 +193,68 @@ class TextAlignmentModel(BaseModel):
 
         # Embed
         geo_feats, text_feats = self.forward(batch, mode)
+        if geo_feats.isnan().any():  # debugging
+            log.debug(geo_feats)
+            log.debug(batch["name_loc"])
+            exit()
         local_batch_size = geo_feats.size(0)
 
         # batch recomposing in ddp
-        if self.trainer.world_size > 1:
+        if (
+            self.loss_fn is not None
+            and self.loss_fn.name in ["CLIPLoss", "SoftContrastiveLoss"]
+            and self.trainer.world_size > 1
+        ):
             feats = torch.stack([geo_feats, text_feats], dim=0)
             feats = self.all_gather(feats)
             feats = feats.reshape(2, -1, feats.size(-1))
             geo_feats, text_feats = feats[0], feats[1]
 
-        # Get loss
+        # Get aux values
         aux_values = batch["aux"].get("aux")
         aux_ids_per_caption = batch.get("text_aux_ids")
 
-        if geo_feats.isnan().any():
-            print(geo_feats)
-            print(batch["name_loc"])
-            exit()
+        # Get loss
+        if self.loss_fn is not None:
+            loss = self.loss_fn(
+                geo_feats,
+                text_feats,
+                mode=mode,
+                aux_values=aux_values,
+                aux_ids_per_caption=aux_ids_per_caption,
+            )
+            if self.loss_fn.name == "SigLIPLoss" and self.trainer.world_size > 1:
+                raise NotImplementedError("SigLIPLoss is not implemented in distributed training.")
 
-        loss = self.loss_fn(
-            geo_feats,
-            text_feats,
-            mode=mode,
-            aux_values=aux_values,
-            aux_ids_per_caption=aux_ids_per_caption,
-        )
+            # Logging
+            self.log(f"{mode}_loss", loss, batch_size=local_batch_size, **self.log_kwargs)
+            if hasattr(self.loss_fn, "log_temp") and mode == "train":
+                self.log(
+                    "temp",
+                    self.loss_fn.__getattr__("log_temp").exp(),
+                    batch_size=local_batch_size,
+                    **self.log_kwargs,
+                )
+        else:
+            loss = None
 
         # Get similarities
-        with torch.no_grad():
-            metrics = self.metrics(
-                mode=mode,
-                geo_feats=geo_feats,
-                text_feats=text_feats,
-                local_batch_size=local_batch_size,
-            )
-
-        # Logging
-        self.log(f"{mode}_loss", loss, batch_size=local_batch_size, **self.log_kwargs)
-
-        if self.loss_fn.__getattr__("log_temp") and mode == "train":
-            self.log(
-                "temp",
-                self.loss_fn.__getattr__("log_temp").exp(),
-                batch_size=local_batch_size,
-                **self.log_kwargs,
-            )
-
-        self.log_dict(metrics, batch_size=local_batch_size, **self.log_kwargs)
+        if self.metrics is not None:
+            with torch.no_grad():
+                metrics = self.metrics(
+                    mode=mode,
+                    geo_feats=geo_feats,
+                    text_feats=text_feats,
+                    local_batch_size=local_batch_size,
+                )
+            self.log_dict(metrics, batch_size=local_batch_size, **self.log_kwargs)
 
         if mode in ["val", "test"]:
-            aux = batch.get("aux", {}).get("aux")
             self.outputs_epoch_memory.append(
                 {
                     # Store on CPU to avoid holding the whole epoch on GPU.
                     "geo_feats": geo_feats.detach().cpu(),
-                    "aux_vals": aux.detach().cpu() if aux is not None else None,
+                    "aux_vals": aux_values.detach().cpu() if aux_values is not None else None,
                 }
             )
 
@@ -304,6 +311,12 @@ class TextAlignmentModel(BaseModel):
 
     @override
     def on_validation_epoch_end(self):
+        if self.loss_fn is not None:
+            val_loss = self.trainer.callback_metrics["val_loss"]
+            if self._best_loss is None or val_loss < self._best_loss:
+                self._best_loss = val_loss.detach()
+            self.log("best_val_loss", self._best_loss, sync_dist=False)
+
         return self._on_epoch_end("val")
 
     @override
@@ -336,6 +349,7 @@ class TextAlignmentModel(BaseModel):
                 ):
                     concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
             concept_embeds = F.normalize(concept_embeds, dim=1)
+
         if self.text_adapter:
             concept_embeds = self.text_adapter(concept_embeds)
 

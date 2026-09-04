@@ -17,24 +17,26 @@ tags:
   - aef_128
   - ${str:${seed}}
 
-experiment_name: lab_avr_aef_128_mlp_cliptext
+experiment_name: b${str:${data.batch_size}}_whitened_text_to_64D_unlab
 projects: s2bms_alignment
 
 model:
   geo_encoder:
     _target_: src.models.components.geo_encoders.identity_encoder.IdentityEncoder
     geo_data_name: aef_avr
-  geo_adapter:
-    _target_: src.models.components.projectors.mlp_projector.MLPProjector
-    nn_layers: 2
-    hidden_dim: 512
-    output_dim: 768
+  text_adapter:
+    _target_: src.models.components.projectors.whitened_projector.WhitenedProjectionHead
+    output_dim: 64
+    mu_w_path: ${paths.data_dir}/s2bms/location_caption_templates/labelled_clip_v5_d64.pt
   text_encoder:
     _target_: src.models.components.text_encoders.clip_text_encoder.ClipTextEncoder
     hf_cache_dir: ${paths.huggingface_cache}
     use_geoclip_projector: false
   loss_fn:
-    _target_: src.models.components.loss_fns.clip_loss.ClipLoss
+    _target_: src.models.components.loss_fns.soft_contrastive_loss.SoftContrastiveLoss
+    stats_file: ${paths.data_dir}/s2bms/aux_stats/unlabelled.json
+
+    #    _target_: src.models.components.loss_fns.clip_loss.ClipLoss
     temperature: 0.07
   trainable_modules: [loss_fn.log_temp]
 
@@ -42,10 +44,11 @@ data:
   dataset:
     modalities:
       aef_avr:
-        path: ${paths.data_dir}/s2bms/eo/avr_aef_128.csv
+        path: ${paths.data_dir}/s2bms/eo/avr_aef_128_unlabelled.csv
         enable_nans: true
     use_target_data: false
     use_aux_data: "all"
+    use_unlabelled_data: true
     dtype: float32
   caption_builder:
     _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
@@ -54,21 +57,18 @@ data:
     data_dir: ${paths.data_dir}/s2bms
     seed: ${seed}
     n_captions_for_validation: 50
-    stats_file: ${paths.data_dir}/s2bms/aux_stats/unlabelled.json
 
   num_workers: 14
   persistent_workers: true
   pin_memory: true
   prefetch_factor: 6
-  batch_size: 256
-  saved_split_file_name: "s2bms_aef_coords.pth"
-#    data.saved_split_file_name: "split_indices_s2bms+s2bms-unlabelled-20260602_2026-06-02-0918.pth"
+  saved_split_file_name: "s2bms_unlabelled_union_val_test.pth"
 
 logger:
   wandb:
     tags: ${tags}
     group: "alignment"
-    project: "s2bms_alignment"
+    project: "s2bms_aef_alignment"
   aim:
     experiment: "alignment"
 
@@ -77,5 +77,7 @@ hydra:
   sweeper:
     params:
       seed: 12345 #, 404, 654
-      ++data.caption_builder.return_aux_ids: false
+      ++model.loss_fn.sigma: 0.25 #, 0.5, 1
+      ++data.caption_builder.return_aux_ids: true
       ++callbacks.early_stopping.patience: 20
+      ++data.batch_size: 256 #, 1024 # 512, 128, 256
