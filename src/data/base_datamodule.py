@@ -581,7 +581,7 @@ class BaseDataModule(LightningDataModule):
 
         self.concepts = [c["concept_caption"] for c in self.concept_configs]
         self.concept_names = [
-            f"{c['col'].replace('aux_', '')}_{'max' if c.get('is_max') else 'min'}"
+            f"{c['col'].replace('aux_', '').replace('test-', '')}_{'max' if c.get('is_max') else 'min'}"
             for c in self.concept_configs
         ]
         list_concept_ids_drop = []
@@ -758,7 +758,7 @@ class BaseDataModule(LightningDataModule):
             self.test_concept_names = []
             for c in configs:
                 name = f"{c['col'].replace('aux_', '')}_{'max' if c.get('is_max') else 'min'}"
-                if not c.get("val_av"):
+                if c.get("val_av", True):  # for old config files default will be true
                     self.concepts.append(c["concept_caption"])
                     self.concept_names.append(name)
                     self.concept_configs.append(c)
