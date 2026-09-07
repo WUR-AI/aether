@@ -205,7 +205,7 @@ class TextAlignmentModel(BaseModel):
             geo_feats, text_feats = feats[0], feats[1]
 
         # Get aux values
-        aux_values = batch["aux"].get("aux")
+        aux_values = batch["aux"].get("aux_std")
         aux_ids_per_caption = batch.get("text_aux_ids")
 
         # Get loss

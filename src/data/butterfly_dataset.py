@@ -5,6 +5,7 @@ from typing import Any, Dict, override
 import numpy as np
 import pooch
 import torch
+from omegaconf import DictConfig
 
 from src.data.base_dataset import BaseDataset
 from src.data_preprocessing.renaming_utils import rename_s2bms
@@ -22,9 +23,9 @@ class ButterflyDataset(BaseDataset):
         use_unlabelled_data: bool = False,
         use_target_data: bool = True,
         use_aux_data: Any = None,
-        use_features: bool = False,
+        use_features: DictConfig | None = None,
         seed: int = 12345,
-        cache_dir: str = None,
+        cache_dir: str | None = None,
         mock: bool = False,
         dtype: str = "float32",
         return_name_loc: bool = False,
@@ -229,9 +230,10 @@ class ButterflyDataset(BaseDataset):
             formatted_row["aux"] = {}
             for aux_cat, vals in self.use_aux_data.items():
                 if aux_cat == "aux":
-                    formatted_row["aux"][aux_cat] = torch.tensor(
-                        [row[v] for v in vals], dtype=self.dtype
-                    )
+                    raw = torch.tensor([row[v] for v in vals], dtype=self.dtype)
+                    formatted_row["aux"][aux_cat] = raw
+                    if self._aux_mean is not None and self._aux_std is not None:
+                        formatted_row["aux"]["aux_std"] = (raw - self._aux_mean) / self._aux_std
                 else:
                     formatted_row["aux"][aux_cat] = [row[v] for v in vals]
 
