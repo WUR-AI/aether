@@ -1,0 +1,29 @@
+# Does text similarity agree with measured LST?
+# Run: python src/inference/inference_heat_guatemala_concept_similarity.py
+defaults:
+  - paths: ${oc.env:STORAGE_MODE,local}
+  - extras: default
+  - hydra: default
+  - data: heat_guatemala_tessera_text
+  - _self_
+
+task_name: "inference"
+tags: ["inference", "heat_island", "guatemala", "concept_similarity"]
+seed: 12345
+
+# Aligned embeddings come from the alignment run, LST predictions from the
+# predictive run. Both consume the same pooled Tessera vector.
+alignment_ckpt_path: ${paths.checkpoint_dir}/epoch_035.ckpt
+predictive_ckpt_path: ${paths.checkpoint_dir}/epoch_093.ckpt
+
+concepts_file: ${paths.root_dir}/outputs/demo_concepts.json
+split: test
+device: cuda
+
+output_csv: ${paths.root_dir}/outputs/heat_guatemala_concept_similarity_per_location.csv
+output_summary_csv: ${paths.root_dir}/outputs/heat_guatemala_concept_similarity_summary.csv
+
+data:
+  dataset:
+    use_target_data: true       # the measured LST is the thing being validated against
+  saved_split_file_name: "split_indices_heat_guatemala_2026-08-27-clean.pth"
