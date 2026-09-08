@@ -1,0 +1,146 @@
+# Alignment data config for the Krakow LST use case (Tessera + expert-legend captions).
+#
+# Requirements before running:
+#   1. The model-ready CSV the dataset loads from ${paths.data_dir} must contain the
+#      feat_* and aux_*_label columns.
+#   2. Tessera tiles at ${paths.data_dir}/heat_krakow/eo/tessera/tessera_<name_loc>.npy
+#      (10x10, 128-band).
+_target_: src.data.base_datamodule.BaseDataModule
+
+dataset:
+  _target_: src.data.heat_krakow_dataset.HeatKrakowDataset
+  data_dir: ${paths.data_dir}
+  modalities:
+    tessera:
+      year: 2024
+      size: 10
+      format: npy
+    coords: {}
+  use_target_data: false
+  use_features: false
+  use_unlabelled_data: false
+  use_aux_data:
+    aux:
+      columns:
+        - target_lst
+        - feat_ndvi_20240829
+        - feat_ndwi_20240829
+        - feat_ari_20240829
+        - feat_nbr_20240829
+        - feat_meanbuildingsheight
+        - feat_buildingscoverha
+        - feat_buildingscoverpercent
+        - feat_copernicusmeanimperviousdensity2021
+        - feat_res_per_1ha
+        - feat_dem_5m
+        - feat_slope_5m
+        - feat_aspect_5m
+        - feat_tpi_5m
+        - feat_tri_5m
+        - feat_annualsolarradiation
+        - feat_meancanopyheight
+        - feat_forestcoverha
+        - feat_forestcoverpercent
+        - feat_vegetationvoxelnumber
+        - feat_vegetationlidarptsnumber
+        - feat_hvv2bv
+        - feat_copernicusmeantreecoverdensity2023
+        - feat_districtname__Bieńczyce
+        - feat_districtname__Bieżanów_Prokocim
+        - feat_districtname__Bronowice
+        - feat_districtname__Czyżyny
+        - feat_districtname__Dębniki
+        - feat_districtname__Grzegórzki
+        - feat_districtname__Krowodrza
+        - feat_districtname__Mistrzejowice
+        - feat_districtname__Nowa_Huta
+        - feat_districtname__Podgórze
+        - feat_districtname__Podgórze_Duchackie
+        - feat_districtname__Prądnik_Biały
+        - feat_districtname__Prądnik_Czerwony
+        - feat_districtname__Stare_Miasto
+        - feat_districtname__Swoszowice
+        - feat_districtname__Wzgórza_Krzesławickie
+        - feat_districtname__Zwierzyniec
+        - feat_districtname__Łagiewniki_Borek_Fałęcki
+        - feat_gridtype__industrial
+        - feat_gridtype__natural
+        - feat_gridtype__residential
+        - feat_gridtype__transport_infrastructure
+        - feat_griddominantlanduse__agriculture
+        - feat_griddominantlanduse__allotment_garden
+        - feat_griddominantlanduse__barren_land
+        - feat_griddominantlanduse__built_up_commercial
+        - feat_griddominantlanduse__built_up_industrial
+        - feat_griddominantlanduse__forest
+        - feat_griddominantlanduse__forest_nursery
+        - feat_griddominantlanduse__grove
+        - feat_griddominantlanduse__industrial
+        - feat_griddominantlanduse__low_vegetation
+        - feat_griddominantlanduse__multifamily_residential
+        - feat_griddominantlanduse__orchard
+        - feat_griddominantlanduse__other_built_up
+        - feat_griddominantlanduse__plantation
+        - feat_griddominantlanduse__residential
+        - feat_griddominantlanduse__river
+        - feat_griddominantlanduse__shrubland
+        - feat_griddominantlanduse__single_family_residential
+        - feat_griddominantlanduse__transport_infrastructure
+        - feat_griddominantlanduse__waterbodies
+        - feat_copernicusclcplusbackbone2023class__coniferous_forest
+        - feat_copernicusclcplusbackbone2023class__deciduous_forest
+        - feat_copernicusclcplusbackbone2023class__herbaceous_vegetation_permanent
+        - feat_copernicusclcplusbackbone2023class__herbaceous_vegetation_temporary
+        - feat_copernicusclcplusbackbone2023class__no_vegetation
+        - feat_copernicusclcplusbackbone2023class__sealed
+        - feat_copernicusclcplusbackbone2023class__shrubs
+        - feat_copernicusclcplusbackbone2023class__water
+        - feat_copernicusherbaceousvegpresence2023__herbaceous_vegetation_present
+        - feat_copernicusherbaceousvegpresence2023__no_herbaceous_vegetation
+    top:
+      columns:
+        - aux_ndvi_20240829_label
+        - aux_ndwi_20240829_label
+        - aux_ari_20240829_label
+        - aux_nbr_20240829_label
+        - aux_meanbuildingsheight_label
+        - aux_buildingscoverha_label
+        - aux_buildingscoverpercent_label
+        - aux_copernicusmeanimperviousdensity2021_label
+        - aux_res_per_1ha_label
+        - aux_dem_5m_label
+        - aux_slope_5m_label
+        - aux_aspect_5m_label
+        - aux_tpi_5m_label
+        - aux_tri_5m_label
+        - aux_annualsolarradiation_label
+        - aux_meancanopyheight_label
+        - aux_forestcoverha_label
+        - aux_forestcoverpercent_label
+        - aux_vegetationvoxelnumber_label
+        - aux_vegetationlidarptsnumber_label
+        - aux_hvv2bv_label
+        - aux_copernicusmeantreecoverdensity2023_label
+        - aux_districtid_label
+        - aux_districtname_label
+        - aux_gridtype_label
+        - aux_griddominantlanduse_label
+        - aux_copernicusclcplusbackbone2023class_label
+        - aux_copernicusherbaceousvegpresence2023_label
+  seed: ${seed}
+  cache_dir: ${paths.cache_dir}
+
+caption_builder:
+  _target_: src.data.heat_krakow_caption_builder.HeatKrakowCaptionBuilder
+  templates_fname: v1.json
+  concepts_fname: v2.json
+  data_dir: ${paths.data_dir}/heat_krakow
+  seed: ${seed}
+
+batch_size: 64
+num_workers: 8
+pin_memory: true
+
+split_mode: "from_file"
+saved_split_file_name: "heat_krakow_split_20260522_1120.pth"
+seed: ${seed}
