@@ -183,6 +183,13 @@ class ButterflyDataset(BaseDataset):
         elif self.modalities["s2"].get("preprocessing") == "div_2000":
             im = np.clip(im, 0, 2000)
             im = im / 2000.0
+            im = im.clip(0, 1)
+        elif self.modalities["s2"].get("preprocessing") == "stretch_2_98":
+            im = im.astype(np.float32)
+            p2 = np.percentile(im, 2, axis=(1, 2), keepdims=True)
+            p98 = np.percentile(im, 98, axis=(1, 2), keepdims=True)
+            im = (im - p2) / np.clip(p98 - p2, 1e-6, None)
+            im = im.clip(0, 1)
         else:
             log.warning("Data is not scaled.")
 
