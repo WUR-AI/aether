@@ -181,7 +181,6 @@ class ButterflyDataset(BaseDataset):
             im = im / 10000.0
             im = im.clip(0, 1)
         elif self.modalities["s2"].get("preprocessing") == "div_2000":
-            im = np.clip(im, 0, 2000)
             im = im / 2000.0
             im = im.clip(0, 1)
         elif self.modalities["s2"].get("preprocessing") == "stretch_2_98":
