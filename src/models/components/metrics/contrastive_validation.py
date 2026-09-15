@@ -77,7 +77,7 @@ class RetrievalContrastiveValidation(BaseMetrics):
                 if dynamic_k != 0:
                     k = dynamic_k
                 else:
-                    continue
+                    raise ValueError("Dynamic k is required for top-k metrics")
 
             if is_max:
                 gt_mask = gt_rank_pos < k
