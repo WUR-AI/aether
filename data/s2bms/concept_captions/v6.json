@@ -462,16 +462,6 @@
   },
   {
     "concept_caption": [
-      "Sparse, rocky terrain with minimal vegetation",
-      "Bare ground such as rock, shingle, or sand with minimal plant cover",
-      "Open, sparsely vegetated natural area"
-    ],
-    "is_max": true,
-    "col": "aux_corine_frac_33",
-    "val_av": true
-  },
-  {
-    "concept_caption": [
       "Wetland landscape of marshes or waterlogged ground",
       "Area of flooded or saturated land with wetland vegetation",
       "Boggy, water-saturated terrain"
@@ -542,26 +532,6 @@
   },
   {
     "concept_caption": [
-      "Freshwater lake or river, away from the sea",
-      "Inland body of fresh water",
-      "Landscape dominated by a river or freshwater lake"
-    ],
-    "is_max": true,
-    "col": "aux_corine_frac_51",
-    "val_av": false
-  },
-  {
-    "concept_caption": [
-      "Still freshwater lake or reservoir",
-      "Standing body of water such as a lake or reservoir",
-      "Area adjacent to a large inland lake or reservoir"
-    ],
-    "is_max": true,
-    "col": "aux_corine_frac_512",
-    "val_av": false
-  },
-  {
-    "concept_caption": [
       "Coastal or open sea waters",
       "Area covered by marine, saltwater seas",
       "Location dominated by ocean or sea water"
@@ -569,16 +539,6 @@
     "is_max": true,
     "col": "aux_corine_frac_52",
     "val_av": true
-  },
-  {
-    "concept_caption": [
-      "Estuary where a river meets the sea",
-      "Tidal river mouth blending fresh and salt water",
-      "Coastal estuary at a river's outlet to the sea"
-    ],
-    "is_max": true,
-    "col": "aux_corine_frac_522",
-    "val_av": false
   },
   {
     "concept_caption": [
