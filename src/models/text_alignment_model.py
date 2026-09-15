@@ -205,7 +205,7 @@ class TextAlignmentModel(BaseModel):
             geo_feats, text_feats = feats[0], feats[1]
 
         # Get aux values
-        aux_values = batch["aux"].get("aux_std")
+        aux_values = batch["aux"].get("aux")
         aux_ids_per_caption = batch.get("text_aux_ids")
 
         # Get loss
@@ -214,7 +214,11 @@ class TextAlignmentModel(BaseModel):
                 geo_feats,
                 text_feats,
                 mode=mode,
-                aux_values=aux_values,
+                aux_values=(
+                    batch["aux"].get("aux_std")
+                    if self.loss_fn.name == "SoftContrastiveLoss"
+                    else None
+                ),
                 aux_ids_per_caption=aux_ids_per_caption,
             )
             if self.loss_fn.name == "SigLIPLoss" and self.trainer.world_size > 1:
