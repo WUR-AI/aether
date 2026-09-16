@@ -1,16 +1,6 @@
 [
   {
     "concept_caption": [
-      "A cold location with low temperatures throughout the year",
-      "Area with a cool, chilly climate for much of the year",
-      "Location with a consistently cool annual climate"
-    ],
-    "is_max": false,
-    "col": "aux_bioclim_01",
-    "val_av": true
-  },
-  {
-    "concept_caption": [
       "Location where daytime and nighttime temperatures stay close together",
       "Area where nights stay nearly as warm as the day",
       "Climate with only a small swing between day and night temperatures"
@@ -37,16 +27,6 @@
     ],
     "is_max": false,
     "col": "aux_bioclim_04",
-    "val_av": true
-  },
-  {
-    "concept_caption": [
-      "Location with cool summer days",
-      "Area with consistently mild summer temperatures",
-      "Location where even summer stays cool"
-    ],
-    "is_max": false,
-    "col": "aux_bioclim_05",
     "val_av": true
   },
   {
@@ -88,16 +68,6 @@
     "is_max": true,
     "col": "aux_bioclim_09",
     "val_av": false
-  },
-  {
-     "concept_caption": [
-      "Region with a short, cool summer season",
-      "Location that stays cool even during its warmest months",
-      "Area with mild temperatures across its three warmest months"
-    ],
-    "is_max": false,
-    "col": "aux_bioclim_10",
-    "val_av": true
   },
   {
     "concept_caption": [
@@ -452,16 +422,6 @@
   },
   {
     "concept_caption": [
-      "Transitional landscape of young trees and regenerating shrub",
-      "Area of scattered saplings and shrubby regrowth between grassland and forest",
-      "Land in transition from shrubland to forest, with sparse young trees"
-    ],
-    "is_max": true,
-    "col": "aux_corine_frac_324",
-    "val_av": false
-  },
-  {
-    "concept_caption": [
       "Wetland landscape of marshes or waterlogged ground",
       "Area of flooded or saturated land with wetland vegetation",
       "Boggy, water-saturated terrain"
@@ -479,16 +439,6 @@
     "is_max": true,
     "col": "aux_corine_frac_41",
     "val_av": true
-  },
-  {
-    "concept_caption": [
-      "Freshwater marsh with reeds and standing water",
-      "Low-lying inland marsh prone to flooding",
-      "Wet grassy marshland fed by fresh water"
-    ],
-    "is_max": true,
-    "col": "aux_corine_frac_411",
-    "val_av": false
   },
   {
     "concept_caption": [
