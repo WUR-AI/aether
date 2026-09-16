@@ -58,6 +58,25 @@ class HeatKrakowCaptionBuilder(BaseCaptionBuilder):
         return s
 
     @override
+    def sync_concepts(self) -> None:
+        """Syncs concept definitions with auxiliary feature indices safely."""
+        aux_map = self.column_to_metadata_map.get("aux", {})
+        for concept in self.concepts:
+            raw_col = concept["col"]
+            norm_col = self._normalize(raw_col)
+
+            if raw_col in aux_map:
+                concept["id"] = aux_map[raw_col]["id"]
+            elif norm_col in aux_map:
+                concept["id"] = aux_map[norm_col]["id"]
+            else:
+                log.warning(
+                    f"Concept column '{raw_col}' (normalized: '{norm_col}') is not "
+                    f"present in dataset aux features. Setting concept['id'] = None."
+                )
+                concept["id"] = None
+
+    @override
     def sync_with_dataset(self, dataset: BaseDataset) -> None:
         """Builds column mapping supporting feat_*, aux_*, and *_label variations."""
         self.column_to_metadata_map = {"aux": {}}
