@@ -15,7 +15,6 @@ dataset:
       year: 2024
       size: 10
       format: npy
-    coords: {}
   use_target_data: false
   use_features: false
   use_unlabelled_data: false
@@ -133,7 +132,7 @@ dataset:
 caption_builder:
   _target_: src.data.heat_krakow_caption_builder.HeatKrakowCaptionBuilder
   templates_fname: v1.json
-  concepts_fname: v2.json
+  concepts_fname: v3.json
   data_dir: ${paths.data_dir}/heat_krakow
   seed: ${seed}
 

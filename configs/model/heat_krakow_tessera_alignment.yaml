@@ -4,6 +4,11 @@ geo_encoder:
   _target_: src.models.components.geo_encoders.average_encoder.AverageEncoder
   geo_data_name: tessera
 
+geo_adapter: # Projects 128-d Tessera features to match CLIP's 512-d text space
+  _target_: src.models.components.adapters.linear_adapter.LinearAdapter
+  input_dim: 128
+  output_dim: 512
+
 text_encoder:
   _target_: src.models.components.text_encoders.clip_text_encoder.ClipTextEncoder
   hf_cache_dir: ${paths.huggingface_cache}
