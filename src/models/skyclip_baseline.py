@@ -114,7 +114,8 @@ def build_SkyCLIP_model(
         assert preprocessing in [
             "div_2000",
             "stretch_2_98",
-        ], "S2 must be preprocessed with preprocessing set to 'div_2000' or 'stretch_2_98'"
+            "div_10000",
+        ], "S2 must be preprocessed with preprocessing set to 'div_2000' or 'stretch_2_98' or 'div_10000'"
         geo_encoder = SkyClipImgEncoder(geo_encoder=model.visual, out_dim=out_dim)
     if return_text_encoder:
         model.visual = None
