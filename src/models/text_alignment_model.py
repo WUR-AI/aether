@@ -269,7 +269,11 @@ class TextAlignmentModel(BaseModel):
         )
 
         # Rank on similarity
+        if geo_feats.isnan().any():
+            raise ValueError(f"geo_feats has NaN value in mode {mode}")
         similarity = self.concept_similarities(geo_feats)
+        if similarity.isnan().any():
+            raise ValueError(f"geo_feats has NaN value in mode {mode}")
 
         concept_scores = self.contrastive_val(similarity, aux_values=aux_vals)
 
