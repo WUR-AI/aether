@@ -20,8 +20,8 @@ tags:
   - alignment
   - clip
 
-experiment_name: clip_baseline_${str:${size}}_stretched
-projects: s2bms_alignment
+experiment_name: baseline_clip_${str:${size}}_${str:${data.dataset.modalities.s2.preprocessing}}_v11
+projects: s2bms_vlm_baselines
 
 model:
   geo_encoder:
@@ -40,13 +40,12 @@ model:
 
 data:
   dataset:
-    csv_name: model_ready_s2bms-unlabelled-merged_incl-test-aux.csv
+    csv_name: model_ready_s2bms_incl-test-aux.csv
     modalities:
       s2:
         size: 224
         channels: rgb
         format: tif
-        preprocessing: stretch_2_98
     use_target_data: false
     use_aux_data:
       aux:
@@ -59,10 +58,10 @@ data:
   caption_builder:
     _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
     templates_fname: v6.json
-    concepts_fname: v8.json
+    concepts_fname: v11.json
     data_dir: ${paths.data_dir}/s2bms
     seed: ${seed}
-    n_captions_for_validation: 50
+    n_captions_for_validation: 1
   num_workers: 1
   persistent_workers: true
   saved_split_file_name: "s2bms_union_val_test.pth"
@@ -79,3 +78,4 @@ hydra:
   sweeper:
     params:
       ++size: ViT-B-32, ViT-B-16, ViT-L-14, RN50
+      ++data.dataset.modalities.s2.preprocessing: div_2000, div_10000, stretch_2_98
