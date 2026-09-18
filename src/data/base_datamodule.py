@@ -666,26 +666,26 @@ class BaseDataModule(LightningDataModule):
                     n_baseline_max = sum(aux_val >= theta_k for aux_val in aux_vals_current_ds)
                     n_baseline_min = sum(aux_val <= theta_k for aux_val in aux_vals_current_ds)
 
-                    # if n_baseline_max < n_baseline_min:
-                    #     if not c.get("is_max", True):
-                    #         log.info(
-                    #             f"Concept {c_name} has n_baseline_max < n_baseline_min but is_max is False. Therefore it will NOT be used/stored. Please check the concept configs or the computed theta_k for this concept."
-                    #         )
-                    #         if i_c not in list_concept_ids_drop:
-                    #             list_concept_ids_drop.append(i_c)
-                    #     n_baseline = n_baseline_max
-                    #     _is_max = True
-                    # else:
-                    #     if c.get("is_max", False):
-                    #         log.info(
-                    #             f"Concept {c_name} has n_baseline_max >= n_baseline_min but is_max is True. Therefore it will NOT be used/stored. Please check the concept configs or the computed theta_k for this concept."
-                    #         )
-                    #         if i_c not in list_concept_ids_drop:
-                    #             list_concept_ids_drop.append(i_c)
-                    #     n_baseline = n_baseline_min
-                    #     _is_max = False
-                    n_baseline = n_baseline_max
-                    _is_max = True
+                    if n_baseline_max < n_baseline_min:
+                        if not c.get("is_max", True):
+                            log.info(
+                                f"Concept {c_name} has n_baseline_max < n_baseline_min but is_max is False. Therefore it will NOT be used/stored. Please check the concept configs or the computed theta_k for this concept."
+                            )
+                            if i_c not in list_concept_ids_drop:
+                                list_concept_ids_drop.append(i_c)
+                        n_baseline = n_baseline_max
+                        _is_max = True
+                    else:
+                        if c.get("is_max", False):
+                            log.info(
+                                f"Concept {c_name} has n_baseline_max >= n_baseline_min but is_max is True. Therefore it will NOT be used/stored. Please check the concept configs or the computed theta_k for this concept."
+                            )
+                            if i_c not in list_concept_ids_drop:
+                                list_concept_ids_drop.append(i_c)
+                        n_baseline = n_baseline_min
+                        _is_max = False
+                    # n_baseline = n_baseline_max
+                    # _is_max = True
                     if "is_max" not in c:
                         log.info(
                             f"Concept {c_name} does not have 'is_max' specified. Setting is_max to {_is_max} based on whether n_baseline_max ({n_baseline_max}) is smaller than n_baseline_min ({n_baseline_min})."
