@@ -15,7 +15,7 @@ tags:
   - avr_aef_256
   - ${str:${seed}}
 
-experiment_name: baseline_top-k-idx_b${str:${data.batch_size}}_s${str:${model.loss_fn.sigma}}
+experiment_name: aef_soft_s${str:${model.loss_fn.sigma}}_b${str:${data.batch_size}}_v11_unlabelled_higher_lr
 projects: s2bms_alignment
 
 model:
@@ -35,6 +35,8 @@ model:
     _target_: src.models.components.loss_fns.soft_contrastive_loss.SoftContrastiveLoss
     temperature: 0.07
   trainable_modules: [loss_fn.log_temp]
+  optimizer:
+    lr: 0.001
 
 data:
   dataset:
@@ -55,10 +57,10 @@ data:
   caption_builder:
     _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
     templates_fname: v6.json
-    concepts_fname: v7.json
+    concepts_fname: v11.json
     data_dir: ${paths.data_dir}/s2bms
     seed: ${seed}
-    n_captions_for_validation: 50
+    n_captions_for_validation: 1
 
   num_workers: 14
   persistent_workers: true
@@ -70,7 +72,7 @@ logger:
   wandb:
     tags: ${tags}
     group: "alignment"
-    project: "s2bms_alignment_experimental"
+    project: "s2bms_alignment"
   aim:
     experiment: "alignment"
 
@@ -80,15 +82,20 @@ callbacks:
     mode: "max"
   early_stopping:
     monitor: "val_avr_top-dyn_k_index"
-    patience: 20
+    patience: 30
     mode: "max"
     min_delta: 0.001
+
+trainer:
+  num_sanity_val_steps: -1
 
 hydra:
   mode: MULTIRUN
   sweeper:
     params:
-      seed: 12345 #, 404, 654
-      ++model.loss_fn.sigma: 0.25 #, 0.5, 1
+      # ++data.batch_size: 64, 128 # 256 #, 512, 1028
+      ++data.batch_size: 256, 512
+      ++model.loss_fn.sigma: 0.1, 0.2, 0.5, 1, 1.5, 2
+      #      ++model.loss_fn.sigma: 0.5
       ++data.caption_builder.return_aux_ids: true
-      ++data.batch_size: 128 #, 256, 512, 1028
+      seed: 12345, 404, 654
