@@ -86,21 +86,11 @@ def evaluate(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
             model_hparams["text_encoder"]["hf_cache_dir"] = os.path.join(
                 cfg.paths.cache_dir, "huggingface"
             )
-        if "AverageEncoder" in model_hparams["geo_encoder"]["_target_"]:
-            if "aef_avr" in cfg.data.dataset.modalities.keys():
-                model_hparams["geo_encoder"].update(
-                    {
-                        "_target_": "src.models.components.geo_encoders.identity_encoder.IdentityEncoder",
-                        "geo_data_name": "aef_avr",
-                    }
-                )
-            elif "tessera_avr" in cfg.data.dataset.modalities.keys():
-                model_hparams["geo_encoder"].update(
-                    {
-                        "_target_": "src.models.components.geo_encoders.identity_encoder.IdentityEncoder",
-                        "geo_data_name": "tessera_avr",
-                    }
-                )
+
+        if model_hparams["geo_encoder"].get("hf_cache_dir") is not None:
+            model_hparams["geo_encoder"]["hf_cache_dir"] = os.path.join(
+                cfg.paths.cache_dir, "huggingface"
+            )
 
         if "loss_fn" not in model_hparams.keys():
             model_hparams["loss_fn"] = cfg.get("model", {}).get("loss_fn")
