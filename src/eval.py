@@ -5,7 +5,7 @@ import hydra
 import rootutils
 import torch
 from dotenv import load_dotenv
-from lightning import Trainer
+from lightning import Trainer, seed_everything
 from lightning.pytorch.loggers import Logger, WandbLogger
 from omegaconf import DictConfig, OmegaConf
 
@@ -47,6 +47,9 @@ def evaluate(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     :param cfg: DictConfig configuration composed by Hydra.
     :return: Tuple[dict, dict] with metrics and dict with all instantiated objects.
     """
+    # set seed for random number generators in pytorch, numpy and python.random
+    if cfg.get("seed"):
+        seed_everything(cfg.seed, workers=True)
 
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
     datamodule: BaseDataModule = hydra.utils.instantiate(cfg.data)
