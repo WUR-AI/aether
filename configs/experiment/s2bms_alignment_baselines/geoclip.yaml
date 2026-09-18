@@ -20,8 +20,8 @@ tags:
   - alignment
   - geoclip
 
-experiment_name: geoclip_baseline
-projects: s2bms_alignment
+experiment_name: geoclip_baseline_v11
+projects: s2bms_vlm_baselines
 
 model:
   geo_encoder:
@@ -36,7 +36,7 @@ model:
 
 data:
   dataset:
-    csv_name: model_ready_s2bms-unlabelled-merged_incl-test-aux.csv
+    csv_name: model_ready_s2bms_incl-test-aux.csv
     modalities:
       coords:
     use_target_data: false
@@ -51,10 +51,10 @@ data:
   caption_builder:
     _target_: src.data.butterfly_caption_builder.ButterflyCaptionBuilder
     templates_fname: v6.json
-    concepts_fname: v8.json
+    concepts_fname: v11.json
     data_dir: ${paths.data_dir}/s2bms
     seed: ${seed}
-    n_captions_for_validation: 50
+    n_captions_for_validation: 1
   num_workers: 1
   persistent_workers: true
   saved_split_file_name: "s2bms_union_val_test.pth"
