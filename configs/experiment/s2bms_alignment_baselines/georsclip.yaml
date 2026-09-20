@@ -52,7 +52,7 @@ data:
     concepts_fname: v11.json
     data_dir: ${paths.data_dir}/s2bms
     seed: ${seed}
-    n_captions_for_validation: 50
+    n_captions_for_validation: 1
   num_workers: 1
   persistent_workers: true
   saved_split_file_name: "s2bms_union_val_test.pth"
