@@ -248,10 +248,13 @@ class TextAlignmentModel(BaseModel):
             self.log_dict(metrics, batch_size=local_batch_size, **self.log_kwargs)
 
         if mode in ["val", "test"]:
+            geo_feats_cpu = geo_feats.detach().cpu()
+            if geo_feats_cpu.isnan().any():
+                raise ValueError()
             self.outputs_epoch_memory.append(
                 {
                     # Store on CPU to avoid holding the whole epoch on GPU.
-                    "geo_feats": geo_feats.detach().cpu(),
+                    "geo_feats": geo_feats_cpu,
                     "aux_vals": aux_values.detach().cpu() if aux_values is not None else None,
                 }
             )
@@ -262,7 +265,7 @@ class TextAlignmentModel(BaseModel):
 
         # Combine batches
         geo_feats = torch.cat([x["geo_feats"] for x in self.outputs_epoch_memory], dim=0)
-        geo_feats = geo_feats.to(self.device, non_blocking=True)
+        geo_feats = geo_feats.to(self.device)
 
         aux_vals = torch.cat([x["aux_vals"] for x in self.outputs_epoch_memory], dim=0).to(
             self.device, non_blocking=True
