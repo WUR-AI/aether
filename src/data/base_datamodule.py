@@ -706,7 +706,9 @@ class BaseDataModule(LightningDataModule):
                                 else max(aux_vals_current_ds) - 1e-6
                             )
                     elif n_baseline == 0:
-                        raise ValueError(c_name)
+                        raise ValueError(
+                            f"Concept {c_name} has a baseline of 0 for dataset {dataset_name}, which is not allowed."
+                        )
 
                     if verbose:
                         log.info(
