@@ -1,0 +1,269 @@
+[
+    {
+        "concept_caption": [
+            "A hot location with warm temperatures year-round",
+            "Area with a subtropical or desert-like warm climate",
+            "Location with consistently high annual temperatures"
+        ],
+        "is_max": true,
+        "col": "aux_bio_1",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Desert climate where scorching days give way to cold nights",
+            "Location with a dramatic swing between hot days and cold nights",
+            "Arid climate with wide temperature swings between day and night"
+        ],
+        "is_max": true,
+        "col": "aux_bio_2",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Tropical or coastal climate with steady temperatures year-round",
+            "Location where daily and seasonal temperature swings are both small",
+            "Mild climate with little variation between seasons"
+        ],
+        "is_max": true,
+        "col": "aux_bio_3",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Continental climate with harsh winters and hot summers",
+            "Location with dramatic seasonal temperature swings",
+            "Climate marked by extreme contrast between summer heat and winter cold"
+        ],
+        "is_max": true,
+        "col": "aux_bio_4",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Location with scorching summer heat",
+            "Area that regularly experiences extreme summer temperatures",
+            "Desert or arid region with blistering summer heat"
+        ],
+        "is_max": true,
+        "col": "aux_bio_5",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Frost-free location with mild winters",
+            "Subtropical area where winters stay warm",
+            "Location with warm winters and a long growing season"
+        ],
+        "is_max": true,
+        "col": "aux_bio_6",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Continental climate with scorching summers and freezing winters",
+            "Location where summer heat and winter cold are both extreme",
+            "Climate with an extreme swing between summer and winter temperatures"
+        ],
+        "is_max": true,
+        "col": "aux_bio_7",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Warm, humid rainy season",
+            "Location with a hot, wet monsoon-like season",
+            "Area where the rainy season brings warm, humid weather"
+        ],
+        "is_max": true,
+        "col": "aux_bio_8",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Scorching, arid dry season",
+            "Location with a hot, parched dry season",
+            "Desert climate with intense heat during its driest months"
+        ],
+        "is_max": true,
+        "col": "aux_bio_9",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Long, blistering hot summer season",
+            "Location with intense heat across its warmest months",
+            "Area with a prolonged, scorching summer"
+        ],
+        "is_max": true,
+        "col": "aux_bio_10",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Mild, frost-free winter season",
+            "Subtropical climate with warm winters",
+            "Location with a gentle winter season year-round"
+        ],
+        "is_max": true,
+        "col": "aux_bio_11",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Lush, rain-soaked landscape with heavy annual rainfall",
+            "Location with abundant year-round rainfall",
+            "Wet climate typical of a temperate rainforest"
+        ],
+        "is_max": true,
+        "col": "aux_bio_12",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Intensely rainy peak month",
+            "Location with a month of torrential rainfall",
+            "Area with a sharp, heavy monthly rainfall peak"
+        ],
+        "is_max": true,
+        "col": "aux_bio_13"
+    },
+    {
+        "concept_caption": [
+            "Location where rain falls consistently even in its driest month",
+            "Humid climate with rain falling steadily throughout the year",
+            "Area with a consistently damp climate, even at its driest"
+        ],
+        "is_max": true,
+        "col": "aux_bio_14",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Sharp wet-and-dry seasonal rainfall pattern, such as a monsoon climate",
+            "Location with a pronounced rainy season contrasted by a dry season",
+            "Climate with a strongly contrasting wet and dry season"
+        ],
+        "is_max": true,
+        "col": "aux_bio_15"
+    },
+    {
+        "concept_caption": [
+            "One markedly wet season each year",
+            "Location where a several-month stretch brings the bulk of yearly rain",
+            "Area with a concentrated, heavy rainy season"
+        ],
+        "is_max": true,
+        "col": "aux_bio_16",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Location where even the driest quarter receives meaningful rainfall",
+            "Humid climate that stays damp even in its driest season",
+            "Area where the driest season remains fairly damp"
+        ],
+        "is_max": true,
+        "col": "aux_bio_17"
+    },
+    {
+        "concept_caption": [
+            "Hot, rainy summer season",
+            "Location where the warm season brings heavy rainfall, as in a monsoon climate",
+            "Area with frequent summer thunderstorms and rain"
+        ],
+        "is_max": true,
+        "col": "aux_bio_18",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Wet, rainy winter season",
+            "Location where the cold season brings the heaviest rain, as in a Mediterranean climate",
+            "Area with a rain-soaked winter climate"
+        ],
+        "is_max": true,
+        "col": "aux_bio_19",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Deep soil with bedrock lying far below the surface",
+            "Location with a thick soil profile before reaching solid bedrock",
+            "Area where bedrock sits very deep beneath the ground"
+        ],
+        "is_max": true,
+        "col": "aux_bdticm",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Dense, compacted soil with little pore space",
+            "Heavy, tightly packed soil",
+            "Area with dense mineral soil"
+        ],
+        "is_max": true,
+        "col": "aux_bldfie",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Fertile soil with a strong capacity to retain nutrients",
+            "Nutrient-rich soil that holds onto minerals well",
+            "Soil with high natural fertility and nutrient retention"
+        ],
+        "is_max": true,
+        "col": "aux_cecsol",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Heavy, clay-rich soil",
+            "Area with dense clay soil",
+            "Sticky, fine-textured clay soil"
+        ],
+        "is_max": true,
+        "col": "aux_clyppt",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Dark, organic-rich soil high in carbon",
+            "Carbon-rich soil, such as peaty or humus-rich ground",
+            "Soil rich in decomposed organic matter"
+        ],
+        "is_max": true,
+        "col": "aux_orcdrc",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Alkaline soil with a high pH",
+            "Basic, chalky soil",
+            "Area with alkaline, lime-rich soil"
+        ],
+        "is_max": true,
+        "col": "aux_phihox",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Fine, silty soil",
+            "Area with soft, silt-rich ground",
+            "Smooth, silty soil texture"
+        ],
+        "is_max": true,
+        "col": "aux_sltppt",
+        "val_av": true
+    },
+    {
+        "concept_caption": [
+            "Loose, sandy soil",
+            "Area with coarse, sandy ground",
+            "Dry, sandy soil texture"
+        ],
+        "is_max": true,
+        "col": "aux_sndppt",
+        "val_av": true
+    }
+]
