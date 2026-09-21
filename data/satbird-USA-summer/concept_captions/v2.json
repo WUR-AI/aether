@@ -194,7 +194,7 @@
         ],
         "is_max": true,
         "col": "aux_bdticm",
-        "val_av": true
+        "val_av": false
     },
     {
         "concept_caption": [
@@ -214,7 +214,7 @@
         ],
         "is_max": true,
         "col": "aux_cecsol",
-        "val_av": true
+        "val_av": false
     },
     {
         "concept_caption": [
@@ -234,7 +234,7 @@
         ],
         "is_max": true,
         "col": "aux_orcdrc",
-        "val_av": true
+        "val_av": false
     },
     {
         "concept_caption": [
@@ -354,6 +354,6 @@
         ],
         "is_max": true,
         "col": "aux_snow_and_ice",
-        "val_av": true
+        "val_av": false
     }
 ]
