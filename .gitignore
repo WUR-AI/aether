@@ -231,3 +231,9 @@ notebooks/01-TvdP-tmp.ipynb
 /data/yield_africa/model_ready_yield_africa.csv
 figs/
 results/
+
+outputs/alignment/results_s2bms.csv
+
+outputs/prediction/results_s2bms.csv
+
+outputs/prediction/results_satbird.csv
