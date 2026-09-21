@@ -1,12 +1,18 @@
+import logging
 import os
 from typing import Any, override
 
+import numpy as np
 import torch
 from rasterio import open as ropen
 from torchvision.transforms import v2
 
 from src.data.base_dataset import BaseDataset
 from src.data_preprocessing.satbird import setup_satbird_from_pooch
+from utils.data_utils import center_crop_npy
+from utils.errors import IllegalArgumentCombination
+
+log = logging.getLogger(__name__)
 
 
 class SatBirdDataset(BaseDataset):
@@ -86,9 +92,57 @@ class SatBirdDataset(BaseDataset):
 
     def load_s2(self, path: str):
         """Loads S2 data from path."""
+        # Modality settings
+        size = self.modalities["s2"]["size"]
+        np_dtype, is_bfloat16 = self.resolve_dtype(self.modalities["s2"]["dtype"])
+        im = self.load_tiff(path, dtype=np.dtype("uint16"))
+
+        if self.modalities["s2"].get("channels", "") == "4c":  # BGRNIR → RGBNIR
+            im = im[[2, 1, 0, 3], :, :]
+            c = 4
+        elif self.modalities["s2"].get("channels", "") == "rgb":  # BGR → RGB
+            im = im[[2, 1, 0], :, :]
+            c = 3
+        else:
+            raise IllegalArgumentCombination(
+                f"Channel specification {self.modalities["s2"].get("channels", 'null')} is not implemented."
+            )
+
+        if self.modalities["s2"].get("preprocessing") == "div_10000":
+            im = im / 10000.0
+            im = im.clip(0, 1)
+
+        elif self.modalities["s2"].get("preprocessing") == "div_2000":
+            im = im / 2000.0
+            im = im.clip(0, 1)
+
+        elif self.modalities["s2"].get("preprocessing") == "stretch_2_98":
+            im = im.astype(np.float32)
+            p2 = np.percentile(im, 2, axis=(1, 2), keepdims=True)
+            p98 = np.percentile(im, 98, axis=(1, 2), keepdims=True)
+            im = (im - p2) / np.clip(p98 - p2, 1e-6, None)
+            im = im.clip(0, 1)
+        else:
+            log.warning("Data is not scaled.")
+
+        im = im.astype(dtype=np_dtype)
+
+        # Crop
+        if im.shape[-2:] != (size, size):
+            im = center_crop_npy(im, (c, size, size))
+
+        tensor = torch.from_numpy(im)
+        if is_bfloat16:
+            tensor = tensor.to(torch.bfloat16)
+        return tensor
+
+    def load_s2rgb(self, path: str):
         img = ropen(path).read()
-        tensor = v2.ToImage()(img).permute(1, 2, 0)
-        # TODO normalisations etc
+        tensor = v2.ToImage()(img)  # uint8, CxHxW
+        tensor = v2.ToDtype(torch.float32, scale=True)(
+            tensor
+        )  # dtype preserved (e.g. uint8 stays uint8)
+        tensor = tensor.permute(1, 2, 0)
         return tensor
 
     @override
@@ -100,10 +154,11 @@ class SatBirdDataset(BaseDataset):
         for modality in self.modalities:
             if modality in ["coords"]:
                 formatted_row["eo"][modality] = torch.tensor([row["lat"], row["lon"]])
-            elif modality in ["s2", "s2rgb"]:
+            elif modality == "s2":
                 s2 = self.load_s2(row[f"{modality}_path"])
-                # TODO: augmentations
-                s2 = v2.CenterCrop(self.modalities[modality].get("size", 256))(s2)
+                formatted_row["eo"][modality] = s2
+            elif modality == "s2rgb":
+                s2 = self.load_s2rgb(row[f"{modality}_path"])
                 formatted_row["eo"][modality] = s2
             elif modality == "tessera":
                 formatted_row["eo"][modality] = self.load_tessera(row["tessera_path"])
@@ -136,6 +191,17 @@ class SatBirdDataset(BaseDataset):
             formatted_row["name_loc"] = row["name_loc"]
 
         return formatted_row
+
+    def plot(self, im):
+        import matplotlib.pyplot as plt
+
+        if isinstance(im, np.ndarray):
+            rgb = im.transpose(1, 2, 0)
+        else:
+            rgb = im.permute(1, 2, 0).detach().cpu().numpy()
+        plt.imshow(rgb)
+        plt.axis("off")
+        plt.show()
 
 
 if __name__ == "__main__":
