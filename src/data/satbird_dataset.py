@@ -29,6 +29,7 @@ class SatBirdDataset(BaseDataset):
         mock: bool = False,
         dtype: str = "float32",
         return_name_loc: bool = False,
+        csv_name: str = None,
     ):
         """A dataset implementation for the Butterfly diversity use case.
 
@@ -45,6 +46,11 @@ class SatBirdDataset(BaseDataset):
         assert study_site in ["Kenya", "USA-summer"]
         self.study_site = study_site
 
+        if csv_name is not None:
+            csv_name = csv_name
+        else:
+            csv_name = f"model_ready_satbird-{study_site}.csv"
+
         super().__init__(
             data_dir=data_dir,
             modalities=modalities,
@@ -58,6 +64,7 @@ class SatBirdDataset(BaseDataset):
             dtype=dtype,
             use_features=use_features,
             return_name_loc=return_name_loc,
+            csv_name=csv_name,
         )
 
     @override
