@@ -9,10 +9,6 @@ from src.data.base_caption_builder import (
     sample_adjective_for_percentage,
 )
 from src.data.base_dataset import BaseDataset
-from src.data_preprocessing.data_utils import (
-    process_bioclim_classes,
-    process_corine_classes,
-)
 
 
 class SatBirdCaptionBuilder(BaseCaptionBuilder):
@@ -40,18 +36,19 @@ class SatBirdCaptionBuilder(BaseCaptionBuilder):
     def sync_with_dataset(self, dataset: BaseDataset) -> None:
         """Synchronize the dataset with bioclimatic, corine, and human footprint column
         metadata."""
-        # bioclim_columns = self.get_bioclim_column_keys()
-        # corine_columns = self.get_corine_column_keys()
-        # humanfootprint_columns = self.get_humanfootprint_column_keys()
-        # aux_columns = {**bioclim_columns, **corine_columns, **humanfootprint_columns}
+        bioclim_columns = self.get_bioclim_column_keys()
+        corine_columns = self.get_dynamic_world_column_keys()
+        soil_columns = self.get_soil_grid_keys()
+        aux_columns = {**bioclim_columns, **corine_columns, **soil_columns}
+
         self.column_to_metadata_map = {k: {} for k in dataset.use_aux_data.keys()}
 
         for aux_cat, cols in dataset.use_aux_data.items():
             for i, c in enumerate(cols):
-                # if "top" in aux_cat:
-                description, units = None, None
-                # else:
-                # description, units = aux_columns.get(c) or (None, None)
+                if "top" in aux_cat:
+                    description, units = None, None
+                else:
+                    description, units = aux_columns.get(c) or (None, None)
 
                 self.column_to_metadata_map[aux_cat][c] = {
                     "id": i,
@@ -60,60 +57,30 @@ class SatBirdCaptionBuilder(BaseCaptionBuilder):
                 }
         self.sync_concepts()
 
-    def get_corine_column_keys(self):
+    def get_dynamic_world_column_keys(self):
         """Returns metadata for corine columns."""
-        if not os.path.isfile(os.path.join(self.data_dir, "corine_classes.csv")):
-            process_corine_classes(
-                os.path.join(self.data_dir, "source/corine_classes.json"),
-                os.path.join(self.data_dir, "corine_classes.csv"),
-            )
-        df = pd.read_csv(os.path.join(self.data_dir, "corine_classes.csv"))
-
-        legend_lowlevel = dict(
-            zip(
-                df["code"],
-                zip(df["category_level_3"], ["%"] * len(df["category_level_3"])),
-            )
-        )
-
-        legend_midlevel = dict(
-            zip(
-                df["code"].apply(lambda x: x[:-1]),
-                zip(df["category_level_2"], ["%"] * len(df["category_level_2"])),
-            )
-        )
-
-        legend_highlevel = dict(
-            zip(
-                df["code"].apply(lambda x: x[:-2]),
-                zip(df["category_level_1"], ["%"] * len(df["category_level_1"])),
-            )
-        )
-
-        combined_legend = {**legend_lowlevel, **legend_midlevel, **legend_highlevel}
-        return combined_legend
+        assert os.path.exists(
+            os.path.join(self.data_dir, "dynamicworld_classes.csv")
+        ), FileNotFoundError()
+        df = pd.read_csv(os.path.join(self.data_dir, "dynamicworld_classes.csv"))
+        return dict(zip(df["code"], zip(df["category"], ["%"] * len(df["category"]))))
 
     def get_bioclim_column_keys(self):
         """Returns metadata for bioclim columns."""
-        if not os.path.isfile(os.path.join(self.data_dir, "bioclim_classes.csv")):
-            process_bioclim_classes(
-                os.path.join(self.data_dir, "source/bioclim_classes.json"),
-                os.path.join(self.data_dir, "bioclim_classes.csv"),
-            )
-
+        assert os.path.exists(
+            os.path.join(self.data_dir, "bioclim_classes.csv")
+        ), FileNotFoundError()
         df = pd.read_csv(os.path.join(self.data_dir, "bioclim_classes.csv"))
-        df.sort_values(by=["name"], inplace=True)
         return dict(zip(df["name"], zip(df["description"], df["units"])))
 
-    def get_humanfootprint_column_keys(self):
-        """Returns metadata for human footprint columns."""
-        dict_hf = {
-            "aux_maxdist_road": ("farthest distance to road", "m"),
-            "aux_meandist_road": ("mean distance to road", "m"),
-            "aux_pop_density": ("population density", "people/km²"),
-            "aux_total_population": ("total population", "people"),
-        }
-        return dict_hf
+    def get_soil_grid_keys(self):
+        """Returns metadata for soil grid columns."""
+        assert os.path.exists(
+            os.path.join(self.data_dir, "soilgrid_classes.csv")
+        ), FileNotFoundError()
+
+        df = pd.read_csv(os.path.join(self.data_dir, "soilgrid_classes.csv"))
+        return dict(zip(df["name"], zip(df["description"], df["units"])))
 
     def _build_from_template(
         self,
