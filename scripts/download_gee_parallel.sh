@@ -5,8 +5,8 @@ source "$(dirname "$0")/../.env"
 set +a
 
 N_START=0      # start index
-N=40000        # max total points
-P=30           # number of processes
+N=125000        # max total points
+P=50           # number of processes
 CHUNK=$((N / P))
 
 for ((i=0; i<P; i++)); do

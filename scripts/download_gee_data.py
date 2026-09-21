@@ -8,15 +8,23 @@ from src.data_preprocessing import gee_utils as gu
 from src.data_preprocessing.create_aux_data import get_aux_data_from_coords_list
 
 
-def main(start=0, stop=2000, content="alphaearth", dataset="satbird_usa-summer"):
+def main(
+    start=0,
+    stop=2000,
+    content="aux_data",
+    dataset="satbird_usa-summer",
+    aux_modalities=["dynamicworld"],
+):
     """Download GEE data for a list of coordinates and save to disk. Either auxiliary data or
-    alphaearth data can be downloaded, depending on the value of `content`.
+    alphaearth data can be downloaded, depending on the value of `content`. By default, only
+    dynamicworld auxiliary data is downloaded.
 
     Args:
         start (int): Starting index of the coordinates to process.
         stop (int): Ending index of the coordinates to process.
         content (str): Type of data to download. Must be either "aux_data" or "alphaearth".
         dataset (str): The dataset to use for downloading GEE data.
+        aux_modalities (list): Auxiliary modalities to download when content == "aux_data".
     """
     assert content in ["aux_data", "alphaearth"], f"{content} not recognised."
     assert dataset in ["s2bms_unlabelled", "satbird_usa-summer"], f"{dataset} not recognised."
@@ -55,7 +63,8 @@ def main(start=0, stop=2000, content="alphaearth", dataset="satbird_usa-summer")
             name_list=name_list,
             save_file=True,
             save_filename=f"aux_data_{dataset}_{start}_{stop}.csv",
-            patch_size=2560,
+            patch_size=1280,
+            aux_modalities=aux_modalities,
         )
     elif content == "alphaearth":
         _ = gu.download_list_coord(

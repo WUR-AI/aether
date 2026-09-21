@@ -17,6 +17,18 @@ from tqdm import tqdm
 
 from src.data_preprocessing import data_utils as du
 
+DW_CLASSES = [
+    "water",
+    "trees",
+    "grass",
+    "flooded_vegetation",
+    "crops",
+    "shrub_and_scrub",
+    "built",
+    "bare",
+    "snow_and_ice",
+]
+
 ONLINE_ACCESS_TO_GEE = True
 if ONLINE_ACCESS_TO_GEE:
     gee_api_key = os.environ.get("GEE_API")
@@ -146,21 +158,10 @@ def get_gee_image_from_coord(
             .clip(aoi)
         )
     elif collection_name == "dynamicworld":
-        prob_bands = [
-            "water",
-            "trees",
-            "grass",
-            "flooded_vegetation",
-            "crops",
-            "shrub_and_scrub",
-            "built",
-            "bare",
-            "snow_and_ice",
-        ]
         im_gee = ee.Image(
             collection.filterBounds(aoi)
             .filterDate(ee.Date(f"{year}-01-01"), ee.Date(f"{year}-12-31"))
-            .select(prob_bands)  # get all probability bands
+            .select(DW_CLASSES)  # get all probability bands
             .mean()  # mean over the year
             .reproject(f"EPSG:{epsg_code}", scale=10)  # reproject to 10m
             .clip(aoi)
@@ -219,6 +220,19 @@ def convert_corine_lc_im_to_tab(lc_im):
     dict_lc_counts.update(dict_lc_counts_include_higher)
 
     return dict_lc_counts
+
+
+def convert_dynamicworld_im_to_tab(dw_im, aoi):
+    """Convert a Dynamic World probability image to per-class average probabilities within the AOI,
+    reduced server-side in GEE (no raster download needed)."""
+    assert ONLINE_ACCESS_TO_GEE, "ONLINE_ACCESS_TO_GEE is set to False, so no access to GEE"
+    mean_dict = dw_im.reduceRegion(
+        reducer=ee.Reducer.mean(),
+        geometry=aoi,
+        scale=10,  # match the reprojected image resolution
+        maxPixels=1e9,
+    ).getInfo()
+    return {f"dynamicworld_{cls}": float(mean_dict.get(cls, 0.0) or 0.0) for cls in DW_CLASSES}
 
 
 def convert_popdensity_im_to_sum(popdensity_im, aoi):
