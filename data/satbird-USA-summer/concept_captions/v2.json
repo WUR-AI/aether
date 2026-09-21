@@ -273,7 +273,7 @@
         "Landscape largely covered by water"
         ],
         "is_max": true,
-        "col": "aux_water",
+        "col": "aux_dw_water",
         "val_av": true
     },
     {
@@ -283,7 +283,7 @@
         "Land covered mostly by tree canopy"
         ],
         "is_max": true,
-        "col": "aux_trees",
+        "col": "aux_dw_trees",
         "val_av": true
     },
     {
@@ -293,7 +293,7 @@
         "Land covered in low grass, like a meadow or golf course"
         ],
         "is_max": true,
-        "col": "aux_grass",
+        "col": "aux_dw_grass",
         "val_av": true
     },
     {
@@ -303,7 +303,7 @@
         "Flooded marsh with emergent, waterlogged vegetation"
         ],
         "is_max": true,
-        "col": "aux_flooded_vegetation",
+        "col": "aux_dw_flooded_vegetation",
         "val_av": true
     },
     {
@@ -313,7 +313,7 @@
         "Fields planted with crops such as corn, wheat, or soy"
         ],
         "is_max": true,
-        "col": "aux_crops",
+        "col": "aux_dw_crops",
         "val_av": true
     },
     {
@@ -323,7 +323,7 @@
         "Landscape of low shrubs and patchy grass"
         ],
         "is_max": true,
-        "col": "aux_shrub_and_scrub",
+        "col": "aux_dw_shrub_and_scrub",
         "val_av": true
     },
     {
@@ -333,7 +333,7 @@
         "Cityscape or town dominated by built structures"
         ],
         "is_max": true,
-        "col": "aux_built",
+        "col": "aux_dw_built",
         "val_av": true
     },
     {
@@ -343,7 +343,7 @@
         "Open terrain with minimal vegetation, such as bare soil or rock"
         ],
         "is_max": true,
-        "col": "aux_bare",
+        "col": "aux_dw_bare",
         "val_av": true
     },
     {
@@ -353,7 +353,7 @@
         "Snow-covered ground or icy terrain"
         ],
         "is_max": true,
-        "col": "aux_snow_and_ice",
+        "col": "aux_dw_snow_and_ice",
         "val_av": false
     }
 ]
