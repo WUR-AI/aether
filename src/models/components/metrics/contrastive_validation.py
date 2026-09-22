@@ -30,7 +30,7 @@ class RetrievalContrastiveValidation(BaseMetrics):
     ) -> torch.Tensor | Dict[str, torch.Tensor]:
         """Calculates top-k metrics based the GT (aux-derived) labels."""
 
-        assert similarity_matrix.shape[1] in [186, 195], f"{similarity_matrix.shape}"
+        assert similarity_matrix.shape[1] in [186, 195, 18495, 18514], f"{similarity_matrix.shape}"
         aux_vals = aux_values.T
 
         concept_scores = {}
