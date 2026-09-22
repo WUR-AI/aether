@@ -181,9 +181,10 @@ class SatBirdDataset(BaseDataset):
             formatted_row["aux"] = {}
             for aux_cat, vals in self.use_aux_data.items():
                 if aux_cat == "aux":
-                    formatted_row["aux"][aux_cat] = torch.tensor(
-                        [row[v] for v in vals], dtype=self.dtype
-                    )
+                    raw = torch.tensor([row[v] for v in vals], dtype=self.dtype)
+                    formatted_row["aux"][aux_cat] = raw
+                    if self._aux_mean is not None and self._aux_std is not None:
+                        formatted_row["aux"]["aux_std"] = (raw - self._aux_mean) / self._aux_std
                 else:
                     formatted_row["aux"][aux_cat] = [row[v] for v in vals]
 
