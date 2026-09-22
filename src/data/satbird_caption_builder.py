@@ -37,9 +37,9 @@ class SatBirdCaptionBuilder(BaseCaptionBuilder):
         """Synchronize the dataset with bioclimatic, corine, and human footprint column
         metadata."""
         bioclim_columns = self.get_bioclim_column_keys()
-        corine_columns = self.get_dynamic_world_column_keys()
+        self.dyn_world_columns = self.get_dynamic_world_column_keys()
         soil_columns = self.get_soil_grid_keys()
-        aux_columns = {**bioclim_columns, **corine_columns, **soil_columns}
+        aux_columns = {**bioclim_columns, **self.dyn_world_columns, **soil_columns}
 
         self.column_to_metadata_map = {k: {} for k in dataset.use_aux_data.keys()}
 
@@ -87,7 +87,7 @@ class SatBirdCaptionBuilder(BaseCaptionBuilder):
         template_idx: int,
         aux: torch.Tensor,
         top: List[str] | None = None,
-        convert_corine_perc: bool = True,
+        convert_perc: bool = True,
     ) -> str:
         """Create caption from template and row of auxiliary data."""
         template = self.templates[template_idx]
@@ -115,10 +115,10 @@ class SatBirdCaptionBuilder(BaseCaptionBuilder):
 
             formatted_desc = values_dict["description"].lower() or ""
             units = values_dict["units"]
-            value = value * 100 if units == "%" else value
 
-            if "corine" in token:
-                if convert_corine_perc:
+            if token in self.dyn_world_columns:
+                value = value * 100 if units == "%" else value
+                if convert_perc:
                     adjective = sample_adjective_for_percentage(value)
                     formatted_desc = f"{adjective} {formatted_desc}"
                 else:
