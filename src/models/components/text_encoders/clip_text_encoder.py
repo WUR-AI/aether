@@ -81,8 +81,11 @@ class ClipTextEncoder(BaseTextEncoder):
         # Get text inputs
         text_input = batch.get("text")
 
-        if mode == "train":
+        if isinstance(text_input[0], str):
             text_input = [text_input]
+            mode = "singular"
+        else:
+            mode = "multiple"
         grad_enabled = any(p.requires_grad for p in self.model.parameters())
         device = next(self.model.parameters()).device
 
@@ -120,10 +123,10 @@ class ClipTextEncoder(BaseTextEncoder):
             if self.extra_projector is not None:
                 text_embeds = self.extra_projector(text_embeds)
 
-            if mode != "train":
+            if mode == "multiple":
                 avr_embeds.append(text_embeds.mean(dim=0))
 
-        if mode != "train":
+        if mode == "multiple":
             text_embeds = torch.stack(avr_embeds, dim=0)
 
         return text_embeds

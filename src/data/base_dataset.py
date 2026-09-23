@@ -25,14 +25,14 @@ class BaseDataset(Dataset, ABC):
         data_dir: str,
         modalities: dict,
         use_target_data: bool = True,
-        use_aux_data: Dict[str, List[str] | str] | str | None = None,
+        use_aux_data: DictConfig | str | None = None,
         dataset_name: str | List[str] = "BaseDataset",
         seed: int = 12345,
-        cache_dir: str = None,
-        implemented_mod: set[str] = None,
+        cache_dir: str | None = None,
+        implemented_mod: set[str] | None = None,
         mock: bool = False,
-        use_features: bool = True,
-        csv_name: str = None,
+        use_features: DictConfig | None = None,
+        csv_name: str | None = None,
         dtype: str = "float32",
         return_name_loc: bool = False,
     ) -> None:
@@ -92,6 +92,7 @@ class BaseDataset(Dataset, ABC):
 
         # Read model ready csv df
         csv_filename = csv_name or f"model_ready_{dataset_name}.csv"
+        self.stats_file = os.path.join(self.data_dir, 'aux_stats', csv_filename.replace('.csv', '.json'))
         path_csv = os.path.join(self.data_dir, csv_filename)
         assert os.path.exists(
             path_csv
@@ -107,7 +108,6 @@ class BaseDataset(Dataset, ABC):
         self.use_features = use_features
 
         self.configure_use_aux(use_aux_data)
-
         self.configure_use_feats(use_features)
 
         # More precise dataset name (with modalities)
@@ -129,6 +129,7 @@ class BaseDataset(Dataset, ABC):
             self.use_features = {
                 "pattern": "^feat_.*",
                 #     'columns' : []
+                "standardise": False
             }
         elif isinstance(use_features, dict):
             self.use_features = use_features
@@ -144,6 +145,7 @@ class BaseDataset(Dataset, ABC):
             self.use_aux_data = {
                 "aux": {
                     "pattern": "^aux_(?!.*top).*",
+                    "standardise": True
                     #     'columns' : []
                 },
                 "top": {
@@ -196,6 +198,12 @@ class BaseDataset(Dataset, ABC):
                 self.use_aux_data[k] = aux_names
                 columns.extend(aux_names)
 
+                if k =='aux':
+                    if val.get("standardise", False):
+                        self._aux_mean, self._aux_std = self._get_means_std(columns=aux_names)
+                    else:
+                        self._aux_mean, self._aux_std = None, None
+
         # Include tabular features
         if self.use_features:
             if "pattern" in self.use_features:
@@ -206,29 +214,27 @@ class BaseDataset(Dataset, ABC):
             else:
                 raise ValueError('use_features should have "pattern" or "columns" defined')
             self.feat_names = feat_names
-            self._feat_norm_setup()
             columns.extend(feat_names)
-
             self.tabular_dim = len(self.feat_names)  # drop any duplicates
+
+            if'standardise' in  self.use_features:
+                self._feat_mean, self._feat_std = self._get_means_std(self.feat_names)
+            else:
+                self._feat_mean,self._feat_std = None, None
 
         return list(set(columns))
 
-    def _feat_norm_setup(self):
-        """If statistics files provided for the features, read them into self.feat_stats
-        parameter."""
+    def _get_means_std(self, columns):
+        assert os.path.exists(self.stats_file), MissingDataError(
+            f'Please obtain {self.stats_file} aux stats file (using 12-GT notebook)')
 
-        if "stats_file" in self.use_features:
-            with open(self.use_features["stats_file"]) as json_data:
-                d = json.load(json_data)
+        with open(self.stats_file) as json_data:
+            d = json.load(json_data)
 
-            means = [d[f]["mean"] for f in self.feat_names]
-            stds = [d[f]["std"] if d[f]["std"] > 1e-8 else 1.0 for f in self.feat_names]
+        means = [d[f]["mean"] for f in columns]
+        stds = [d[f]["std"] if d[f]["std"] > 1e-8 else 1.0 for f in columns]
 
-            self._feat_mean = torch.tensor(means, dtype=torch.float32)
-            self._feat_std = torch.tensor(stds, dtype=torch.float32)
-        else:
-            self._feat_mean = None
-            self._feat_std = None
+        return torch.tensor(means, dtype=torch.float32), torch.tensor(stds, dtype=torch.float32)
 
     def get_records(self):
         return self.df.loc[:, self.columns].to_dict("records")

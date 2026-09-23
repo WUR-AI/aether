@@ -5,6 +5,7 @@ from typing import Any, Dict, override
 import numpy as np
 import pooch
 import torch
+from omegaconf import DictConfig
 
 from src.data.base_dataset import BaseDataset
 from src.data_preprocessing.renaming_utils import rename_s2bms
@@ -22,12 +23,13 @@ class ButterflyDataset(BaseDataset):
         use_unlabelled_data: bool = False,
         use_target_data: bool = True,
         use_aux_data: Any = None,
-        use_features: bool = False,
+        use_features: DictConfig | None = None,
         seed: int = 12345,
-        cache_dir: str = None,
+        cache_dir: str | None = None,
         mock: bool = False,
         dtype: str = "float32",
         return_name_loc: bool = False,
+        csv_name: str | None = None,
     ) -> None:
         """A dataset implementation for the Butterfly diversity use case.
 
@@ -46,7 +48,9 @@ class ButterflyDataset(BaseDataset):
         assert not (
             use_unlabelled_data and use_target_data
         ), "Joint use of unlabelled and target data is not supported yet."
-        if use_unlabelled_data:
+        if csv_name is not None:
+            csv_name = csv_name
+        elif use_unlabelled_data:
             # csv_name = 'model_ready_s2bms-unlabelled-20260529.csv'
             csv_name = "model_ready_s2bms-unlabelled-merged.csv"
         elif mock:
@@ -177,8 +181,14 @@ class ButterflyDataset(BaseDataset):
             im = im / 10000.0
             im = im.clip(0, 1)
         elif self.modalities["s2"].get("preprocessing") == "div_2000":
-            im = np.clip(im, 0, 2000)
             im = im / 2000.0
+            im = im.clip(0, 1)
+        elif self.modalities["s2"].get("preprocessing") == "stretch_2_98":
+            im = im.astype(np.float32)
+            p2 = np.percentile(im, 2, axis=(1, 2), keepdims=True)
+            p98 = np.percentile(im, 98, axis=(1, 2), keepdims=True)
+            im = (im - p2) / np.clip(p98 - p2, 1e-6, None)
+            im = im.clip(0, 1)
         else:
             log.warning("Data is not scaled.")
 
@@ -226,9 +236,10 @@ class ButterflyDataset(BaseDataset):
             formatted_row["aux"] = {}
             for aux_cat, vals in self.use_aux_data.items():
                 if aux_cat == "aux":
-                    formatted_row["aux"][aux_cat] = torch.tensor(
-                        [row[v] for v in vals], dtype=self.dtype
-                    )
+                    raw = torch.tensor([row[v] for v in vals], dtype=self.dtype)
+                    formatted_row["aux"][aux_cat] = raw
+                    if self._aux_mean is not None and self._aux_std is not None:
+                        formatted_row["aux"]["aux_std"] = (raw - self._aux_mean) / self._aux_std
                 else:
                     formatted_row["aux"][aux_cat] = [row[v] for v in vals]
 

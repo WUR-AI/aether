@@ -30,6 +30,7 @@ class RetrievalContrastiveValidation(BaseMetrics):
     ) -> torch.Tensor | Dict[str, torch.Tensor]:
         """Calculates top-k metrics based the GT (aux-derived) labels."""
 
+        assert similarity_matrix.shape[1] in [186, 195, 18495, 18514], f"{similarity_matrix.shape}"
         aux_vals = aux_values.T
 
         concept_scores = {}
@@ -47,6 +48,10 @@ class RetrievalContrastiveValidation(BaseMetrics):
                 )
             else:
                 dynamic_k = None
+
+            assert (
+                dynamic_k != 0
+            ), f"No aux values exceed dynamic_k threshold {configs['col']} aux shape {aux_val.shape} and {k_threshold}"
 
             sim_val = similarity_matrix[i]
             scores = self.topk_rank_agreement(aux_val, sim_val, self.ks, is_max, dynamic_k)
@@ -77,7 +82,8 @@ class RetrievalContrastiveValidation(BaseMetrics):
                 if dynamic_k != 0:
                     k = dynamic_k
                 else:
-                    continue
+                    # continue
+                    raise ValueError("Dynamic k is required for top-k metrics")
 
             if is_max:
                 gt_mask = gt_rank_pos < k

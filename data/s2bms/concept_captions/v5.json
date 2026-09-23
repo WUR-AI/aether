@@ -574,7 +574,7 @@
             "Landscape combining several land-cover types in a varied mosaic"
         ],
         "is_max": true,
-        "col": "shdi_lc"
+        "col": "test-aux_shdi_lc"
     },
     {
         "concept_caption": [
@@ -583,7 +583,7 @@
             "Location with extensive broadleaf tree cover"
         ],
         "is_max": true,
-        "col": "p_broadleaf"
+        "col": "test-aux_p_broadleaf"
     },
     {
         "concept_caption": [
@@ -592,7 +592,7 @@
             "Location with extensive coniferous tree cover"
         ],
         "is_max": true,
-        "col": "p_conifer"
+        "col": "test-aux_p_conifer"
     },
     {
         "concept_caption": [
@@ -601,7 +601,7 @@
             "Location dominated by ploughed, cultivated fields"
         ],
         "is_max": true,
-        "col": "p_arable"
+        "col": "test-aux_p_arable"
     },
     {
         "concept_caption": [
@@ -610,7 +610,7 @@
             "Improved pasture maintained for productive grazing or silage"
         ],
         "is_max": true,
-        "col": "p_imprv_grsl"
+        "col": "test-aux_p_imprv_grsl"
     },
     {
         "concept_caption": [
@@ -619,7 +619,7 @@
             "Species-rich meadow or rough grazing land retaining natural vegetation"
         ],
         "is_max": true,
-        "col": "p_smnat_grsl"
+        "col": "test-aux_p_smnat_grsl"
     },
     {
         "concept_caption": [
@@ -628,7 +628,7 @@
             "Area of montane or bog habitat with sparse vegetation"
         ],
         "is_max": true,
-        "col": "p_mountain"
+        "col": "test-aux_p_mountain"
     },
     {
         "concept_caption": [
@@ -637,7 +637,7 @@
             "Shoreline landscape directly adjoining the coast"
         ],
         "is_max": true,
-        "col": "p_coast"
+        "col": "test-aux_p_coast"
     },
     {
         "concept_caption": [
@@ -646,7 +646,7 @@
             "Town or city landscape with heavy urban development"
         ],
         "is_max": true,
-        "col": "p_urban"
+        "col": "test-aux_p_urban"
     },
     {
         "concept_caption": [
@@ -655,7 +655,7 @@
             "Inland location distant from the nearest coast"
         ],
         "is_max": true,
-        "col": "dist_to_sea"
+        "col": "test-aux_dist_to_sea"
     },
     {
         "concept_caption": [
@@ -664,7 +664,7 @@
             "Elevated terrain, situated high above sea level"
         ],
         "is_max": true,
-        "col": "elevation"
+        "col": "test-aux_elevation"
     },
     {
         "concept_caption": [
@@ -673,7 +673,7 @@
             "Hilly terrain with a steep gradient"
         ],
         "is_max": true,
-        "col": "slope"
+        "col": "test-aux_slope"
     },
     {
         "concept_caption": [
@@ -682,7 +682,7 @@
             "Location where rivers and streams are closely spaced across the terrain"
         ],
         "is_max": true,
-        "col": "river_dens"
+        "col": "test-aux_river_dens"
     },
     {
         "concept_caption": [
@@ -691,6 +691,6 @@
             "Polluted air with high concentrations of fine particulate matter"
         ],
         "is_max": true,
-        "col": "pm252024g"
+        "col": "test-aux_pm252024g"
     }
 ]

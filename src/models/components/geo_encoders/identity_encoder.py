@@ -10,6 +10,7 @@ class IdentityEncoder(BaseGeoEncoder):
     def __init__(
         self,
         geo_data_name="aef",
+        dimension: int | None = None,
     ) -> None:
         """Encoder to pass through the data with no changes.
 
@@ -23,12 +24,13 @@ class IdentityEncoder(BaseGeoEncoder):
             "aef_avr": 64,
             "tessera_avr": 128,
             "s2bms_target": 87,
+            "satbird-USA-target": 27,
         }
         self.allowed_geo_data_names: list[str] = list(self.dict_n_bands_default.keys())
         assert (
             geo_data_name in self.allowed_geo_data_names
         ), f"geo_data_name must be one of {self.allowed_geo_data_names}, got {geo_data_name}"
-        self.output_dim = self.dict_n_bands_default[geo_data_name]
+        self.output_dim = dimension or self.dict_n_bands_default[geo_data_name]
         self.geo_data_name = geo_data_name if "target" not in geo_data_name else "tabular"
 
     @override

@@ -11,40 +11,24 @@ from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 
 
 class SoftContrastiveLoss(BaseLossFn):
-    def __init__(self, stats_file: str, temperature: float = 0.07, sigma: float = 1.0):
+    def __init__(self, temperature: float = 0.07, sigma: float = 1.0):
         """Soft-Contrastive Loss Function which allows environmentally similar locations to be
         treated as soft positives.
 
         :param temperature: Soft-Contrastive Loss Function Temperature
         :param sigma: Soft-Contrastive Loss Function Strength
-        :param stats_file: path to a json file with statistics of the aux cols (train split).
         """
         super().__init__()
 
         self.log_temp = nn.Parameter(torch.log(torch.tensor(temperature)))
         self.sigma = sigma
 
-        self.stats = json.load(open(stats_file))
-
         self.name = "SoftContrastiveLoss"
 
     @override
     def setup(self, datamodule: BaseDataModule, device: torch.device):
         """Extract auxiliary value statistics into tensors with correct column id sequence."""
-        max_id = len(datamodule.caption_builder.column_to_metadata_map["aux"])
-        means = torch.zeros(max_id)
-        stds = torch.ones(max_id)
-
-        for name, stats in self.stats.items():
-            # Synchronise aux col names into proper col ids
-            idx = datamodule.caption_builder.column_to_metadata_map["aux"][name]["id"]
-            means[idx] = stats["mean"]
-            stds[idx] = stats["std"]
-
-        self.means = means
-        self.means = self.means.to(device)
-        self.stds = stds + 1e-8
-        self.stds = self.stds.to(device)
+        pass
 
     @override
     def forward(
@@ -89,40 +73,31 @@ class SoftContrastiveLoss(BaseLossFn):
     def _get_soft_target_matrix(
         self,
         aux_values: torch.Tensor,
-        aux_ids_per_caption: list[list[int]] | None,
+        aux_ids_per_caption: list[list[int]],
     ) -> torch.Tensor:
-        """Puts together a target matrix based on auxiliary value similarity (either all, or
-        specific per caption template).
+        """Puts together a target matrix based on auxiliary value similarity (specific per caption
+        template).
 
         :param aux_values: auxiliary column values (standardised).
         :param aux_ids_per_caption: list of ids of auxiliary columns used per caption template.
         :return: target matrix which tells how each row should be similar to column based on aux
-            values (all or specific ones per caption template).
+            values (specific ones per caption template).
         """
         batch_size, n_aux_cols = aux_values.shape
         device = aux_values.device
 
-        # Standardise aux values
-        if self.stats is not None:
-            aux_values = (aux_values - self.means) / self.stds
-
         # Soft targets based on the squared difference between location i and j for all aux values
         diffs = (aux_values.unsqueeze(1) - aux_values.unsqueeze(0)) ** 2
 
-        # Create a mask based on aux_columns used per location caption
-        if aux_ids_per_caption:
-            # Create a mask
-            mask = torch.zeros((batch_size, n_aux_cols), dtype=aux_values.dtype, device=device)
-            for j, used_cols in enumerate(aux_ids_per_caption):
-                if len(used_cols) > 0:
-                    mask[j, used_cols] = 1.0
-            mask = mask.unsqueeze(0)
+        # Create a mask
+        mask = torch.zeros((batch_size, n_aux_cols), dtype=aux_values.dtype, device=device)
+        for j, used_cols in enumerate(aux_ids_per_caption):
+            if len(used_cols) > 0:
+                mask[j, used_cols] = 1.0
+        mask = mask.unsqueeze(0)
 
-            # Calculate the masked average distance for the selected aux cols
-            dist = (diffs * mask).sum(dim=-1) / (mask.sum(dim=-1) + 1e-8)
-        else:
-            # Distance based on all aux columns
-            dist = diffs.mean(dim=-1)
+        # Calculate the masked average distance for the selected aux cols
+        dist = (diffs * mask).sum(dim=-1) / (mask.sum(dim=-1) + 1e-8)
 
         # Convert distances to similarities using a Gaussian kernel
         T = torch.exp(-dist / (2 * self.sigma**2))  # (N, N)

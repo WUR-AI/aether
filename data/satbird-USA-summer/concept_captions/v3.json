@@ -1,0 +1,434 @@
+[
+    {
+        "concept_caption": [
+            "Desert climate where scorching days give way to cold nights",
+            "Location with a dramatic swing between hot days and cold nights",
+            "Arid climate with wide temperature swings between day and night"
+        ],
+        "is_max": true,
+        "col": "aux_bio_2",
+        "val_av": true,
+        "id": 1,
+        "theta_k": 13.658333778381348,
+        "accuracy_baseline_train": 20.489225387573242,
+        "accuracy_baseline_val": 22.88726806640625,
+        "accuracy_baseline_test": 25.229555130004883
+    },
+    {
+        "concept_caption": [
+            "Tropical or coastal climate with steady temperatures year-round",
+            "Location where daily and seasonal temperature swings are both small",
+            "Mild climate with little variation between seasons"
+        ],
+        "is_max": true,
+        "col": "aux_bio_3",
+        "val_av": true,
+        "id": 2,
+        "theta_k": 45.833335876464844,
+        "accuracy_baseline_train": 11.236743927001953,
+        "accuracy_baseline_val": 15.247364044189453,
+        "accuracy_baseline_test": 11.92611026763916
+    },
+    {
+        "concept_caption": [
+            "Location with scorching summer heat",
+            "Area that regularly experiences extreme summer temperatures",
+            "Desert or arid region with blistering summer heat"
+        ],
+        "is_max": true,
+        "col": "aux_bio_5",
+        "val_av": true,
+        "id": 4,
+        "theta_k": 34.20000076293945,
+        "accuracy_baseline_train": 7.0027947425842285,
+        "accuracy_baseline_val": 6.120573043823242,
+        "accuracy_baseline_test": 6.875877857208252
+    },
+    {
+        "concept_caption": [
+            "Frost-free location with mild winters",
+            "Subtropical area where winters stay warm",
+            "Location with warm winters and a long growing season"
+        ],
+        "is_max": true,
+        "col": "aux_bio_6",
+        "val_av": true,
+        "id": 5,
+        "theta_k": 4.5,
+        "accuracy_baseline_train": 6.473113059997559,
+        "accuracy_baseline_val": 11.981616973876953,
+        "accuracy_baseline_test": 9.344280242919922
+    },
+    {
+        "concept_caption": [
+            "Mild, frost-free winter season",
+            "Subtropical climate with warm winters",
+            "Location with a gentle winter season year-round"
+        ],
+        "is_max": true,
+        "col": "aux_bio_11",
+        "val_av": true,
+        "id": 10,
+        "theta_k": 5.650000095367432,
+        "accuracy_baseline_train": 20.380481719970703,
+        "accuracy_baseline_val": 23.8929443359375,
+        "accuracy_baseline_test": 21.29739761352539
+    },
+    {
+        "concept_caption": [
+            "Lush, rain-soaked landscape with heavy annual rainfall",
+            "Location with abundant year-round rainfall",
+            "Wet climate typical of a temperate rainforest"
+        ],
+        "is_max": true,
+        "col": "aux_bio_12",
+        "val_av": true,
+        "id": 11,
+        "theta_k": 1344.0,
+        "accuracy_baseline_train": 5.865088939666748,
+        "accuracy_baseline_val": 9.505271911621094,
+        "accuracy_baseline_test": 6.384357929229736
+    },
+    {
+        "concept_caption": [
+            "Intensely rainy peak month",
+            "Location with a month of torrential rainfall",
+            "Area with a sharp, heavy monthly rainfall peak"
+        ],
+        "is_max": true,
+        "col": "aux_bio_13",
+        "id": 12,
+        "theta_k": 183.0,
+        "accuracy_baseline_train": 7.081136226654053,
+        "accuracy_baseline_val": 9.310625076293945,
+        "accuracy_baseline_test": 6.946094989776611
+    },
+    {
+        "concept_caption": [
+            "Location where rain falls consistently even in its driest month",
+            "Humid climate with rain falling steadily throughout the year",
+            "Area with a consistently damp climate, even at its driest"
+        ],
+        "is_max": true,
+        "col": "aux_bio_14",
+        "val_av": true,
+        "id": 13,
+        "theta_k": 87.0,
+        "accuracy_baseline_train": 3.901874303817749,
+        "accuracy_baseline_val": 1.7410110235214233,
+        "accuracy_baseline_test": 2.425191640853882
+    },
+    {
+        "concept_caption": [
+            "Sharp wet-and-dry seasonal rainfall pattern, such as a monsoon climate",
+            "Location with a pronounced rainy season contrasted by a dry season",
+            "Climate with a strongly contrasting wet and dry season"
+        ],
+        "is_max": true,
+        "col": "aux_bio_15",
+        "id": 14,
+        "theta_k": 35.35358428955078,
+        "accuracy_baseline_train": 39.50516128540039,
+        "accuracy_baseline_val": 38.69694519042969,
+        "accuracy_baseline_test": 42.60559844970703
+    },
+    {
+        "concept_caption": [
+            "One markedly wet season each year",
+            "Location where a several-month stretch brings the bulk of yearly rain",
+            "Area with a concentrated, heavy rainy season"
+        ],
+        "is_max": true,
+        "col": "aux_bio_16",
+        "val_av": true,
+        "id": 15,
+        "theta_k": 475.0,
+        "accuracy_baseline_train": 8.652643203735352,
+        "accuracy_baseline_val": 9.981075286865234,
+        "accuracy_baseline_test": 11.105110168457031
+    },
+    {
+        "concept_caption": [
+            "Location where even the driest quarter receives meaningful rainfall",
+            "Humid climate that stays damp even in its driest season",
+            "Area where the driest season remains fairly damp"
+        ],
+        "is_max": true,
+        "col": "aux_bio_17",
+        "id": 16,
+        "theta_k": 285.0,
+        "accuracy_baseline_train": 3.5557687282562256,
+        "accuracy_baseline_val": 2.541227340698242,
+        "accuracy_baseline_test": 2.5764286518096924
+    },
+    {
+        "concept_caption": [
+            "Hot, rainy summer season",
+            "Location where the warm season brings heavy rainfall, as in a monsoon climate",
+            "Area with frequent summer thunderstorms and rain"
+        ],
+        "is_max": true,
+        "col": "aux_bio_18",
+        "val_av": true,
+        "id": 17,
+        "theta_k": 345.0,
+        "accuracy_baseline_train": 6.287197589874268,
+        "accuracy_baseline_val": 6.33684778213501,
+        "accuracy_baseline_test": 12.309603691101074
+    },
+    {
+        "concept_caption": [
+            "Wet, rainy winter season",
+            "Location where the cold season brings the heaviest rain, as in a Mediterranean climate",
+            "Area with a rain-soaked winter climate"
+        ],
+        "is_max": true,
+        "col": "aux_bio_19",
+        "val_av": true,
+        "id": 18,
+        "theta_k": 343.0,
+        "accuracy_baseline_train": 12.941548347473145,
+        "accuracy_baseline_val": 15.452824592590332,
+        "accuracy_baseline_test": 8.971589088439941
+    },
+    {
+        "concept_caption": [
+            "Deep soil with bedrock lying far below the surface",
+            "Location with a thick soil profile before reaching solid bedrock",
+            "Area where bedrock sits very deep beneath the ground"
+        ],
+        "is_max": true,
+        "col": "aux_bdticm",
+        "val_av": false,
+        "id": 19,
+        "theta_k": 5004.0,
+        "accuracy_baseline_train": 4.043356895446777,
+        "accuracy_baseline_val": 3.4279537200927734,
+        "accuracy_baseline_test": 6.4221673011779785
+    },
+    {
+        "concept_caption": [
+            "Fertile soil with a strong capacity to retain nutrients",
+            "Nutrient-rich soil that holds onto minerals well",
+            "Soil with high natural fertility and nutrient retention"
+        ],
+        "is_max": true,
+        "col": "aux_cecsol",
+        "val_av": false,
+        "id": 21,
+        "theta_k": 33.0,
+        "accuracy_baseline_train": 3.459887981414795,
+        "accuracy_baseline_val": 4.941876411437988,
+        "accuracy_baseline_test": 3.4892513751983643
+    },
+    {
+        "concept_caption": [
+            "Heavy, clay-rich soil",
+            "Area with dense clay soil",
+            "Sticky, fine-textured clay soil"
+        ],
+        "is_max": true,
+        "col": "aux_clyppt",
+        "val_av": true,
+        "id": 22,
+        "theta_k": 28.0,
+        "accuracy_baseline_train": 7.433088302612305,
+        "accuracy_baseline_val": 8.077858924865723,
+        "accuracy_baseline_test": 7.437614917755127
+    },
+    {
+        "concept_caption": [
+            "Dark, organic-rich soil high in carbon",
+            "Carbon-rich soil, such as peaty or humus-rich ground",
+            "Soil rich in decomposed organic matter"
+        ],
+        "is_max": true,
+        "col": "aux_orcdrc",
+        "val_av": false,
+        "id": 23,
+        "theta_k": 68.0,
+        "accuracy_baseline_train": 5.018533229827881,
+        "accuracy_baseline_val": 4.71478796005249,
+        "accuracy_baseline_test": 5.277087688446045
+    },
+    {
+        "concept_caption": [
+            "Alkaline soil with a high pH",
+            "Basic, chalky soil",
+            "Area with alkaline, lime-rich soil"
+        ],
+        "is_max": true,
+        "col": "aux_phihox",
+        "val_av": true,
+        "id": 24,
+        "theta_k": 66.0,
+        "accuracy_baseline_train": 23.27444076538086,
+        "accuracy_baseline_val": 28.31035614013672,
+        "accuracy_baseline_test": 26.234201431274414
+    },
+    {
+        "concept_caption": [
+            "Fine, silty soil",
+            "Area with soft, silt-rich ground",
+            "Smooth, silty soil texture"
+        ],
+        "is_max": true,
+        "col": "aux_sltppt",
+        "val_av": true,
+        "id": 25,
+        "theta_k": 49.0,
+        "accuracy_baseline_train": 10.978333473205566,
+        "accuracy_baseline_val": 11.570694923400879,
+        "accuracy_baseline_test": 16.014907836914062
+    },
+    {
+        "concept_caption": [
+            "Loose, sandy soil",
+            "Area with coarse, sandy ground",
+            "Dry, sandy soil texture"
+        ],
+        "is_max": true,
+        "col": "aux_sndppt",
+        "val_av": true,
+        "id": 26,
+        "theta_k": 61.0,
+        "accuracy_baseline_train": 8.08554458618164,
+        "accuracy_baseline_val": 6.8288726806640625,
+        "accuracy_baseline_test": 13.449281692504883
+    },
+    {
+        "concept_caption": [
+            "Area covered by open water, such as a river, lake, or ocean",
+            "Location dominated by a large body of water",
+            "Landscape largely covered by water"
+        ],
+        "is_max": true,
+        "col": "aux_dw_water",
+        "val_av": true,
+        "id": 27,
+        "theta_k": 0.11607331037521362,
+        "accuracy_baseline_train": 20.39568328857422,
+        "accuracy_baseline_val": 19.124088287353516,
+        "accuracy_baseline_test": 20.146915435791016
+    },
+    {
+        "concept_caption": [
+            "Area covered by trees and wooded vegetation",
+            "Densely forested landscape",
+            "Land covered mostly by tree canopy"
+        ],
+        "is_max": true,
+        "col": "aux_dw_trees",
+        "val_av": true,
+        "id": 28,
+        "theta_k": 0.41558390855789185,
+        "accuracy_baseline_train": 24.291709899902344,
+        "accuracy_baseline_val": 24.552581787109375,
+        "accuracy_baseline_test": 23.77120018005371
+    },
+    {
+        "concept_caption": [
+            "Open grassy landscape, such as a meadow or field",
+            "Grassy area such as a park, savanna, or open field",
+            "Land covered in low grass, like a meadow or golf course"
+        ],
+        "is_max": true,
+        "col": "aux_dw_grass",
+        "val_av": true,
+        "id": 29,
+        "theta_k": 0.14683271944522858,
+        "accuracy_baseline_train": 9.793856620788574,
+        "accuracy_baseline_val": 11.60313606262207,
+        "accuracy_baseline_test": 13.092795372009277
+    },
+    {
+        "concept_caption": [
+            "Area of flooded vegetation, such as a swamp or mangrove",
+            "Wetland landscape where vegetation grows in standing water",
+            "Flooded marsh with emergent, waterlogged vegetation"
+        ],
+        "is_max": true,
+        "col": "aux_dw_flooded_vegetation",
+        "val_av": true,
+        "id": 30,
+        "theta_k": 0.06225704029202461,
+        "accuracy_baseline_train": 6.6227803230285645,
+        "accuracy_baseline_val": 6.7207350730896,
+        "accuracy_baseline_test": 7.534838676452637
+    },
+    {
+        "concept_caption": [
+            "Farmland used for growing crops",
+            "Cultivated agricultural cropland",
+            "Fields planted with crops such as corn, wheat, or soy"
+        ],
+        "is_max": true,
+        "col": "aux_dw_crops",
+        "val_av": true,
+        "id": 31,
+        "theta_k": 0.1332462728023529,
+        "accuracy_baseline_train": 14.67558479309082,
+        "accuracy_baseline_val": 15.528520584106445,
+        "accuracy_baseline_test": 19.731014251708984
+    },
+    {
+        "concept_caption": [
+            "Area covered by scattered bushes and shrubs",
+            "Scrubland with sparse, low-growing vegetation",
+            "Landscape of low shrubs and patchy grass"
+        ],
+        "is_max": true,
+        "col": "aux_dw_shrub_and_scrub",
+        "val_av": true,
+        "id": 32,
+        "theta_k": 0.14336083829402924,
+        "accuracy_baseline_train": 16.939302444458008,
+        "accuracy_baseline_val": 19.767505645751953,
+        "accuracy_baseline_test": 24.711029052734375
+    },
+    {
+        "concept_caption": [
+            "Densely built urban area with houses and buildings",
+            "Human-made surfaces such as buildings, roads, and pavement",
+            "Cityscape or town dominated by built structures"
+        ],
+        "is_max": true,
+        "col": "aux_dw_built",
+        "val_av": true,
+        "id": 33,
+        "theta_k": 0.1453162431716919,
+        "accuracy_baseline_train": 39.48411560058594,
+        "accuracy_baseline_val": 37.994049072265625,
+        "accuracy_baseline_test": 29.39937400817871
+    },
+    {
+        "concept_caption": [
+            "Bare ground with exposed rock or soil",
+            "Barren landscape such as a desert, sand dunes, or an empty lot",
+            "Open terrain with minimal vegetation, such as bare soil or rock"
+        ],
+        "is_max": true,
+        "col": "aux_dw_bare",
+        "val_av": true,
+        "id": 34,
+        "theta_k": 0.10269642621278763,
+        "accuracy_baseline_train": 10.491914749145508,
+        "accuracy_baseline_val": 11.570694923400879,
+        "accuracy_baseline_test": 13.794965744018555
+    },
+    {
+        "concept_caption": [
+            "Landscape covered in snow or ice",
+            "Area covered by a glacier or permanent snowpack",
+            "Snow-covered ground or icy terrain"
+        ],
+        "is_max": true,
+        "col": "aux_dw_snow_and_ice",
+        "val_av": false,
+        "id": 35,
+        "theta_k": 0.1622084677219391,
+        "accuracy_baseline_train": 6.621610164642334,
+        "accuracy_baseline_val": 6.439578533172607,
+        "accuracy_baseline_test": 6.081883907318115
+    }
+]

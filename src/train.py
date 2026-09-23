@@ -6,11 +6,10 @@ import os
 from typing import Any, Dict, List, Optional, Tuple
 
 import hydra
-import lightning as L
 import rootutils
 import torch
 from dotenv import load_dotenv
-from lightning import Callback, LightningModule, Trainer
+from lightning import Callback, LightningModule, Trainer, seed_everything
 from lightning.pytorch.callbacks.model_checkpoint import ModelCheckpoint
 from lightning.pytorch.loggers import Logger, WandbLogger
 from omegaconf import DictConfig, OmegaConf
@@ -58,7 +57,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     # set seed for random number generators in pytorch, numpy and python.random
     if cfg.get("seed"):
-        L.seed_everything(cfg.seed, workers=True)
+        seed_everything(cfg.seed, workers=True)
 
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
     datamodule: BaseDataModule = hydra.utils.instantiate(cfg.data)
@@ -142,7 +141,7 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
 
     train_metrics = trainer.callback_metrics
 
-    if cfg.get("validate") and wandb_logger is not None:
+    if cfg.get("validate"):
         # Run validation with the best ckpt
         log.info("Validating the best ckpt!")
         ckpt_path = trainer.checkpoint_callback.best_model_path
@@ -158,9 +157,10 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         )
 
         val_metrics = trainer.callback_metrics
-        wandb_logger.log_metrics({f"best_{k}": v for k, v in val_metrics.items()})
+        if wandb_logger is not None:
+            wandb_logger.log_metrics({f"best_{k}": v for k, v in val_metrics.items()})
 
-    if cfg.get("test") and wandb_logger is not None:
+    if cfg.get("test"):
         log.info("Starting testing!")
         ckpt_path = trainer.checkpoint_callback.best_model_path
         if ckpt_path == "":
