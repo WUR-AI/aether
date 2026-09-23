@@ -86,16 +86,47 @@ class SatBirdDataset(BaseDataset):
         """Prepares (downloads, renames and moves) data for each requested modality."""
         print(f"\n\nSetting up SatBird {self.study_site} data...\n\n")
 
-        # Check if data is already available
-        dst_dirs = [os.path.join(self.data_dir, "eo", i) for i in ["s2", "s2rgb", "environmental"]]
+        check = False
+        if check:
+            # Check if data is already available
+            dst_dirs = [
+                os.path.join(self.data_dir, "eo", i) for i in ["s2", "s2rgb", "environmental"]
+            ]
 
-        # If data does not exist or is empty → full download
-        for dst_dir in dst_dirs:
-            if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
-                setup_satbird_from_pooch(
-                    self.data_dir, self.cache_dir, self.study_site, self.registry_path
-                )
-                return
+            # If data does not exist or is empty → full download
+            for dst_dir in dst_dirs:
+                if not os.path.exists(dst_dir) or len(os.listdir(dst_dir)) == 0:
+                    setup_satbird_from_pooch(
+                        self.data_dir, self.cache_dir, self.study_site, self.registry_path
+                    )
+                    return
+
+    def center_crop_or_pad_npy(self, im, target_shape):
+        """Center-crops dims larger than target, center-pads (zeros) dims smaller than target."""
+        if len(im.shape) != len(target_shape):
+            raise ValueError(
+                f"arr has {len(im.shape)} dims but target_shape has {len(target_shape)}"
+            )
+
+        # Padding
+        pad_widths = []
+        for dim, target in zip(im.shape, target_shape):
+            if dim < target:
+                total_pad = target - dim
+                before = total_pad // 2
+                after = total_pad - before
+                pad_widths.append((before, after))
+            else:
+                pad_widths.append((0, 0))
+        im = np.pad(im, pad_widths, mode="constant", constant_values=0)
+
+        # Crop
+        slices = []
+        for dim, target in zip(im.shape, target_shape):
+            start = (dim - target) // 2  # 0 if dim == target
+            end = start + target
+            slices.append(slice(start, end))
+        return im[tuple(slices)]
 
     def load_s2(self, path: str):
         """Loads S2 data from path."""
@@ -136,6 +167,9 @@ class SatBirdDataset(BaseDataset):
 
         # Crop
         if im.shape[-2:] != (size, size):
+            pad = True
+            if pad:
+                im = self.center_crop_or_pad_npy(im, (c, size, size))
             im = center_crop_npy(im, (c, size, size))
 
         tensor = torch.from_numpy(im)
