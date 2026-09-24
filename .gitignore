@@ -233,3 +233,7 @@ figs/
 results/
 
 outputs/prediction/
+
+inference/s2bms/
+
+outputs/alignment/
