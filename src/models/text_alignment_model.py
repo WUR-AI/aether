@@ -119,36 +119,30 @@ class TextAlignmentModel(BaseModel):
 
         log.info("------------------------")
 
-    def _on_x_star(self):
+    def _on_x_star(self, mode: str):
         # Configure contrastive retrieval evaluation
+        if mode == "predict":
+            return
+
+        if mode == "test":
+            self._retrieval_setup_flag = False
+            # reset concepts, so test ones are also included
+
         if hasattr(self, "_retrieval_setup_flag"):
             if self._retrieval_setup_flag:
                 return
 
-        self.setup_retrieval_evaluation(verbose=0)
+        self.setup_retrieval_evaluation(mode=mode)
         self._retrieval_setup_flag = True
         log.info("Retrieval evaluation configured")
 
-    def setup_retrieval_evaluation(
-        self,
-        use_saved_threshold_if_available=True,
-        overwrite_existing_thresholds=False,
-        save_newly_computed_threshold=True,
-        compute_train_threshold=True,
-        verbose=1,
-    ):
+    def setup_retrieval_evaluation(self, mode: str = "val"):
         # Configure concept thresholds for contrastive retrieval evaluation:
-        self.trainer.datamodule.setup_conceptcaption_validation_parameters(
-            use_saved_threshold_if_available=use_saved_threshold_if_available,
-            overwrite_existing_thresholds=overwrite_existing_thresholds,
-            save_newly_computed_threshold=save_newly_computed_threshold,
-            compute_train_threshold=compute_train_threshold,
-            verbose=verbose,
-        )
+        mode = "fit" if mode in ["val", "train"] else mode
 
-        self.concept_configs = self.trainer.datamodule.concept_configs
-        self.concepts = self.trainer.datamodule.concepts
-        self.concept_names = self.trainer.datamodule.concept_names
+        self.concept_configs, self.concepts, self.concept_names = (
+            self.trainer.datamodule.split_concepts(return_mode=mode)
+        )
         self.dynamic_k_baselines = self.trainer.datamodule.dynamic_k_baselines
 
         # Set up loss and metrics for contrastive retrieval evaluation:
@@ -220,7 +214,11 @@ class TextAlignmentModel(BaseModel):
                 geo_feats,
                 text_feats,
                 mode=mode,
-                aux_values=aux_values,
+                aux_values=(
+                    batch["aux"].get("aux_std")
+                    if self.loss_fn.name == "SoftContrastiveLoss"
+                    else None
+                ),
                 aux_ids_per_caption=aux_ids_per_caption,
             )
             if self.loss_fn.name == "SigLIPLoss" and self.trainer.world_size > 1:
@@ -250,10 +248,13 @@ class TextAlignmentModel(BaseModel):
             self.log_dict(metrics, batch_size=local_batch_size, **self.log_kwargs)
 
         if mode in ["val", "test"]:
+            geo_feats_cpu = geo_feats.detach().cpu()
+            if geo_feats_cpu.isnan().any():
+                raise ValueError()
             self.outputs_epoch_memory.append(
                 {
                     # Store on CPU to avoid holding the whole epoch on GPU.
-                    "geo_feats": geo_feats.detach().cpu(),
+                    "geo_feats": geo_feats_cpu,
                     "aux_vals": aux_values.detach().cpu() if aux_values is not None else None,
                 }
             )
@@ -264,14 +265,18 @@ class TextAlignmentModel(BaseModel):
 
         # Combine batches
         geo_feats = torch.cat([x["geo_feats"] for x in self.outputs_epoch_memory], dim=0)
-        geo_feats = geo_feats.to(self.device, non_blocking=True)
+        geo_feats = geo_feats.to(self.device)
 
         aux_vals = torch.cat([x["aux_vals"] for x in self.outputs_epoch_memory], dim=0).to(
             self.device, non_blocking=True
         )
 
         # Rank on similarity
+        if geo_feats.isnan().any():
+            raise ValueError(f"geo_feats has NaN value in mode {mode}")
         similarity = self.concept_similarities(geo_feats)
+        if similarity.isnan().any():
+            raise ValueError(f"geo_feats has NaN value in mode {mode}")
 
         concept_scores = self.contrastive_val(similarity, aux_values=aux_vals)
 
@@ -349,8 +354,9 @@ class TextAlignmentModel(BaseModel):
                 ):
                     concept_embeds = self.text_encoder({"text": self.concepts}, mode="train")
             concept_embeds = F.normalize(concept_embeds, dim=1)
-            if self.text_adapter:
-                concept_embeds = self.text_adapter(concept_embeds)
+
+        if self.text_adapter:
+            concept_embeds = self.text_adapter(concept_embeds)
 
         # Similarity
         geo_embeds = F.normalize(geo_embeds, dim=1)

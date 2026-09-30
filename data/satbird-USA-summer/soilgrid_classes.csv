@@ -1,0 +1,9 @@
+name,units,description
+aux_bdticm,cm,Absolute depth to bedrock
+aux_bldfie,kg/m³,Bulk density of the fine earth fraction
+aux_cecsol,cmol+/kg,Cation exchange capacity of the soil
+aux_clyppt,%,Clay content
+aux_orcdrc,g/kg,"Soil organic carbon content, measured by dry combustion"
+aux_phihox,pH,"Soil pH index"
+aux_sltppt,%,Silt content
+aux_sndppt,%,Sand content

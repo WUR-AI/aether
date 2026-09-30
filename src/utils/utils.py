@@ -77,12 +77,14 @@ def task_wrapper(task_func: Callable) -> Callable:
     def wrap(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         metric_dict: Dict[str, Any] = {}
         object_dict: Dict[str, Any] = {}
+        crashed = False
         # execute the task
         try:
             metric_dict, object_dict = task_func(cfg=cfg)
 
         # things to do if exception occurs
         except Exception as ex:
+            crashed = True
             # save exception to `.log` file
             log.exception("")
 
@@ -102,7 +104,7 @@ def task_wrapper(task_func: Callable) -> Callable:
 
                 if wandb.run:
                     log.info("Closing wandb!")
-                    wandb.finish()
+                    wandb.finish(exit_code=1 if crashed else 0)
 
             # best-effort cleanup to avoid memory growth across sequential multiruns
             try:

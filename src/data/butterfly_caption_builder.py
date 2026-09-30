@@ -23,16 +23,20 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
         data_dir: str,
         seed: int,
         n_captions_for_validation: int | str = "all",
+        n_captions_for_train: int = 1,
         return_aux_ids: bool = False,
+        non_numerical: bool = True,
     ) -> None:
         super().__init__(
-            templates_fname,
-            concepts_fname,
-            data_dir,
-            seed,
-            n_captions_for_validation,
-            return_aux_ids,
+            templates_fname=templates_fname,
+            concepts_fname=concepts_fname,
+            data_dir=data_dir,
+            seed=seed,
+            n_captions_for_train=n_captions_for_train,
+            n_captions_for_validation=n_captions_for_validation,
+            return_aux_ids=return_aux_ids,
         )
+        self.non_numerical = non_numerical
 
     @override
     def sync_with_dataset(self, dataset: BaseDataset) -> None:
@@ -149,7 +153,7 @@ class ButterflyCaptionBuilder(BaseCaptionBuilder):
             value = value * 100 if units == "%" else value
 
             if "corine" in token:
-                if convert_corine_perc:
+                if self.non_numerical:
                     adjective = sample_adjective_for_percentage(value)
                     formatted_desc = f"{adjective} {formatted_desc}"
                 else:

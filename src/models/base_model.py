@@ -275,7 +275,7 @@ class BaseModel(LightningModule, ABC):
         # never match the trainable_modules filter above, but they must survive
         # checkpointing so resumed runs and standalone inference stay correct).
         for name, buf in self.named_buffers():
-            if buf is not None:
+            if buf is not None and ".embeddings.position_ids" not in name:
                 checkpoint["state_dict"][name] = buf
 
         # Update model configurations
@@ -313,19 +313,19 @@ class BaseModel(LightningModule, ABC):
 
     @final
     def on_fit_start(self):
-        self._on_x_star()
+        self._on_x_star("train")
 
     @final
     def on_test_start(self):
-        self._on_x_star()
+        self._on_x_star("test")
 
     @final
     def on_validate_start(self):
-        self._on_x_star()
+        self._on_x_star("val")
 
     @final
     def on_predict_start(self):
-        self._on_x_star()
+        self._on_x_star("predict")
 
-    def _on_x_star(self):
+    def _on_x_star(self, mode: str):
         pass

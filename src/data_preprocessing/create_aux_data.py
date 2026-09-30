@@ -14,13 +14,16 @@ from src.data_preprocessing import gee_utils as gu
 
 
 def get_aux_data_from_coords(
-    coords, aux_modalities=["bioclim", "corine_lc", "pop_density", "dist_road"], patch_size=2560
+    coords,
+    aux_modalities=["dynamicworld"],
+    patch_size=2560,
 ):
     """Get both bioclimatic and land cover data from coordinates."""
     for m in aux_modalities:
         assert m in [
             "bioclim",
             "corine_lc",
+            "dynamicworld",
             "pop_density",
             "dist_road",
         ], f"Unknown auxiliary modality: {m}"
@@ -36,6 +39,12 @@ def get_aux_data_from_coords(
         )
         lc_data = gu.convert_corine_lc_im_to_tab(lc_im)
         aux_data.update(lc_data)
+    if "dynamicworld" in aux_modalities:
+        dw_im, dw_aoi = gu.get_gee_image_from_coord(
+            coords, collection_name="dynamicworld", patch_size=patch_size, threshold_size=None
+        )
+        dw_data = gu.convert_dynamicworld_im_to_tab(dw_im, dw_aoi)
+        aux_data.update(dw_data)
     if "pop_density" in aux_modalities:
         popdensity_im, aoi = gu.get_gee_image_from_coord(
             coords,
@@ -65,6 +74,7 @@ def get_aux_data_from_coords_list(
     save_folder=os.path.join(os.environ["DATA_DIR"], "s2bms/source/"),
     save_filename="aux_data.csv",
     patch_size=2560,
+    aux_modalities=["dynamicworld"],
 ):
     """Get all auxiliary data from a list of coordinates."""
     if name_list is not None:
@@ -89,7 +99,9 @@ def get_aux_data_from_coords_list(
                 type(coords) in [tuple, list] and len(coords) == 2
             ), f"Coordinates must be a tuple or list of (lon, lat), got type {type(coords)} with value {coords}"
             try:
-                result = get_aux_data_from_coords(coords, patch_size=patch_size)
+                result = get_aux_data_from_coords(
+                    coords, aux_modalities=aux_modalities, patch_size=patch_size
+                )
                 result_keys = list(result.keys())
             except Exception as e:
                 print(f"Error occurred while processing coordinates {i_coords}, {coords}: {e}")
@@ -123,6 +135,8 @@ def get_aux_data_from_coords_list(
                 if ("corine" in c and "top" not in c and len(c) == len_col)
             ]
         )  # len 15: 'corine_frac_231' (i.e., specifically low-level LC only.)
+        if len(target_cols) == 0:  # corine_lc not among the requested aux_modalities
+            continue
         sub_np = results[target_cols].to_numpy()
         noise = rng.uniform(0, 1e-8, size=sub_np.shape)
         sub_np_noisy = sub_np + noise
