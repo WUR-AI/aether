@@ -1,0 +1,200 @@
+[
+    {
+        "inference_captions": [
+            "Semi-natural grassland",
+            "Short grassland",
+            "A grazed pasture",
+            "A scrubby hillside",
+            "Scrubland",
+            "An open hillside",
+            "A disused chalk quarry"
+        ],
+        "common_name": "Adonis Blue",
+        "latin_name": "Polyommatus bellargus",
+        "target_id": 32
+    },
+    {
+        "inference_captions": [
+            "Semi-natural grassland",
+            "Open heathland",
+            "A woodland ride",
+            "A forest clearing",
+            "A coastal cliff",
+            "A coastal dune",
+            "A disused quarry",
+            "A disused railway line",
+            "A suburban wasteland",
+            "An urban area"
+        ],
+        "common_name": "Dingy Skipper",
+        "latin_name": "Erynnis tages",
+        "target_id": 19
+    },
+    {
+        "inference_captions": [
+            "Semi-natural grassland",
+            "A scrubby hillside",
+            "Scrubland",
+            "A woodland clearing",
+            "A broadleaf forest",
+            "A forest ride",
+            "A recently coppiced woodland"
+        ],
+        "common_name": "Duke of Burgundy",
+        "latin_name": "Hamearis lucina",
+        "target_id": 25
+    },
+    {
+        "inference_captions": [
+            "A coastal cliff",
+            "A coastal dune",
+            "A salt marsh",
+            "The open sea",
+            "Open heathland",
+            "A disused quarry",
+            "A disused railway line",
+            "Semi-natural grassland",
+            "An open forest"
+        ],
+        "common_name": "Grayling",
+        "latin_name": "Hipparchia semele",
+        "target_id": 27
+    },
+    {
+        "inference_captions": [
+            "A woodland clearing",
+            "A forest ride",
+            "Semi-natural grassland",
+            "A disused quarry",
+            "A disused railway line",
+            "Open heathland",
+            "Damp grassland",
+            "A coastal dune"
+        ],
+        "common_name": "Grizzled Skipper",
+        "latin_name": "Pyrgus malvae",
+        "target_id": 50
+    },
+    {
+        "inference_captions": [
+            "Sheltered heathland",
+            "Open heathland",
+            "A forest clearing",
+            "A recently felled woodland",
+            "A broadleaf forest",
+            "Semi-natural grassland"
+        ],
+        "common_name": "Heath Fritillary",
+        "latin_name": "Melitaea athalia",
+        "target_id": 37
+    },
+    {
+        "inference_captions": [
+            "A bracken-covered hillside",
+            "A scrubby hillside",
+            "A cleared woodland",
+            "A recently coppiced woodland",
+            "An open forest",
+            "Open moorland"
+        ],
+        "common_name": "High Brown Fritillary",
+        "latin_name": "Argynnis adippe",
+        "target_id": 5
+    },
+    {
+        "inference_captions": [
+            "A peat bog",
+            "Damp moorland",
+            "A wetland",
+            "Open moorland",
+            "Frequent rainfall"
+        ],
+        "common_name": "Large Heath",
+        "latin_name": "Coenonympha tullia",
+        "target_id": 14
+    },
+    {
+        "inference_captions": [
+            "Damp grassland",
+            "Moorland",
+            "Semi-natural grassland",
+            "A grazed pasture",
+            "A forest clearing",
+            "A wetland",
+            "Frequent rainfall"
+        ],
+        "common_name": "Marsh Fritillary",
+        "latin_name": "Euphydryas aurinia",
+        "target_id": 21
+    },
+    {
+        "inference_captions": [
+            "Semi-natural grassland",
+            "A scrubby hillside",
+            "A scrubby grassland",
+            "A coastal valley",
+            "A coastal dune",
+            "A disused quarry",
+            "A grazed pasture"
+        ],
+        "common_name": "Northern Brown Argus",
+        "latin_name": "Aricia artaxerxes",
+        "target_id": 7
+    },
+    {
+        "inference_captions": [
+            "Open heathland",
+            "A coastal dune",
+            "Short grassland",
+            "Calcareous grassland",
+            "A disused quarry",
+            "A recently burnt heathland",
+            "Wet heathland"
+        ],
+        "common_name": "Silver-studded Blue",
+        "latin_name": "Plebeius argus",
+        "target_id": 47
+    },
+    {
+        "inference_captions": [
+            "Damp moorland",
+            "A woodland glade",
+            "A forest clearing",
+            "A bracken-covered hillside",
+            "A scrubby grassland",
+            "A wood-pasture",
+            "A coastal dune",
+            "A coastal cliff"
+        ],
+        "common_name": "Small Pearl-bordered Fritillary",
+        "latin_name": "Boloria selene",
+        "target_id": 8
+    },
+    {
+        "inference_captions": [
+            "A hedgerow",
+            "A scrub thicket",
+            "A forest edge",
+            "A woodland ride",
+            "An arable field"
+        ],
+        "common_name": "White-letter Hairstreak",
+        "latin_name": "Satyrium w-album",
+        "target_id": 53
+    },
+    {
+        "inference_captions": [
+            "A sunny forest ride",
+            "A woodland glade",
+            "A scrubby grassland",
+            "Semi-natural grassland",
+            "A hedgerow",
+            "A disused railway line",
+            "A disused quarry",
+            "A coastal cliff"
+        ],
+        "common_name": "Wood White",
+        "latin_name": "Leptidea sinapis",
+        "target_id": 30
+    }
+]

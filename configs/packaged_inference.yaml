@@ -17,8 +17,8 @@ geo_data:
 #    dimension:
 #    dtype:
 
-inference_ckpt_path: ${paths.root_dir}/inference/s2bms/v1/example.ckpt
-#save_output:  ${paths.root_dir}/inference/s2bms/v1/${now:%Y-%m-%d}_${now:%H-%M-%S}.csv
+inference_ckpt_path: ${paths.root_dir}/inference/s2bms/v1/best.ckpt
+save_output: ${paths.root_dir}/inference/s2bms/v1/${now:%Y-%m-%d}_${now:%H-%M-%S}.csv
 
 device: mps
 

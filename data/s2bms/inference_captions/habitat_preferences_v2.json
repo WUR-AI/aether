@@ -1,0 +1,173 @@
+[
+    {
+        "inference_captions": [
+            "Semi-natural grassland within forest and semi natural areas, not agricultural or urban land",
+            "Scrub and herbaceous vegetation mosaic on dry chalk or limestone slopes",
+            "Grazed pasture with short cropped turf",
+            "Open non-forested semi-natural land on a south-facing slope"
+        ],
+        "common_name": "Adonis Blue",
+        "latin_name": "Polyommatus bellargus",
+        "target_id": 32
+    },
+    {
+        "inference_captions": [
+            "Sparse vegetation on artificial surfaces such as a disused quarry",
+            "Disturbed ground within discontinuous urban fabric",
+            "Open semi-natural grassland close to urban areas",
+            "Coastal cliff or dune habitat along the coastline",
+            "Sparse heathland vegetation within forest and semi natural areas"
+        ],
+        "common_name": "Dingy Skipper",
+        "latin_name": "Erynnis tages",
+        "target_id": 19
+    },
+    {
+        "inference_captions": [
+            "Semi-natural grassland with scrub patches on calcareous slopes",
+            "Clearing within broad-leaved forest",
+            "Scrub and herbaceous vegetation mosaic within forest and semi natural areas",
+            "Mature broadleaf forest with sunny glades"
+        ],
+        "common_name": "Duke of Burgundy",
+        "latin_name": "Hamearis lucina",
+        "target_id": 25
+    },
+    {
+        "inference_captions": [
+            "Coastal cliff and dune habitat bordering the sea and ocean",
+            "Saltmarsh maritime wetland with sparse halophytic vegetation",
+            "Sparse heathland with abundant bare ground within forest and semi natural areas",
+            "Disused quarry or railway land within artificial surfaces",
+            "Open woodland on stony ground within forest and semi natural land"
+        ],
+        "common_name": "Grayling",
+        "latin_name": "Hipparchia semele",
+        "target_id": 27
+    },
+    {
+        "inference_captions": [
+            "Open ride or clearing within broad-leaved forest",
+            "Disturbed brownfield land within artificial surfaces",
+            "Semi-natural grassland with sparse vegetation",
+            "Sparse heathland vegetation",
+            "Coastal dune habitat along the coastline"
+        ],
+        "common_name": "Grizzled Skipper",
+        "latin_name": "Pyrgus malvae",
+        "target_id": 50
+    },
+    {
+        "inference_captions": [
+            "Sheltered heathland valley within forest and semi natural areas",
+            "Recently coppiced or felled broad-leaved forest with an open canopy",
+            "Herb-rich semi-natural grassland on a stony substrate",
+            "Open woodland clearing within forest and semi natural land"
+        ],
+        "common_name": "Heath Fritillary",
+        "latin_name": "Melitaea athalia",
+        "target_id": 37
+    },
+    {
+        "inference_captions": [
+            "Bracken-covered slope resembling moors and heathland within forest and semi natural areas",
+            "Scrub and grassland mosaic on an open slope",
+            "Recently cleared broad-leaved forest with scattered scrub near rock outcrops",
+            "Open woodland with a thinned canopy"
+        ],
+        "common_name": "High Brown Fritillary",
+        "latin_name": "Argynnis adippe",
+        "target_id": 5
+    },
+    {
+        "inference_captions": [
+            "Waterlogged wetland with a saturated peat surface",
+            "Damp acidic moorland resembling moors and heathland within forest and semi natural areas",
+            "High precipitation even in the driest month of the year, indicating a consistently wet climate",
+            "Open bog landscape without coniferous forest plantation"
+        ],
+        "common_name": "Large Heath",
+        "latin_name": "Coenonympha tullia",
+        "target_id": 14
+    },
+    {
+        "inference_captions": [
+            "Damp semi-natural grassland with wetland characteristics",
+            "Tussocky moorland grassland within forest and semi natural areas",
+            "Unimproved calcareous pasture on an open slope",
+            "Large open clearing within broad-leaved forest",
+            "Moderate precipitation in the driest month, indicating a damp climate"
+        ],
+        "common_name": "Marsh Fritillary",
+        "latin_name": "Euphydryas aurinia",
+        "target_id": 21
+    },
+    {
+        "inference_captions": [
+            "Semi-natural grassland with scattered scrub on thin soils",
+            "Coastal valley or dune habitat along the coastline",
+            "Disused quarry within artificial surfaces",
+            "Grazed pasture within forest and semi natural land"
+        ],
+        "common_name": "Northern Brown Argus",
+        "latin_name": "Aricia artaxerxes",
+        "target_id": 7
+    },
+    {
+        "inference_captions": [
+            "Open heathland within forest and semi natural areas",
+            "Coastal sand dune habitat along the coastline",
+            "Calcareous pasture with short sparse vegetation",
+            "Disused quarry with sparse early successional vegetation within artificial surfaces"
+        ],
+        "common_name": "Silver-studded Blue",
+        "latin_name": "Plebeius argus",
+        "target_id": 47
+    },
+    {
+        "inference_captions": [
+            "Broad-leaved deciduous forest with an open canopy",
+            "Mixed broadleaved and coniferous forest with a thinned understorey",
+            "Wooded hedgerow within non-irrigated arable land",
+            "Dense forest with sunny open rides"
+        ],
+        "common_name": "Silver-washed Fritillary",
+        "latin_name": "Argynnis paphia",
+        "target_id": 5
+    },
+    {
+        "inference_captions": [
+            "Damp moorland grassland with wetland flushes",
+            "Open glade within broad-leaved forest",
+            "Scrub and grassland mosaic resembling moors and heathland",
+            "Wood-pasture with scattered trees and grazed grassland",
+            "Coastal cliff or dune habitat by the coastline"
+        ],
+        "common_name": "Small Pearl-bordered Fritillary",
+        "latin_name": "Boloria selene",
+        "target_id": 8
+    },
+    {
+        "inference_captions": [
+            "Dense hedgerow within non-irrigated arable land",
+            "Scrub and tall shrub vegetation in lowland farmland",
+            "Broad-leaved forest edge with mature trees",
+            "Scattered mature trees within arable land"
+        ],
+        "common_name": "White-letter Hairstreak",
+        "latin_name": "Satyrium w-album",
+        "target_id": 53
+    },
+    {
+        "inference_captions": [
+            "Open sunny ride within broad-leaved forest",
+            "Scrub and tall grassland mosaic with adjacent hedgerows",
+            "Disused railway or quarry land within discontinuous urban fabric",
+            "Hedgerow within non-irrigated arable land",
+            "Coastal undercliff habitat along the coastline"
+        ],
+        "common_name": "Wood White",
+        "latin_name": "Leptidea sinapis",
+        "target_id": 30
+    }
+]

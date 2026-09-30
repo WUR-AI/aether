@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Optional
 
@@ -48,12 +49,13 @@ def get_geo_data(cfg, device="cpu"):
     emb_cols = [f"emb_{i}" for i in range(dim)]
 
     geo_data = torch.tensor(df[emb_cols].to_numpy(), dtype=dtype, device=device)
+    print(df.columns)
     return {
         "eo": {modality: geo_data},
         "name_loc": df.name_loc.to_list(),
-        "lat": df.lat.to_list(),
-        "lon": df.lon.to_list(),
-        "split": df.split.to_list(),
+        # "lat": df.lat.to_list(),
+        # "lon": df.lon.to_list(),
+        # "split": df.split.to_list(),
     }
 
 
@@ -73,15 +75,20 @@ def main(cfg: DictConfig, save_results: bool = False) -> Optional[float]:
     model = get_model(cfg)
     model.to(cfg.device)
 
-    # TODO: do what you need with the inference model
-    # Supply text in a list. Examples
-    text = ["Forested area", "Area with water bodies near-by"]
-    # or
-    # text = [input('Enter a concept')]
-    # or
-    # with open('../outputs/example_concepts.txt', 'r') as f:
-    #     text = f.readlines()
-    #     text = [t.strip() for t in text]
+    hab_pref_file = "concept_captions_v10"
+    with open(
+        os.path.join(
+            os.environ["PROJECT_ROOT"], "data/s2bms", f"inference_captions/{hab_pref_file}.json"
+        ),
+    ) as f:
+        habitat_preferences = json.load(f)
+    all_captions = [h["inference_captions"] for h in habitat_preferences]
+    titles = [
+        [h["common_name"] + f"_{ii}" for ii in range(len(h["inference_captions"]))]
+        for h in habitat_preferences
+    ]
+    titles = [item for sublist in titles for item in sublist]
+    text = [item for sublist in all_captions for item in sublist]
 
     text_embeds = model.forward_text(text)
 
@@ -101,11 +108,14 @@ def main(cfg: DictConfig, save_results: bool = False) -> Optional[float]:
     if cfg.get("save_output") or save_results:
         df = pd.DataFrame(
             results.cpu(),
-            columns=text + [f"target_{i}" for i in range(pred.shape[-1])],
+            columns=titles + [f"target_{i}" for i in range(pred.shape[-1])],
             index=b.get("name_loc"),
         )
+
         df.reset_index(inplace=True, names=["name_loc"])
-        path = cfg.get("save_output")
+        df = df.sort_values(by="name_loc").reset_index(drop=True)
+        path = cfg.get("save_output")[:-4]
+        path = f"{path}_{hab_pref_file}.csv"
         os.makedirs(os.path.dirname(path), exist_ok=True)
         df.to_csv(path)
         print(f"Cosine similarities are saved to {path}")
@@ -115,7 +125,7 @@ def main(cfg: DictConfig, save_results: bool = False) -> Optional[float]:
             print(f"Location {names[i]} similarity with:")
             for j, t in enumerate(text):
                 print(f" - {t}: {similarity_matrix[i, j]:.2f} similarity")
-            print(f"And prediction vector: {pred[i].detach().cpu().numpy()}")
+            # print(f"And prediction vector: {pred[i].detach().cpu().numpy()}")
 
     return
 

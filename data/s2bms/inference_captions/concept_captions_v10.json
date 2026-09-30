@@ -1,0 +1,523 @@
+[
+    {
+        "inference_captions": [
+            "Location where daytime and nighttime temperatures stay close together",
+            "Area where nights stay nearly as warm as the day",
+            "Climate with only a small swing between day and night temperatures"
+        ],
+        "common_name": "aux_bioclim_02"
+    },
+    {
+        "inference_captions": [
+            "Location where temperatures stay fairly steady from day to day and season to season",
+            "Climate with a small difference between typical daily and typical seasonal temperature swings",
+            "Area with a very stable, even temperature pattern year-round"
+        ],
+        "common_name": "aux_bioclim_03"
+    },
+    {
+        "inference_captions": [
+            "Location with only a small contrast between summer and winter temperatures",
+            "Area where winters and summers feel fairly similar in temperature",
+            "Climate with mild, steady temperatures across the seasons"
+        ],
+        "common_name": "aux_bioclim_04"
+    },
+    {
+        "inference_captions": [
+            "Location with harsh winters that turn bitterly cold",
+            "Area where the coldest month brings freezing temperatures",
+            "Location prone to severe winter frost"
+        ],
+        "common_name": "aux_bioclim_06"
+    },
+    {
+        "inference_captions": [
+            "Location with only a small gap between summer warmth and winter cold",
+            "Area where summer and winter temperatures stay fairly similar",
+            "Climate with a narrow annual temperature range"
+        ],
+        "common_name": "aux_bioclim_07"
+    },
+    {
+        "inference_captions": [
+            "Region where the wettest time of year is also mild",
+            "Location with mild, damp weather during its rainiest months",
+            "Area where rainfall coincides with mild temperatures"
+        ],
+        "common_name": "aux_bioclim_08"
+    },
+    {
+        "inference_captions": [
+            "Region with a harsh, cold winter season overall",
+            "Location where the coldest months turn bitterly cold",
+            "Area with a severe, frosty winter season"
+        ],
+        "common_name": "aux_bioclim_11"
+    },
+    {
+        "inference_captions": [
+            "A very rainy area with high annual rainfall",
+            "Location that receives abundant rainfall throughout the year",
+            "Area with heavy total yearly rainfall"
+        ],
+        "common_name": "aux_bioclim_12"
+    },
+    {
+        "inference_captions": [
+            "Region with an intensely rainy peak month",
+            "Location that experiences a month of very heavy rainfall",
+            "Area with a sharp monthly rainfall peak"
+        ],
+        "common_name": "aux_bioclim_13"
+    },
+    {
+        "inference_captions": [
+            "Region where rain falls even in its driest month",
+            "Location with a mild, damp climate where rain falls year-round",
+            "Area with rain spread fairly evenly throughout the year"
+        ],
+        "common_name": "aux_bioclim_14"
+    },
+    {
+        "inference_captions": [
+            "Region with a strongly seasonal rainfall pattern",
+            "Location with a clear difference between its wetter and drier months",
+            "Area with a pronounced wet-and-dry rainfall pattern across the year"
+        ],
+        "common_name": "aux_bioclim_15"
+    },
+    {
+        "inference_captions": [
+            "Region with one markedly wet season",
+            "Location where a three-month stretch brings much of the year's rain",
+            "Area with a concentrated rainy season"
+        ],
+        "common_name": "aux_bioclim_16"
+    },
+    {
+        "inference_captions": [
+            "Region where even its driest quarter receives notable rainfall",
+            "Location with a mild, damp climate throughout its driest season",
+            "Area where even the driest season stays fairly damp"
+        ],
+        "common_name": "aux_bioclim_17"
+    },
+    {
+        "inference_captions": [
+            "Region with rainy summers",
+            "Location where the warm season is also wet",
+            "Area with frequent summer showers"
+        ],
+        "common_name": "aux_bioclim_18"
+    },
+    {
+        "inference_captions": [
+            "Region with wet, rainy winters",
+            "Location where the cold season brings heavy rain",
+            "Area with a rainy winter climate"
+        ],
+        "common_name": "aux_bioclim_19"
+    },
+    {
+        "inference_captions": [
+            "Heavily built-up, artificial landscape",
+            "Area dominated by man-made structures and surfaces",
+            "Urbanized and developed land with little natural cover"
+        ],
+        "common_name": "aux_corine_frac_1"
+    },
+    {
+        "inference_captions": [
+            "Densely populated area with many houses",
+            "Residential neighborhood made up of homes and apartment buildings",
+            "Built-up area primarily used for housing",
+            "Town or city district covered mostly by residential buildings"
+        ],
+        "common_name": "aux_corine_frac_11"
+    },
+    {
+        "inference_captions": [
+            "Densely built city center where buildings almost completely cover the ground",
+            "Continuous city blocks where buildings stand tightly packed together",
+            "Compact urban core with near-total building coverage"
+        ],
+        "common_name": "aux_corine_frac_111"
+    },
+    {
+        "inference_captions": [
+            "Suburban area with houses separated by gardens and green space",
+            "Low-density residential area where buildings are spaced apart",
+            "Neighborhood of houses with yards and open gaps between buildings"
+        ],
+        "common_name": "aux_corine_frac_112"
+    },
+    {
+        "inference_captions": [
+            "Area dominated by factories, warehouses, and commercial buildings",
+            "Industrial and commercial zone with transport infrastructure",
+            "Business park or industrial estate with large commercial buildings"
+        ],
+        "common_name": "aux_corine_frac_12"
+    },
+    {
+        "inference_captions": [
+            "Site occupied by factories or large commercial facilities",
+            "Industrial complex with warehouses and manufacturing buildings",
+            "Commercial zone with large stores and industrial units"
+        ],
+        "common_name": "aux_corine_frac_121"
+    },
+    {
+        "inference_captions": [
+            "Land disturbed by mining, dumping, or construction activity",
+            "Area of quarries, waste sites, or active building sites",
+            "Excavated or disturbed ground from extraction or construction work"
+        ],
+        "common_name": "aux_corine_frac_13"
+    },
+    {
+        "inference_captions": [
+            "Open-pit mine or quarry site",
+            "Area of active mineral or gravel extraction",
+            "Land scarred by quarrying and mining operations"
+        ],
+        "common_name": "aux_corine_frac_131"
+    },
+    {
+        "inference_captions": [
+            "Man-made green space within a built-up area",
+            "Urban park or landscaped green area",
+            "Vegetated recreational area within an artificial setting"
+        ],
+        "common_name": "aux_corine_frac_14"
+    },
+    {
+        "inference_captions": [
+            "City park with grass, trees, and paths",
+            "Urban green space used for public recreation",
+            "Landscaped park within a town or city"
+        ],
+        "common_name": "aux_corine_frac_141"
+    },
+    {
+        "inference_captions": [
+            "Sports complex with pitches or courts",
+            "Golf course, stadium, or leisure facility",
+            "Area dedicated to organized sports and recreation"
+        ],
+        "common_name": "aux_corine_frac_142"
+    },
+    {
+        "inference_captions": [
+            "Cropland used for growing annual crops",
+            "Plowed farmland planted with rotating crops",
+            "Fields of cultivated arable crops"
+        ],
+        "common_name": "aux_corine_frac_21"
+    },
+    {
+        "inference_captions": [
+            "Rain-fed farmland watered solely by natural rainfall",
+            "Dryland crop fields relying only on natural rainfall",
+            "Fields of dryland cereals or other rotating crops"
+        ],
+        "common_name": "aux_corine_frac_211"
+    },
+    {
+        "inference_captions": [
+            "Grazing land used for livestock",
+            "Meadow used as pasture for grazing animals",
+            "Grassy field where cattle or sheep graze"
+        ],
+        "common_name": "aux_corine_frac_23"
+    },
+    {
+        "inference_captions": [
+            "Permanent grassland grazed by livestock",
+            "Pasture field with grazing cattle or sheep",
+            "Grassy meadow maintained for animal grazing"
+        ],
+        "common_name": "aux_corine_frac_231"
+    },
+    {
+        "inference_captions": [
+            "Patchwork landscape mixing different crops and farmland types",
+            "Farmland where crops, pastures, and natural vegetation intermix",
+            "Mosaic of small fields with mixed agricultural uses"
+        ],
+        "common_name": "aux_corine_frac_24"
+    },
+    {
+        "inference_captions": [
+            "Farmland interspersed with patches of natural vegetation",
+            "Agricultural area that still retains significant natural habitat",
+            "Farmed landscape mixed with pockets of semi-natural land"
+        ],
+        "common_name": "aux_corine_frac_243"
+    },
+    {
+        "inference_captions": [
+            "Forested or semi-natural landscape",
+            "Wild, largely unfarmed area covered by trees and natural vegetation",
+            "Woodland or natural terrain with minimal human development"
+        ],
+        "common_name": "aux_corine_frac_3"
+    },
+    {
+        "inference_captions": [
+            "Area covered by woodland and trees",
+            "Dense forest landscape",
+            "Land covered mostly by tree canopy"
+        ],
+        "common_name": "aux_corine_frac_31"
+    },
+    {
+        "inference_captions": [
+            "Deciduous forest of broad-leaved trees",
+            "Woodland dominated by broadleaf, leafy trees",
+            "Forest of broad-leaved tree species"
+        ],
+        "common_name": "aux_corine_frac_311"
+    },
+    {
+        "inference_captions": [
+            "Evergreen coniferous forest",
+            "Woodland dominated by needle-leaved conifer trees",
+            "Forest of conifer species"
+        ],
+        "common_name": "aux_corine_frac_312"
+    },
+    {
+        "inference_captions": [
+            "Forest mixing both broadleaf and coniferous trees",
+            "Woodland with a blend of deciduous and evergreen trees",
+            "Mixed-species forest of conifers and broadleaf trees together"
+        ],
+        "common_name": "aux_corine_frac_313"
+    },
+    {
+        "inference_captions": [
+            "Open landscape of shrubs and grassland vegetation",
+            "Natural terrain covered by low shrubs and herbaceous plants",
+            "Scrubland or rough grassland with sparse tree cover"
+        ],
+        "common_name": "aux_corine_frac_32"
+    },
+    {
+        "inference_captions": [
+            "Open natural grassland growing wild",
+            "Natural meadow of wild grasses",
+            "Wild, natural grassy plain"
+        ],
+        "common_name": "aux_corine_frac_321"
+    },
+    {
+        "inference_captions": [
+            "Open heather moorland with low shrubby vegetation",
+            "Heathland landscape of low-growing shrubby vegetation",
+            "Windswept moor with heather and scrub vegetation"
+        ],
+        "common_name": "aux_corine_frac_322"
+    },
+    {
+        "inference_captions": [
+            "Wetland landscape of marshes or waterlogged ground",
+            "Area of flooded or saturated land with wetland vegetation",
+            "Boggy, water-saturated terrain"
+        ],
+        "common_name": "aux_corine_frac_4"
+    },
+    {
+        "inference_captions": [
+            "Freshwater marsh or bog away from the coast",
+            "Inland wetland of waterlogged, marshy ground",
+            "Peat bog or freshwater marsh in an inland setting"
+        ],
+        "common_name": "aux_corine_frac_41"
+    },
+    {
+        "inference_captions": [
+            "Coastal wetland shaped by tides",
+            "Tidal marsh or coastal wetland near the sea",
+            "Saline wetland along the coastline"
+        ],
+        "common_name": "aux_corine_frac_42"
+    },
+    {
+        "inference_captions": [
+            "Salt marsh vegetated with salt-tolerant plants",
+            "Coastal salt meadow flooded by high tides",
+            "Tidal salt marsh along an estuary or coast"
+        ],
+        "common_name": "aux_corine_frac_421"
+    },
+    {
+        "inference_captions": [
+            "Muddy or sandy flats exposed at low tide",
+            "Bare tidal flat between high and low water marks",
+            "Coastal mudflat submerged and exposed with the tides"
+        ],
+        "common_name": "aux_corine_frac_423"
+    },
+    {
+        "inference_captions": [
+            "Area covered by open water",
+            "Location dominated by a body of water",
+            "Landscape largely covered by water, such as a lake, river, or the sea"
+        ],
+        "common_name": "aux_corine_frac_5"
+    },
+    {
+        "inference_captions": [
+            "Coastal or open sea waters",
+            "Area covered by marine, saltwater seas",
+            "Location dominated by ocean or sea water"
+        ],
+        "common_name": "aux_corine_frac_52"
+    },
+    {
+        "inference_captions": [
+            "Open sea or ocean waters",
+            "Location out at sea, far from land",
+            "Vast expanse of ocean water"
+        ],
+        "common_name": "aux_corine_frac_523"
+    },
+    {
+        "inference_captions": [
+            "Remote area with a point far from any road",
+            "Location containing an inaccessible spot distant from roads",
+            "Area reaching far beyond the nearest roadway"
+        ],
+        "common_name": "aux_maxdist_road"
+    },
+    {
+        "inference_captions": [
+            "Sparsely connected area, generally far from roads",
+            "Region with a thin, spread-out road network",
+            "Location generally distant from roads across its whole area"
+        ],
+        "common_name": "aux_meandist_road"
+    },
+    {
+        "inference_captions": [
+            "Densely populated area with many people per square kilometer",
+            "Crowded urban area with high population density",
+            "Location with a high concentration of residents"
+        ],
+        "common_name": "aux_pop_density"
+    },
+    {
+        "inference_captions": [
+            "Populous area home to a large number of people",
+            "Large town or city with a big total population",
+            "Location with a substantial resident population"
+        ],
+        "common_name": "aux_total_population"
+    },
+    {
+        "inference_captions": [
+            "Area with a highly diverse mix of different land-cover types",
+            "Location where many different land-cover types occur together in similar proportions",
+            "Landscape combining several land-cover types in a varied mosaic"
+        ],
+        "common_name": "test-aux_shdi_lc"
+    },
+    {
+        "inference_captions": [
+            "Area covered by broadleaf woodland",
+            "Deciduous woodland landscape of broad-leaved trees",
+            "Location with extensive broadleaf tree cover"
+        ],
+        "common_name": "test-aux_p_broadleaf"
+    },
+    {
+        "inference_captions": [
+            "Area covered by coniferous woodland",
+            "Evergreen conifer forest landscape",
+            "Location with extensive coniferous tree cover"
+        ],
+        "common_name": "test-aux_p_conifer"
+    },
+    {
+        "inference_captions": [
+            "Area of arable farmland used for growing crops",
+            "Cropland landscape under cultivation",
+            "Location dominated by ploughed, cultivated fields"
+        ],
+        "common_name": "test-aux_p_arable"
+    },
+    {
+        "inference_captions": [
+            "Semi-natural, unimproved grassland with a diverse mix of wild plants",
+            "Species-rich rough grassland that has developed naturally over time",
+            "Species-rich meadow or rough grazing land retaining natural vegetation"
+        ],
+        "common_name": "test-aux_p_smnat_grsl"
+    },
+    {
+        "inference_captions": [
+            "Upland terrain of mountain ground or peat bog",
+            "High, rugged terrain or waterlogged boggy ground",
+            "Area of montane or bog habitat with sparse vegetation"
+        ],
+        "common_name": "test-aux_p_mountain"
+    },
+    {
+        "inference_captions": [
+            "Area of coastal terrain bordering the shoreline",
+            "Land classified as coastal habitat, close to the sea's edge",
+            "Shoreline landscape directly adjoining the coast"
+        ],
+        "common_name": "test-aux_p_coast"
+    },
+    {
+        "inference_captions": [
+            "Built-up urban terrain with extensive development",
+            "Area classified as urban land, dense with buildings and infrastructure",
+            "Town or city landscape with heavy urban development"
+        ],
+        "common_name": "test-aux_p_urban"
+    },
+    {
+        "inference_captions": [
+            "Location far inland, a long distance from the sea",
+            "Area well away from any coastline",
+            "Inland location distant from the nearest coast"
+        ],
+        "common_name": "test-aux_dist_to_sea"
+    },
+    {
+        "inference_captions": [
+            "High-altitude location, well above sea level",
+            "Upland area at a high elevation",
+            "Elevated terrain, situated high above sea level"
+        ],
+        "common_name": "test-aux_elevation"
+    },
+    {
+        "inference_captions": [
+            "Steeply sloping terrain",
+            "Area with a pronounced incline in the land surface",
+            "Hilly terrain with a steep gradient"
+        ],
+        "common_name": "test-aux_slope"
+    },
+    {
+        "inference_captions": [
+            "Landscape with a dense network of rivers and streams",
+            "Area richly veined with watercourses",
+            "Location where rivers and streams are closely spaced across the terrain"
+        ],
+        "common_name": "test-aux_river_dens"
+    },
+    {
+        "inference_captions": [
+            "Area with elevated background PM2.5 air pollution",
+            "Location with elevated fine particulate air pollution",
+            "Polluted air with high concentrations of fine particulate matter"
+        ],
+        "common_name": "test-aux_pm252024g"
+    }
+]

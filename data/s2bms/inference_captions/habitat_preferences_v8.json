@@ -1,0 +1,209 @@
+[
+    {
+        "inference_captions": [
+            "Dry unimproved grassland on chalk or limestone substrate with very short cropped turf",
+            "Semi-natural grassland habitat within a forest and semi-natural land cover class",
+            "Grazed pasture maintained by cattle, sheep or rabbits on a south-facing slope",
+            "Scrubby hillside with scattered patches of scrub providing shelter",
+            "Open sunny hillside with sparse low vegetation on well-drained soil",
+            "Disused chalk quarry with sheltered hollows and slightly taller vegetation",
+            "Short cropped downland turf between one and four centimetres tall",
+            "Old mineral extraction site reclaimed by open grassland"
+        ],
+        "common_name": "Adonis Blue",
+        "latin_name": "Polyommatus bellargus",
+        "target_id": 32
+    },
+    {
+        "inference_captions": [
+            "Open sunny chalk downland with sparse herb-rich grassland",
+            "Semi-natural grassland habitat within forest and semi-natural land",
+            "Open lowland heathland with sparse low shrubby vegetation",
+            "Sunny ride or clearing within deciduous forest",
+            "Coastal cliff or undercliff habitat along the coastline",
+            "Sandy coastal dune system with sparse vegetation",
+            "Disused quarry with exposed substrate and early successional vegetation",
+            "Disused railway line with sparse vegetation and bare ground",
+            "Brownfield wasteland within a discontinuous urban fabric",
+            "Sparse vegetation on artificial surfaces near an urban area"
+        ],
+        "common_name": "Dingy Skipper",
+        "latin_name": "Erynnis tages",
+        "target_id": 19
+    },
+    {
+        "inference_captions": [
+            "Chalk or limestone grassland with extensive areas of scrub",
+            "Semi-natural grassland habitat within forest and semi-natural land",
+            "Scrubby hillside providing topographical shelter",
+            "Open sunny clearing within ancient broadleaved forest",
+            "Regenerating coppice within a broad-leaved forest",
+            "Young woodland plantation with open glades",
+            "Wide sunny ride through deciduous forest",
+            "Grassland and scrub mosaic on a north or west-facing slope"
+        ],
+        "common_name": "Duke of Burgundy",
+        "latin_name": "Hamearis lucina",
+        "target_id": 25
+    },
+    {
+        "inference_captions": [
+            "Coastal clifftop habitat overlooking the sea and ocean",
+            "Undercliff habitat along an eroding coastline",
+            "Coastal sand dune system with sparse vegetation",
+            "Saltmarsh maritime wetland with sparse halophytic vegetation",
+            "Open lowland heathland with abundant bare ground",
+            "Limestone pavement with sparse vegetation and exposed rock",
+            "Disused quarry with sparse early successional vegetation",
+            "Disused railway line within a discontinuous urban fabric",
+            "Calcareous grassland with sparse low vegetation",
+            "Open woodland on stony ground within a forest and semi-natural landscape"
+        ],
+        "common_name": "Grayling",
+        "latin_name": "Hipparchia semele",
+        "target_id": 27
+    },
+    {
+        "inference_captions": [
+            "Open ride or glade within deciduous forest",
+            "Woodland clearing with bare ground and sparse vegetation",
+            "Unimproved semi-natural grassland with a mosaic of bare and short turf",
+            "Disused mineral working spoil heap within artificial surfaces",
+            "Disused railway line with sparse successional vegetation",
+            "Brownfield land within a discontinuous urban fabric",
+            "Open heathland with sparse low vegetation",
+            "Damp grassland habitat",
+            "Coastal sand dune with sparse vegetation"
+        ],
+        "common_name": "Grizzled Skipper",
+        "latin_name": "Pyrgus malvae",
+        "target_id": 50
+    },
+    {
+        "inference_captions": [
+            "Sheltered heathland valley within forest and semi-natural land",
+            "Open heathland with low ericaceous shrub vegetation",
+            "Recently coppiced broadleaved forest with an open canopy",
+            "Newly felled woodland with sparse regenerating vegetation",
+            "Herb-rich semi-natural grassland on a stony substrate",
+            "Broad-leaved forest with a succession of sunny clearings",
+            "Bracken-covered heathland within an upland landscape"
+        ],
+        "common_name": "Heath Fritillary",
+        "latin_name": "Melitaea athalia",
+        "target_id": 37
+    },
+    {
+        "inference_captions": [
+            "Bracken-dominated hillside within forest and semi-natural land",
+            "Grass and bracken mosaic on a south-facing slope",
+            "Open moorland with dense bracken cover",
+            "Scrubby hillside with scattered scrub patches",
+            "Recently cleared broadleaved forest with an open canopy",
+            "Recently coppiced woodland near limestone rock outcrops",
+            "Open forest with a thinned canopy and sunny rides"
+        ],
+        "common_name": "High Brown Fritillary",
+        "latin_name": "Argynnis adippe",
+        "target_id": 5
+    },
+    {
+        "inference_captions": [
+            "Waterlogged lowland raised bog with saturated peat",
+            "Upland blanket bog within a forest and semi-natural landscape",
+            "Damp acidic moorland with dense mire vegetation",
+            "Open wetland with saturated ground and standing water",
+            "Consistently high rainfall even during the driest month of the year",
+            "Frequent rainfall during the wettest month of the year",
+            "Open peat bog landscape at low to moderate elevation"
+        ],
+        "common_name": "Large Heath",
+        "latin_name": "Coenonympha tullia",
+        "target_id": 14
+    },
+    {
+        "inference_captions": [
+            "Damp tussocky grassland dominated by rank grasses",
+            "Semi-natural grassland habitat within forest and semi-natural land",
+            "Open moorland with damp heathy vegetation",
+            "Unimproved calcareous grassland on a west or south-facing slope",
+            "Grazed pasture with an uneven mosaic of short and tall vegetation",
+            "Large open clearing within deciduous forest",
+            "Frequent rainfall during the driest month of the year, indicating a damp climate",
+            "Wetland habitat with waterlogged ground"
+        ],
+        "common_name": "Marsh Fritillary",
+        "latin_name": "Euphydryas aurinia",
+        "target_id": 21
+    },
+    {
+        "inference_captions": [
+            "Well-drained unimproved semi-natural grassland on thin soils",
+            "Scrubby hillside with light scrub cover providing shelter",
+            "Coastal valley with sheltered grassland and scrub",
+            "Coastal sand dune system with sparse vegetation",
+            "Steep slope with exposed limestone pavement",
+            "Disused quarry with early successional vegetation",
+            "Grazed pasture on base-rich soils"
+        ],
+        "common_name": "Northern Brown Argus",
+        "latin_name": "Aricia artaxerxes",
+        "target_id": 7
+    },
+    {
+        "inference_captions": [
+            "Open lowland heathland with a mosaic of heather and bare ground",
+            "Recently burnt heathland with exposed dark substrate",
+            "Calcareous grassland with very short sparse vegetation",
+            "Coastal sand dune system along the coastline",
+            "Disused quarry with thin eroding soils",
+            "Short wet heathland dominated by low shrub vegetation",
+            "Semi-natural grassland with broken turf"
+        ],
+        "common_name": "Silver-studded Blue",
+        "latin_name": "Plebeius argus",
+        "target_id": 47
+    },
+    {
+        "inference_captions": [
+            "Damp grassland with wet flushes and moorland vegetation",
+            "Open moorland within forest and semi-natural land",
+            "Woodland glade or clearing within deciduous forest",
+            "Grassland and bracken mosaic with scattered scrub",
+            "Wood-pasture with scattered trees and grazed grassland",
+            "Open woodland edge in an upland landscape",
+            "Coastal dune slack with damp low vegetation",
+            "Coastal cliff habitat along the coastline"
+        ],
+        "common_name": "Small Pearl-bordered Fritillary",
+        "latin_name": "Boloria selene",
+        "target_id": 8
+    },
+    {
+        "inference_captions": [
+            "Sheltered hedgerow within non-irrigated arable farmland",
+            "Mixed scrub thicket with mature trees in lowland farmland",
+            "Broad-leaved forest edge along a woodland ride",
+            "Large isolated mature tree within open arable land",
+            "Dense hedgerow network bordering agricultural fields"
+        ],
+        "common_name": "White-letter Hairstreak",
+        "latin_name": "Satyrium w-album",
+        "target_id": 53
+    },
+    {
+        "inference_captions": [
+            "Open sunny ride within deciduous forest",
+            "Herb-rich vegetation at the edge of a woodland glade",
+            "Scrub and tall grassland mosaic on abandoned common land",
+            "Dense hedgerow adjacent to arable farmland",
+            "Disused railway line with tall grassland and scrub",
+            "Disused quarry within a discontinuous urban fabric",
+            "Coastal undercliff habitat along an eroding coastline",
+            "Semi-natural grassland with sparse bare ground"
+        ],
+        "common_name": "Wood White",
+        "latin_name": "Leptidea sinapis",
+        "target_id": 30
+    }
+]
