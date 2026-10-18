@@ -462,19 +462,9 @@
   },
   {
     "concept_caption": [
-      "Sparse, rocky terrain with minimal vegetation",
-      "Bare ground such as rock, shingle, or sand with minimal plant cover",
-      "Open, sparsely vegetated natural area"
-    ],
-    "is_max": true,
-    "col": "aux_corine_frac_33",
-    "val_av": true
-  },
-  {
-    "concept_caption": [
-      "Wetland landscape of marshes or waterlogged ground",
-      "Area of flooded or saturated land with wetland vegetation",
-      "Boggy, water-saturated terrain"
+      "Wetlands such as marshes, swamps, mudflats and bogs.",
+      "Area of flooded or waterlogged land with wetland vegetation",
+      "Boggy, water-saturated terrain "
     ],
     "is_max": true,
     "col": "aux_corine_frac_4",
@@ -542,26 +532,6 @@
   },
   {
     "concept_caption": [
-      "Freshwater lake or river, away from the sea",
-      "Inland body of fresh water",
-      "Landscape dominated by a river or freshwater lake"
-    ],
-    "is_max": true,
-    "col": "aux_corine_frac_51",
-    "val_av": false
-  },
-  {
-    "concept_caption": [
-      "Still freshwater lake or reservoir",
-      "Standing body of water such as a lake or reservoir",
-      "Area adjacent to a large inland lake or reservoir"
-    ],
-    "is_max": true,
-    "col": "aux_corine_frac_512",
-    "val_av": false
-  },
-  {
-    "concept_caption": [
       "Coastal or open sea waters",
       "Area covered by marine, saltwater seas",
       "Location dominated by ocean or sea water"
@@ -569,16 +539,6 @@
     "is_max": true,
     "col": "aux_corine_frac_52",
     "val_av": true
-  },
-  {
-    "concept_caption": [
-      "Estuary where a river meets the sea",
-      "Tidal river mouth blending fresh and salt water",
-      "Coastal estuary at a river's outlet to the sea"
-    ],
-    "is_max": true,
-    "col": "aux_corine_frac_522",
-    "val_av": false
   },
   {
     "concept_caption": [
@@ -637,7 +597,7 @@
       "Landscape combining several land-cover types in a varied mosaic"
     ],
     "is_max": true,
-    "col": "shdi_lc",
+    "col": "test-aux_shdi_lc",
     "val_av": false
   },
   {
@@ -647,7 +607,7 @@
       "Location with extensive broadleaf tree cover"
     ],
     "is_max": true,
-    "col": "p_broadleaf",
+    "col": "test-aux_p_broadleaf",
     "val_av": false
   },
   {
@@ -657,7 +617,7 @@
       "Location with extensive coniferous tree cover"
     ],
     "is_max": true,
-    "col": "p_conifer",
+    "col": "test-aux_p_conifer",
     "val_av": false
   },
   {
@@ -667,7 +627,7 @@
       "Location dominated by ploughed, cultivated fields"
     ],
     "is_max": true,
-    "col": "p_arable",
+    "col": "test-aux_p_arable",
     "val_av": false
   },
   {
@@ -677,7 +637,7 @@
       "Improved pasture maintained for productive grazing or silage"
     ],
     "is_max": true,
-    "col": "p_imprv_grsl",
+    "col": "test-aux_p_imprv_grsl",
     "val_av": false
   },
   {
@@ -687,7 +647,7 @@
       "Species-rich meadow or rough grazing land retaining natural vegetation"
     ],
     "is_max": true,
-    "col": "p_smnat_grsl",
+    "col": "test-aux_p_smnat_grsl",
     "val_av": false
   },
   {
@@ -697,7 +657,7 @@
       "Area of montane or bog habitat with sparse vegetation"
     ],
     "is_max": true,
-    "col": "p_mountain",
+    "col": "test-aux_p_mountain",
     "val_av": false
   },
   {
@@ -707,7 +667,7 @@
       "Shoreline landscape directly adjoining the coast"
     ],
     "is_max": true,
-    "col": "p_coast",
+    "col": "test-aux_p_coast",
     "val_av": false
   },
   {
@@ -717,7 +677,7 @@
       "Town or city landscape with heavy urban development"
     ],
     "is_max": true,
-    "col": "p_urban",
+    "col": "test-aux_p_urban",
     "val_av": false
   },
   {
@@ -727,7 +687,7 @@
       "Inland location distant from the nearest coast"
     ],
     "is_max": true,
-    "col": "dist_to_sea",
+    "col": "test-aux_dist_to_sea",
     "val_av": false
   },
   {
@@ -737,7 +697,7 @@
       "Elevated terrain, situated high above sea level"
     ],
     "is_max": true,
-    "col": "elevation",
+    "col": "test-aux_elevation",
     "val_av": false
   },
   {
@@ -747,7 +707,7 @@
       "Hilly terrain with a steep gradient"
     ],
     "is_max": true,
-    "col": "slope",
+    "col": "test-aux_slope",
     "val_av": false
   },
   {
@@ -757,7 +717,7 @@
       "Location where rivers and streams are closely spaced across the terrain"
     ],
     "is_max": true,
-    "col": "river_dens",
+    "col": "test-aux_river_dens",
     "val_av": false
   },
   {
@@ -767,7 +727,7 @@
       "Polluted air with high concentrations of fine particulate matter"
     ],
     "is_max": true,
-    "col": "pm252024g",
+    "col": "test-aux_pm252024g",
     "val_av": false
   }
 ]
