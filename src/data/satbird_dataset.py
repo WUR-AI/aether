@@ -47,7 +47,7 @@ class SatBirdDataset(BaseDataset):
             dataset_name=f"satbird-{study_site}",
             seed=seed,
             cache_dir=cache_dir,
-            implemented_mod={"coords", "s2", "s2rgb", "tessera"},
+            implemented_mod={"coords", "s2", "s2rgb", "aef_avr"},
             mock=mock,
             dtype=dtype,
             use_features=use_features,
@@ -59,7 +59,6 @@ class SatBirdDataset(BaseDataset):
         """Setups the whole dataset, makes available data of requested modalities."""
 
         # Set up each requested modality
-
         for mod in self.modalities.keys():
             if mod == "coords" and len(self.modalities.keys()) == 1:
                 return
@@ -67,6 +66,8 @@ class SatBirdDataset(BaseDataset):
                 self.setup_satbird()
             elif mod == "tessera":
                 self.setup_tessera()
+            elif mod == "aef_avr":
+                self.setup_embeds(mod)
 
     def setup_satbird(self):
         """Prepares (downloads, renames and moves) data for each requested modality."""
@@ -106,6 +107,8 @@ class SatBirdDataset(BaseDataset):
                 formatted_row["eo"][modality] = s2
             elif modality == "tessera":
                 formatted_row["eo"][modality] = self.load_tessera(row["tessera_path"])
+            elif modality == "aef_avr":
+                formatted_row["eo"][modality] = self.aef_avr[row["name_loc"]]
 
         if self.use_target_data:
             formatted_row["target"] = torch.tensor(
@@ -117,15 +120,17 @@ class SatBirdDataset(BaseDataset):
             for aux_cat, vals in self.use_aux_data.items():
                 if aux_cat == "aux":
                     formatted_row["aux"][aux_cat] = torch.tensor(
-                        [row[v] for v in vals], dtype=torch.float32
+                        [row[v] for v in vals], dtype=self.dtype
                     )
                 else:
                     formatted_row["aux"][aux_cat] = [row[v] for v in vals]
 
         if self.use_features and self.feat_names:
-            formatted_row["eo"]["tabular"] = torch.tensor(
-                [row[k] for k in self.feat_names], dtype=torch.float32
-            )
+            raw = torch.tensor([row[k] for k in self.feat_names], dtype=torch.float32)
+            if self._feat_mean is not None and self._feat_std is not None:
+                formatted_row["eo"]["tabular"] = (raw - self._feat_mean) / self._feat_std
+            else:
+                formatted_row["eo"]["tabular"] = raw
 
         if self.return_name_loc:
             formatted_row["name_loc"] = row["name_loc"]
