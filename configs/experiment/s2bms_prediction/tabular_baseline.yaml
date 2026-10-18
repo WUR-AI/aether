@@ -1,0 +1,63 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+# tabular only
+
+defaults:
+  - override /model: s2bms_prediction
+  - override /data: s2bms_prediction
+  - override /metrics: s2bms_predictive
+
+tags:
+  - prediction
+  - tabular
+  - ${str:${seed}}
+
+experiment_name: tabular_baseline
+
+model:
+  normalize_features: false
+  standardize_targets: false
+  geo_encoder:
+    _target_: src.models.components.geo_encoders.tabular_encoder.TabularEncoder
+    output_dim: 256
+    dropout_prob: 0.2
+    geo_data_name: tabular
+
+  trainable_modules: [geo_encoder, prediction_head]
+  prediction_head:
+    _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
+    nn_layers: 2
+    hidden_dim: 256
+    dropout: 0.2
+
+data:
+  dataset:
+    modalities:
+      coords:
+    use_features:
+      pattern: "^aux_(?!.*top).*"
+    use_target_data: true
+    use_aux_data: false
+  caption_builder:
+  pin_memory: true
+  persistent_workers: True
+  num_workers: 11
+  batch_size: 128
+  saved_split_file_name: "s2bms_union_val_test.pth"
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "predictive"
+    project: "s2bms_prediction"
+  aim:
+    experiment: "predictive"
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      seed: 12345, 404, 654
