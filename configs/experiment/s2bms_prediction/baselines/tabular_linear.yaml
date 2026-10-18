@@ -33,7 +33,6 @@ data:
       coords:
     use_features:
       pattern: "^aux_(?!.*top).*"
-      stats_file: ${paths.data_dir}/s2bms/aux_stats/labelled.json
     use_target_data: true
     use_aux_data: false
   caption_builder:
