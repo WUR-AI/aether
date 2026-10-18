@@ -2,7 +2,6 @@ from typing import Dict, override
 
 import torch
 import torch.nn.functional as F
-from torch import nn
 
 from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 
@@ -10,7 +9,7 @@ from src.models.components.loss_fns.base_loss_fn import BaseLossFn
 class BCELoss(BaseLossFn):
     def __init__(self, weighting: bool = False, pos_weight_scale: float = 1.0) -> None:
         super().__init__()
-        self.criterion = nn.BCELoss(reduction="mean")
+
         self.name: str = "bce_loss"
         self.weighting = weighting
         self.pos_weight_scale = pos_weight_scale

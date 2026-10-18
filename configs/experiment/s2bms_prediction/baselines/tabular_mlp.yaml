@@ -15,7 +15,7 @@ tags:
   - tabular
   - ${str:${seed}}
 
-experiment_name: tabular_baseline_mlp${str:${model.prediction_head.hidden_dim}}
+experiment_name: tabular_baseline_mlp${str:${model.prediction_head.hidden_dim}}_${str:${model.prediction_head.nn_layers}}
 
 model:
   normalize_features: false
@@ -26,8 +26,6 @@ model:
   trainable_modules: [geo_encoder, prediction_head]
   prediction_head:
     _target_: src.models.components.pred_heads.mlp_pred_head.MLPPredictionHead
-    nn_layers: 2
-    dropout: 0.2
 
 data:
   dataset:
@@ -59,3 +57,4 @@ hydra:
     params:
       seed: 12345, 404, 654
       ++model.prediction_head.hidden_dim: 128, 256
+      ++model.prediction_head.nn_layers: 2, 3
