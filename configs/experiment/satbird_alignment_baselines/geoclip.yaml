@@ -1,0 +1,70 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+# GeoCLIP Baseline
+
+defaults:
+  - override /model: satbird_alignment
+  - override /data: satbird-usa
+  - override /metrics: satbird_alignment
+
+baseline: true
+ckpt_path:
+validate: true
+seed: 12345
+
+tags:
+  - baseline
+  - alignment
+  - geoclip
+
+experiment_name: geoclip_baseline
+
+projects: satbird_alignment
+
+model:
+  geo_encoder:
+    _target_: src.models.components.geo_encoders.geoclip.GeoClipCoordinateEncoder
+    geo_data_name: coords
+  text_encoder:
+    _target_: src.models.components.text_encoders.clip_text_encoder.ClipTextEncoder
+    hf_cache_dir: ${paths.huggingface_cache}
+    use_geoclip_projector: true
+  loss_fn:
+  trainable_modules: []
+
+data:
+  dataset:
+    csv_name: model_ready_satbird-USA-summer_with_lc_scaled.csv
+    modalities:
+      coords:
+    use_target_data: false
+    use_aux_data:
+      aux:
+        pattern: ".*aux_(?!.*top).*"
+        standardise: true
+      top:
+        pattern: "^aux_.*top.*"
+    dtype: float32
+  caption_builder:
+    _target_: src.data.satbird_caption_builder.SatBirdCaptionBuilder
+    templates_fname: v0.json
+    concepts_fname: v4.json
+    data_dir: ${paths.data_dir}/satbird-USA-summer
+    seed: ${seed}
+    n_captions_for_validation: 1
+    return_aux_ids: true
+  num_workers: 14
+  persistent_workers: true
+  pin_memory: true
+  prefetch_factor: 6
+  saved_split_file_name: "satbird-USA-summer_aef_union_val_test_lc.pth"
+  batch_size: 128
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "alignment"
+    project: "satbird-usa-summer_alignment"
