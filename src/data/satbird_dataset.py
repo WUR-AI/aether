@@ -24,7 +24,7 @@ class SatBirdDataset(BaseDataset):
         use_aux_data: Any = None,
         use_features: bool = False,
         seed: int = 12345,
-        study_site: str = "Kenya",
+        study_site: str = "USA-summer",
         cache_dir: str = None,
         mock: bool = False,
         dtype: str = "float32",

@@ -10,6 +10,7 @@ import rootutils
 from hydra import compose, initialize
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, open_dict
+import numpy as np
 
 from src.data.base_caption_builder import DummyCaptionBuilder
 from src.data.base_datamodule import BaseDataModule
@@ -131,12 +132,12 @@ def cfg_train(cfg_train_global: DictConfig, tmp_path: Path) -> DictConfig:
 def sample_csv(tmp_path) -> str:
     df = pd.DataFrame(
         {
-            "name_loc": [f"loc_{i}" for i in range(6)],
-            "lat": [50.0, 50.5, 51.0, 51.5, 52.0, 52.5],
-            "lon": [4.0, 4.5, 5.0, 5.5, 6.0, 6.5],
-            "target_a": [1, 0, 1, 0, 1, 0],
-            "target_b": [0, 1, 0, 1, 0, 1],
-            "aux_temp": [10, 11, 12, 13, 14, 15],
+            "name_loc": [f"loc_{i}" for i in range(24)],
+            "lat": np.random.uniform(0, 10, size=24),
+            "lon": np.random.uniform(3.0, 7.0, size=24),
+            "target_a": [1, 0, 1, 0, 1, 0] * 4,
+            "target_b": [0, 1, 0, 1, 0, 1] * 4,
+            "aux_temp": np.random.uniform(0, 100, size=24),
         }
     )
     path = tmp_path / "mock/model_ready_mock.csv"
@@ -174,12 +175,13 @@ def create_butterfly_dataset(request, sample_csv, tmp_path):
     print(f"Concept captions written to {concepts_path}")
     concepts_path.write_text(
         json.dumps(
-            """[{
-            "concept_caption": "Forested area",
-            "is_max": true,
-            "theta_k": 0.5,
-            "col": "aux_corine_frac_311"
-          }]"""
+                [{
+                "concept_caption": "Forested area",
+                "is_max": True,
+                "theta_k": 50,
+                "id": 0,
+                "col": "aux_corine_frac_311"
+              }]
         )
     )
 
@@ -193,7 +195,7 @@ def create_butterfly_dataset(request, sample_csv, tmp_path):
     dm = BaseDataModule(
         dataset,
         batch_size=2,
-        train_val_test_split=(4, 1, 1),
+        train_val_test_split=(12, 6, 6),
         num_workers=0,
         pin_memory=False,
         split_mode="random",

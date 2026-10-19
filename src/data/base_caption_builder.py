@@ -47,8 +47,11 @@ class BaseCaptionBuilder(ABC):
             r"v\d+\.json", concepts_fname
         ), f"Concepts file must be in format v<number>.json, got {concepts_fname}"
         self.concepts_path = concepts_path
-        self.concepts = json.load(open(concepts_path))
 
+        self.concepts = json.load(open(concepts_path))
+        assert isinstance(self.concepts, list), f"Concepts must be a list, got {type(self.concepts)}"
+        if len(self.concepts) > 0:
+            assert isinstance(self.concepts[0], dict), f"Concepts must be a list of dicts, got {type(self.concepts[0])}"
         self.column_to_metadata_map: Dict[str] | None = None
         self.seed = seed
         random.seed(self.seed)
