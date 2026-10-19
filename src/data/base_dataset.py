@@ -142,7 +142,7 @@ class BaseDataset(Dataset, ABC):
             self.use_aux_data = {
                 "aux": {
                     "pattern": "^aux_(?!.*top).*",
-                    "standardise": True
+                    "standardise": False
                     #     'columns' : []
                 },
                 "top": {
