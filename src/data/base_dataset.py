@@ -94,9 +94,6 @@ class BaseDataset(Dataset, ABC):
         csv_filename = csv_name or f"model_ready_{dataset_name}.csv"
         self.stats_file = os.path.join(self.data_dir, 'aux_stats', csv_filename.replace('.csv', '.json'))
         path_csv = os.path.join(self.data_dir, csv_filename)
-        assert os.path.exists(
-            path_csv
-        ), f"{path_csv} does not exist. (Expecting {csv_filename} to exist in {self.data_dir})"
         self.df = pd.read_csv(path_csv)
 
         # Other attributes or placeholders
