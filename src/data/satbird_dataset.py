@@ -9,8 +9,8 @@ from torchvision.transforms import v2
 
 from src.data.base_dataset import BaseDataset
 from src.data_preprocessing.satbird import setup_satbird_from_pooch
-from utils.data_utils import center_crop_npy
-from utils.errors import IllegalArgumentCombination
+from src.utils.data_utils import center_crop_npy
+from src.utils.errors import IllegalArgumentCombination
 
 log = logging.getLogger(__name__)
 
