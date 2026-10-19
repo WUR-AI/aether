@@ -17,6 +17,18 @@ from tqdm import tqdm
 
 from src.data_preprocessing import data_utils as du
 
+DW_CLASSES = [
+    "water",
+    "trees",
+    "grass",
+    "flooded_vegetation",
+    "crops",
+    "shrub_and_scrub",
+    "built",
+    "bare",
+    "snow_and_ice",
+]
+
 ONLINE_ACCESS_TO_GEE = True
 if ONLINE_ACCESS_TO_GEE:
     gee_api_key = os.environ.get("GEE_API")
@@ -146,21 +158,10 @@ def get_gee_image_from_coord(
             .clip(aoi)
         )
     elif collection_name == "dynamicworld":
-        prob_bands = [
-            "water",
-            "trees",
-            "grass",
-            "flooded_vegetation",
-            "crops",
-            "shrub_and_scrub",
-            "built",
-            "bare",
-            "snow_and_ice",
-        ]
         im_gee = ee.Image(
             collection.filterBounds(aoi)
             .filterDate(ee.Date(f"{year}-01-01"), ee.Date(f"{year}-12-31"))
-            .select(prob_bands)  # get all probability bands
+            .select(DW_CLASSES)  # get all probability bands
             .mean()  # mean over the year
             .reproject(f"EPSG:{epsg_code}", scale=10)  # reproject to 10m
             .clip(aoi)
@@ -219,6 +220,19 @@ def convert_corine_lc_im_to_tab(lc_im):
     dict_lc_counts.update(dict_lc_counts_include_higher)
 
     return dict_lc_counts
+
+
+def convert_dynamicworld_im_to_tab(dw_im, aoi):
+    """Convert a Dynamic World probability image to per-class average probabilities within the AOI,
+    reduced server-side in GEE (no raster download needed)."""
+    assert ONLINE_ACCESS_TO_GEE, "ONLINE_ACCESS_TO_GEE is set to False, so no access to GEE"
+    mean_dict = dw_im.reduceRegion(
+        reducer=ee.Reducer.mean(),
+        geometry=aoi,
+        scale=10,  # match the reprojected image resolution
+        maxPixels=1e9,
+    ).getInfo()
+    return {f"dynamicworld_{cls}": float(mean_dict.get(cls, 0.0) or 0.0) for cls in DW_CLASSES}
 
 
 def convert_popdensity_im_to_sum(popdensity_im, aoi):
@@ -315,6 +329,23 @@ def download_gee_image(
     assert type(path_save) and os.path.exists(
         path_save
     ), f"path_save must be a valid path, got {path_save}"
+
+    filename = create_filename(
+        base_name=name,
+        collection_name=collection_name,
+        year=year,
+        sentinel_month_start=sentinel_month_start,
+        sentinel_month_end=sentinel_month_end,
+    )
+    filepath = os.path.join(path_save, filename)
+    if os.path.exists(filepath):
+        if verbose:
+            print(f"File {filepath} already exists, skipping download.")
+        return (
+            "path-exists",
+            filepath,
+        )  # don't return None because that signals a bad download downstream
+
     if save_average_only:
         resize_image = True
     gsd_resolution = 10
@@ -338,14 +369,6 @@ def download_gee_image(
 
     if verbose:
         print("Image selected. Saving now.")
-    filename = create_filename(
-        base_name=name,
-        collection_name=collection_name,
-        year=year,
-        sentinel_month_start=sentinel_month_start,
-        sentinel_month_end=sentinel_month_end,
-    )
-    filepath = os.path.join(path_save, filename)
 
     if verbose:
         print(f"Downloading image to {filepath} ...")
@@ -420,10 +443,10 @@ def download_list_coord(
     if not os.path.exists(path_save):
         os.makedirs(path_save)
         print(f"Created folder {path_save}")
-    else:
-        print(
-            f"WARNING: folder {path_save} already exists. OVERWRITING any existing files with same names!"
-        )
+    # else:
+    #     print(
+    #         f"WARNING: folder {path_save} already exists. OVERWRITING any existing files with same names!"
+    #     )
     if name_list is not None:
         assert len(name_list) == len(
             coord_list
@@ -465,6 +488,8 @@ def download_list_coord(
                 im = None
             if im is None:
                 inds_none.append(f"{i}_{im_collection}")
+            elif type(im) is str and im == "path-exists":
+                pass
 
     if len(inds_none) > 0:
         print(
