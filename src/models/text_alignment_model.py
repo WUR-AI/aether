@@ -119,7 +119,7 @@ class TextAlignmentModel(BaseModel):
 
         log.info("------------------------")
 
-    def _on_x_star(self, mode: str):
+    def _on_x_start(self, mode: str):
         # Configure contrastive retrieval evaluation
         if mode == "predict":
             return

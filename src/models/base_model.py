@@ -313,19 +313,19 @@ class BaseModel(LightningModule, ABC):
 
     @final
     def on_fit_start(self):
-        self._on_x_star("train")
+        self._on_x_start("train")
 
     @final
     def on_test_start(self):
-        self._on_x_star("test")
+        self._on_x_start("test")
 
     @final
     def on_validate_start(self):
-        self._on_x_star("val")
+        self._on_x_start("val")
 
     @final
     def on_predict_start(self):
-        self._on_x_star("predict")
+        self._on_x_start("predict")
 
-    def _on_x_star(self, mode: str):
+    def _on_x_start(self, mode: str):
         pass
