@@ -13,8 +13,6 @@ geo_encoder:
         geo_data_name: tessera
         resnet_version: 18
         pretrained_cnn: imagenet
-        freezing_strategy: all
-        output_dim: 256
   fusion_strategy: concat
 prediction_head:
   _target_: src.models.components.pred_heads.mlp_regression_head.MLPRegressionPredictionHead
