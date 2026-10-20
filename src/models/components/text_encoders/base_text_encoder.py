@@ -48,9 +48,11 @@ class BaseTextEncoder(nn.Module, ABC):
 
         NB: is not used by default, needs to be called explicitly in forward().
         """
-        self.extra_projector = nn.Linear(self.output_dim, projected_dim, dtype=self.dtype)
+        self.extra_projector = nn.Linear(
+            self.output_dim, projected_dim, dtype=self.dtype, device=self.device
+        )
         print(
-            f"Extra linear projection layer added with mapping dimension {self.output_dim} to {projected_dim}"
+            f"Extra linear projection layer added to text encoder with mapping dimension {self.output_dim} to {projected_dim}"
         )
         self.output_dim = projected_dim
 

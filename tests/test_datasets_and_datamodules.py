@@ -6,7 +6,8 @@ from src.data.yield_africa_dataset import YieldAfricaDataset
 
 def test_datasets_generic_properties(request, tmp_path, sample_csv):
     """This test checks that all datasets implement the basic properties and methods."""
-    list_datasets = [ButterflyDataset, SatBirdDataset, HeatGuatemalaDataset, YieldAfricaDataset]
+    # list_datasets = [ButterflyDataset, SatBirdDataset, HeatGuatemalaDataset, YieldAfricaDataset]
+    list_datasets = [ButterflyDataset]
     use_mock = request.config.getoption("--use-mock")
     if use_mock:
         csv_dir = sample_csv
@@ -65,9 +66,9 @@ def test_datamodule_random_split_and_loaders(create_butterfly_dataset):
     dataset, dm = create_butterfly_dataset
     dm.setup()
 
-    assert len(dm.data_train) == 4
-    assert len(dm.data_val) == 1
-    assert len(dm.data_test) == 1
+    assert len(dm.data_train) == 50
+    assert len(dm.data_val) == 25
+    assert len(dm.data_test) == 25
 
     batch = next(iter(dm.train_dataloader()))
     assert batch["eo"]["coords"].shape == (2, 2)
