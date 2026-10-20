@@ -1,0 +1,10 @@
+code,color,category
+aux_dw_water,#419bdf,Water
+aux_dw_trees,#397d49,Trees
+aux_dw_grass,#88b053,Grass
+aux_dw_flooded_vegetation,#7a87c6,Flooded vegetation
+aux_dw_crops,#e49635,Crops
+aux_dw_shrub_and_scrub,#dfc35a,Shrub and scrub
+aux_dw_built,#c4281b,Built
+aux_dw_bare,#a59b8f,Bare
+aux_dw_snow_and_ice,#b39fe1,Snow and ice

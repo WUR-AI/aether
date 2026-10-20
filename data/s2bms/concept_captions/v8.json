@@ -1,0 +1,1023 @@
+[
+    {
+        "concept_caption": [
+            "Location where temperatures stay fairly steady from day to day and season to season",
+            "Climate with a small difference between typical daily and typical seasonal temperature swings",
+            "Area with a very stable, even temperature pattern year-round"
+        ],
+        "is_max": true,
+        "col": "aux_bioclim_03",
+        "val_av": false,
+        "id": 2,
+        "theta_k": 37.0,
+        "accuracy_baseline_train": 26.48618507385254,
+        "accuracy_baseline_val": 23.076923370361328,
+        "accuracy_baseline_test": 22.043010711669922
+    },
+    {
+        "concept_caption": [
+            "Region where the wettest time of year is also mild",
+            "Location with mild, damp weather during its rainiest months",
+            "Area where rainfall coincides with mild temperatures"
+        ],
+        "is_max": true,
+        "col": "aux_bioclim_08",
+        "val_av": false,
+        "id": 7,
+        "theta_k": 7.900000095367432,
+        "accuracy_baseline_train": 14.973485946655273,
+        "accuracy_baseline_val": 9.230769157409668,
+        "accuracy_baseline_test": 16.129032135009766
+    },
+    {
+        "concept_caption": [
+            "Region where its driest months are also mild",
+            "Location with a mild, dry stretch of the year",
+            "Area with a dry season that stays mild"
+        ],
+        "is_max": true,
+        "col": "aux_bioclim_09",
+        "val_av": false,
+        "id": 8,
+        "theta_k": 10.699999809265137,
+        "accuracy_baseline_train": 24.490650177001953,
+        "accuracy_baseline_val": 36.410255432128906,
+        "accuracy_baseline_test": 31.182796478271484
+    },
+    {
+        "concept_caption": [
+            "A very rainy area with high annual rainfall",
+            "Location that receives abundant rainfall throughout the year",
+            "Area with heavy total yearly rainfall"
+        ],
+        "is_max": true,
+        "col": "aux_bioclim_12",
+        "val_av": true,
+        "id": 11,
+        "theta_k": 1232.0,
+        "accuracy_baseline_train": 17.45743751525879,
+        "accuracy_baseline_val": 1.5384615659713745,
+        "accuracy_baseline_test": 0.5376344323158264
+    },
+    {
+        "concept_caption": [
+            "Region with an intensely rainy peak month",
+            "Location that experiences a month of very heavy rainfall",
+            "Area with a sharp monthly rainfall peak"
+        ],
+        "is_max": true,
+        "col": "aux_bioclim_13",
+        "val_av": true,
+        "id": 12,
+        "theta_k": 144.0,
+        "accuracy_baseline_train": 16.5643310546875,
+        "accuracy_baseline_val": 1.5384615659713745,
+        "accuracy_baseline_test": 0.5376344323158264
+    },
+    {
+        "concept_caption": [
+            "Region where rain falls even in its driest month",
+            "Location with a mild, damp climate where rain falls year-round",
+            "Area with rain spread fairly evenly throughout the year"
+        ],
+        "is_max": true,
+        "col": "aux_bioclim_14",
+        "val_av": true,
+        "id": 13,
+        "theta_k": 74.0,
+        "accuracy_baseline_train": 15.75495433807373,
+        "accuracy_baseline_val": 2.0512821674346924,
+        "accuracy_baseline_test": 0.5376344323158264
+    },
+    {
+        "concept_caption": [
+            "Region with a strongly seasonal rainfall pattern",
+            "Location with a clear difference between its wetter and drier months",
+            "Area with a pronounced wet-and-dry rainfall pattern across the year"
+        ],
+        "is_max": true,
+        "col": "aux_bioclim_15",
+        "val_av": true,
+        "id": 14,
+        "theta_k": 26.0,
+        "accuracy_baseline_train": 14.736254692077637,
+        "accuracy_baseline_val": 2.5641026496887207,
+        "accuracy_baseline_test": 3.22580623626709
+    },
+    {
+        "concept_caption": [
+            "Region with one markedly wet season",
+            "Location where a three-month stretch brings much of the year's rain",
+            "Area with a concentrated rainy season"
+        ],
+        "is_max": true,
+        "col": "aux_bioclim_16",
+        "val_av": true,
+        "id": 15,
+        "theta_k": 414.0,
+        "accuracy_baseline_train": 15.964275360107422,
+        "accuracy_baseline_val": 1.5384615659713745,
+        "accuracy_baseline_test": 0.5376344323158264
+    },
+    {
+        "concept_caption": [
+            "Region where even its driest quarter receives notable rainfall",
+            "Location with a mild, damp climate throughout its driest season",
+            "Area where even the driest season stays fairly damp"
+        ],
+        "is_max": true,
+        "col": "aux_bioclim_17",
+        "val_av": true,
+        "id": 16,
+        "theta_k": 226.0,
+        "accuracy_baseline_train": 17.20625114440918,
+        "accuracy_baseline_val": 2.0512821674346924,
+        "accuracy_baseline_test": 0.5376344323158264
+    },
+    {
+        "concept_caption": [
+            "Region with rainy summers",
+            "Location where the warm season is also wet",
+            "Area with frequent summer showers"
+        ],
+        "is_max": true,
+        "col": "aux_bioclim_18",
+        "val_av": true,
+        "id": 17,
+        "theta_k": 261.0,
+        "accuracy_baseline_train": 16.73179054260254,
+        "accuracy_baseline_val": 3.076923131942749,
+        "accuracy_baseline_test": 0.5376344323158264
+    },
+    {
+        "concept_caption": [
+            "Region with wet, rainy winters",
+            "Location where the cold season brings heavy rain",
+            "Area with a rainy winter climate"
+        ],
+        "is_max": true,
+        "col": "aux_bioclim_19",
+        "val_av": true,
+        "id": 18,
+        "theta_k": 375.0,
+        "accuracy_baseline_train": 15.768909454345703,
+        "accuracy_baseline_val": 1.0256410837173462,
+        "accuracy_baseline_test": 0.5376344323158264
+    },
+    {
+        "concept_caption": [
+            "Heavily built-up, artificial landscape",
+            "Area dominated by man-made structures and surfaces",
+            "Urbanized and developed land with little natural cover"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_1",
+        "val_av": true,
+        "id": 19,
+        "theta_k": 0.26587462425231934,
+        "accuracy_baseline_train": 11.526654243469238,
+        "accuracy_baseline_val": 30.256410598754883,
+        "accuracy_baseline_test": 30.107528686523438
+    },
+    {
+        "concept_caption": [
+            "Densely populated area with many houses",
+            "Residential neighborhood made up of homes and apartment buildings",
+            "Built-up area primarily used for housing",
+            "Town or city district covered mostly by residential buildings"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_11",
+        "val_av": true,
+        "id": 20,
+        "theta_k": 0.17735779285430908,
+        "accuracy_baseline_train": 10.996371269226074,
+        "accuracy_baseline_val": 26.153846740722656,
+        "accuracy_baseline_test": 27.419355392456055
+    },
+    {
+        "concept_caption": [
+            "Densely built city center where buildings almost completely cover the ground",
+            "Continuous city blocks where buildings stand tightly packed together",
+            "Compact urban core with near-total building coverage"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_111",
+        "val_av": false,
+        "id": 21,
+        "theta_k": 0.17573142051696777,
+        "accuracy_baseline_train": 0.1674574315547943,
+        "accuracy_baseline_val": 0.5128205418586731,
+        "accuracy_baseline_test": 0.5376344323158264
+    },
+    {
+        "concept_caption": [
+            "Suburban area with houses separated by gardens and green space",
+            "Low-density residential area where buildings are spaced apart",
+            "Neighborhood of houses with yards and open gaps between buildings"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_112",
+        "val_av": true,
+        "id": 22,
+        "theta_k": 0.2459789216518402,
+        "accuracy_baseline_train": 8.428690910339355,
+        "accuracy_baseline_val": 20.512821197509766,
+        "accuracy_baseline_test": 20.967741012573242
+    },
+    {
+        "concept_caption": [
+            "Area dominated by factories, warehouses, and commercial buildings",
+            "Industrial and commercial zone with transport infrastructure",
+            "Business park or industrial estate with large commercial buildings"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_12",
+        "val_av": false,
+        "id": 23,
+        "theta_k": 0.1635933667421341,
+        "accuracy_baseline_train": 2.079263210296631,
+        "accuracy_baseline_val": 4.102564334869385,
+        "accuracy_baseline_test": 4.838709354400635
+    },
+    {
+        "concept_caption": [
+            "Site occupied by factories or large commercial facilities",
+            "Industrial complex with warehouses and manufacturing buildings",
+            "Commercial zone with large stores and industrial units"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_121",
+        "val_av": false,
+        "id": 24,
+        "theta_k": 0.15983280539512634,
+        "accuracy_baseline_train": 1.6048004627227783,
+        "accuracy_baseline_val": 2.5641026496887207,
+        "accuracy_baseline_test": 4.838709354400635
+    },
+    {
+        "concept_caption": [
+            "Land disturbed by mining, dumping, or construction activity",
+            "Area of quarries, waste sites, or active building sites",
+            "Excavated or disturbed ground from extraction or construction work"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_13",
+        "val_av": false,
+        "id": 28,
+        "theta_k": 0.10209973156452179,
+        "accuracy_baseline_train": 0.7954228520393372,
+        "accuracy_baseline_val": 2.5641026496887207,
+        "accuracy_baseline_test": 0.5376344323158264
+    },
+    {
+        "concept_caption": [
+            "Open-pit mine or quarry site",
+            "Area of active mineral or gravel extraction",
+            "Land scarred by quarrying and mining operations"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_131",
+        "val_av": false,
+        "id": 29,
+        "theta_k": 0.10209973156452179,
+        "accuracy_baseline_train": 0.6140105724334717,
+        "accuracy_baseline_val": 1.5384615659713745,
+        "accuracy_baseline_test": 0.5376344323158264
+    },
+    {
+        "concept_caption": [
+            "Man-made green space within a built-up area",
+            "Urban park or landscaped green area",
+            "Vegetated recreational area within an artificial setting"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_14",
+        "val_av": false,
+        "id": 32,
+        "theta_k": 0.17826612293720245,
+        "accuracy_baseline_train": 2.302539825439453,
+        "accuracy_baseline_val": 7.179487705230713,
+        "accuracy_baseline_test": 9.139784812927246
+    },
+    {
+        "concept_caption": [
+            "City park with grass, trees, and paths",
+            "Urban green space used for public recreation",
+            "Landscaped park within a town or city"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_141",
+        "val_av": false,
+        "id": 33,
+        "theta_k": 0.15379522740840912,
+        "accuracy_baseline_train": 0.6140105724334717,
+        "accuracy_baseline_val": 1.0256410837173462,
+        "accuracy_baseline_test": 1.612903118133545
+    },
+    {
+        "concept_caption": [
+            "Sports complex with pitches or courts",
+            "Golf course, stadium, or leisure facility",
+            "Area dedicated to organized sports and recreation"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_142",
+        "val_av": false,
+        "id": 34,
+        "theta_k": 0.1780814230442047,
+        "accuracy_baseline_train": 1.4652526378631592,
+        "accuracy_baseline_val": 5.641025543212891,
+        "accuracy_baseline_test": 6.45161247253418
+    },
+    {
+        "concept_caption": [
+            "Farmland used for crops or livestock",
+            "Rural agricultural landscape",
+            "Land dominated by farming activity"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_2",
+        "val_av": true,
+        "id": 35,
+        "theta_k": 0.7384932637214661,
+        "accuracy_baseline_train": 42.673736572265625,
+        "accuracy_baseline_val": 31.282052993774414,
+        "accuracy_baseline_test": 30.64516258239746
+    },
+    {
+        "concept_caption": [
+            "Cropland used for growing annual crops",
+            "Plowed farmland planted with rotating crops",
+            "Fields of cultivated arable crops"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_21",
+        "val_av": true,
+        "id": 36,
+        "theta_k": 0.30101630091667175,
+        "accuracy_baseline_train": 36.1987190246582,
+        "accuracy_baseline_val": 37.9487190246582,
+        "accuracy_baseline_test": 34.94623565673828
+    },
+    {
+        "concept_caption": [
+            "Rain-fed farmland watered solely by natural rainfall",
+            "Dryland crop fields relying only on natural rainfall",
+            "Fields of dryland cereals or other rotating crops"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_211",
+        "val_av": true,
+        "id": 37,
+        "theta_k": 0.30101630091667175,
+        "accuracy_baseline_train": 36.1987190246582,
+        "accuracy_baseline_val": 37.9487190246582,
+        "accuracy_baseline_test": 34.94623565673828
+    },
+    {
+        "concept_caption": [
+            "Grazing land used for livestock",
+            "Meadow used as pasture for grazing animals",
+            "Grassy field where cattle or sheep graze"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_23",
+        "val_av": true,
+        "id": 44,
+        "theta_k": 0.37474703788757324,
+        "accuracy_baseline_train": 30.56098175048828,
+        "accuracy_baseline_val": 38.46154022216797,
+        "accuracy_baseline_test": 29.56989097595215
+    },
+    {
+        "concept_caption": [
+            "Permanent grassland grazed by livestock",
+            "Pasture field with grazing cattle or sheep",
+            "Grassy meadow maintained for animal grazing"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_231",
+        "val_av": true,
+        "id": 45,
+        "theta_k": 0.37474703788757324,
+        "accuracy_baseline_train": 30.56098175048828,
+        "accuracy_baseline_val": 38.46154022216797,
+        "accuracy_baseline_test": 29.56989097595215
+    },
+    {
+        "concept_caption": [
+            "Patchwork landscape mixing different crops and farmland types",
+            "Farmland where crops, pastures, and natural vegetation intermix",
+            "Mosaic of small fields with mixed agricultural uses"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_24",
+        "val_av": false,
+        "id": 46,
+        "theta_k": 0.21451233327388763,
+        "accuracy_baseline_train": 0.9489254951477051,
+        "accuracy_baseline_val": 0.5128205418586731,
+        "accuracy_baseline_test": 0.5376344323158264
+    },
+    {
+        "concept_caption": [
+            "Farmland interspersed with patches of natural vegetation",
+            "Agricultural area that still retains significant natural habitat",
+            "Farmed landscape mixed with pockets of semi-natural land"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_243",
+        "val_av": false,
+        "id": 49,
+        "theta_k": 0.16682550311088562,
+        "accuracy_baseline_train": 1.0186994075775146,
+        "accuracy_baseline_val": 1.0256410837173462,
+        "accuracy_baseline_test": 1.0752688646316528
+    },
+    {
+        "concept_caption": [
+            "Forested or semi-natural landscape",
+            "Wild, largely unfarmed area covered by trees and natural vegetation",
+            "Woodland or natural terrain with minimal human development"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_3",
+        "val_av": true,
+        "id": 51,
+        "theta_k": 0.25189125537872314,
+        "accuracy_baseline_train": 32.612335205078125,
+        "accuracy_baseline_val": 26.666667938232422,
+        "accuracy_baseline_test": 25.268817901611328
+    },
+    {
+        "concept_caption": [
+            "Area covered by woodland and trees",
+            "Dense forest landscape",
+            "Land covered mostly by tree canopy"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_31",
+        "val_av": true,
+        "id": 52,
+        "theta_k": 0.26812103390693665,
+        "accuracy_baseline_train": 11.289422035217285,
+        "accuracy_baseline_val": 16.923076629638672,
+        "accuracy_baseline_test": 18.279569625854492
+    },
+    {
+        "concept_caption": [
+            "Deciduous forest of broad-leaved trees",
+            "Woodland dominated by broadleaf, leafy trees",
+            "Forest of broad-leaved tree species"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_311",
+        "val_av": true,
+        "id": 53,
+        "theta_k": 0.18746404349803925,
+        "accuracy_baseline_train": 3.684063673019409,
+        "accuracy_baseline_val": 9.230769157409668,
+        "accuracy_baseline_test": 20.43010711669922
+    },
+    {
+        "concept_caption": [
+            "Evergreen coniferous forest",
+            "Woodland dominated by needle-leaved conifer trees",
+            "Forest of conifer species"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_312",
+        "val_av": true,
+        "id": 54,
+        "theta_k": 0.31256628036499023,
+        "accuracy_baseline_train": 4.814401149749756,
+        "accuracy_baseline_val": 1.5384615659713745,
+        "accuracy_baseline_test": 3.22580623626709
+    },
+    {
+        "concept_caption": [
+            "Forest mixing both broadleaf and coniferous trees",
+            "Woodland with a blend of deciduous and evergreen trees",
+            "Mixed-species forest of conifers and broadleaf trees together"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_313",
+        "val_av": false,
+        "id": 55,
+        "theta_k": 0.17454278469085693,
+        "accuracy_baseline_train": 2.330449342727661,
+        "accuracy_baseline_val": 7.692307949066162,
+        "accuracy_baseline_test": 4.838709354400635
+    },
+    {
+        "concept_caption": [
+            "Open landscape of shrubs and grassland vegetation",
+            "Natural terrain covered by low shrubs and herbaceous plants",
+            "Scrubland or rough grassland with sparse tree cover"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_32",
+        "val_av": true,
+        "id": 56,
+        "theta_k": 0.3452410101890564,
+        "accuracy_baseline_train": 16.773653030395508,
+        "accuracy_baseline_val": 5.641025543212891,
+        "accuracy_baseline_test": 3.22580623626709
+    },
+    {
+        "concept_caption": [
+            "Open natural grassland growing wild",
+            "Natural meadow of wild grasses",
+            "Wild, natural grassy plain"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_321",
+        "val_av": true,
+        "id": 57,
+        "theta_k": 0.26721376180648804,
+        "accuracy_baseline_train": 7.605359077453613,
+        "accuracy_baseline_val": 1.5384615659713745,
+        "accuracy_baseline_test": 1.0752688646316528
+    },
+    {
+        "concept_caption": [
+            "Open heather moorland with low shrubby vegetation",
+            "Heathland landscape of low-growing shrubby vegetation",
+            "Windswept moor with heather and scrub vegetation"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_322",
+        "val_av": true,
+        "id": 58,
+        "theta_k": 0.264302521944046,
+        "accuracy_baseline_train": 9.83812427520752,
+        "accuracy_baseline_val": 5.128205299377441,
+        "accuracy_baseline_test": 3.22580623626709
+    },
+    {
+        "concept_caption": [
+            "Transitional landscape of young trees and regenerating shrub",
+            "Area of scattered saplings and shrubby regrowth between grassland and forest",
+            "Land in transition from shrubland to forest, with sparse young trees"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_324",
+        "val_av": false,
+        "id": 60,
+        "theta_k": 0.16546455025672913,
+        "accuracy_baseline_train": 2.8467764854431152,
+        "accuracy_baseline_val": 0.5128205418586731,
+        "accuracy_baseline_test": 0.0
+    },
+    {
+        "concept_caption": [
+            "Sparse, rocky terrain with minimal vegetation",
+            "Bare ground such as rock, shingle, or sand with minimal plant cover",
+            "Open, sparsely vegetated natural area"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_33",
+        "val_av": true,
+        "id": 61,
+        "theta_k": 0.21515820920467377,
+        "accuracy_baseline_train": 1.8280770778656006,
+        "accuracy_baseline_val": 3.5897438526153564,
+        "accuracy_baseline_test": 0.0
+    },
+    {
+        "concept_caption": [
+            "Wetlands such as marshes, swamps, mudflats and bogs.",
+            "Area of flooded or waterlogged land with wetland vegetation",
+            "Boggy, water-saturated terrain "
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_4",
+        "val_av": true,
+        "id": 67,
+        "theta_k": 0.19262252748012543,
+        "accuracy_baseline_train": 15.085123062133789,
+        "accuracy_baseline_val": 4.102564334869385,
+        "accuracy_baseline_test": 2.6881721019744873
+    },
+    {
+        "concept_caption": [
+            "Freshwater marsh or bog away from the coast",
+            "Inland wetland of waterlogged, marshy ground",
+            "Peat bog or freshwater marsh in an inland setting"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_41",
+        "val_av": true,
+        "id": 68,
+        "theta_k": 0.19262252748012543,
+        "accuracy_baseline_train": 14.080379486083984,
+        "accuracy_baseline_val": 1.0256410837173462,
+        "accuracy_baseline_test": 1.612903118133545
+    },
+    {
+        "concept_caption": [
+            "Freshwater marsh with reeds and standing water",
+            "Low-lying inland marsh prone to flooding",
+            "Wet grassy marshland fed by fresh water"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_411",
+        "val_av": false,
+        "id": 69,
+        "theta_k": 0.21504883468151093,
+        "accuracy_baseline_train": 0.26514095067977905,
+        "accuracy_baseline_val": 1.0256410837173462,
+        "accuracy_baseline_test": 0.0
+    },
+    {
+        "concept_caption": [
+            "Coastal wetland shaped by tides",
+            "Tidal marsh or coastal wetland near the sea",
+            "Saline wetland along the coastline"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_42",
+        "val_av": false,
+        "id": 71,
+        "theta_k": 0.1487053781747818,
+        "accuracy_baseline_train": 1.269885540008545,
+        "accuracy_baseline_val": 3.076923131942749,
+        "accuracy_baseline_test": 1.612903118133545
+    },
+    {
+        "concept_caption": [
+            "Salt marsh vegetated with salt-tolerant plants",
+            "Coastal salt meadow flooded by high tides",
+            "Tidal salt marsh along an estuary or coast"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_421",
+        "val_av": false,
+        "id": 72,
+        "theta_k": 0.1487053781747818,
+        "accuracy_baseline_train": 0.3907340168952942,
+        "accuracy_baseline_val": 2.0512821674346924,
+        "accuracy_baseline_test": 0.5376344323158264
+    },
+    {
+        "concept_caption": [
+            "Muddy or sandy flats exposed at low tide",
+            "Bare tidal flat between high and low water marks",
+            "Coastal mudflat submerged and exposed with the tides"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_423",
+        "val_av": false,
+        "id": 74,
+        "theta_k": 0.1552000492811203,
+        "accuracy_baseline_train": 0.9628802537918091,
+        "accuracy_baseline_val": 2.0512821674346924,
+        "accuracy_baseline_test": 1.0752688646316528
+    },
+    {
+        "concept_caption": [
+            "Area covered by open water",
+            "Location dominated by a body of water",
+            "Landscape largely covered by water, such as a lake, river, or the sea"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_5",
+        "val_av": true,
+        "id": 75,
+        "theta_k": 0.23877981305122375,
+        "accuracy_baseline_train": 3.9073402881622314,
+        "accuracy_baseline_val": 3.076923131942749,
+        "accuracy_baseline_test": 5.913978576660156
+    },
+    {
+        "concept_caption": [
+            "Freshwater lake or river, away from the sea",
+            "Inland body of fresh water",
+            "Landscape dominated by a river or freshwater lake"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_51",
+        "val_av": false,
+        "id": 76,
+        "theta_k": 0.2130451798439026,
+        "accuracy_baseline_train": 1.0047446489334106,
+        "accuracy_baseline_val": 0.0,
+        "accuracy_baseline_test": 1.612903118133545
+    },
+    {
+        "concept_caption": [
+            "Still freshwater lake or reservoir",
+            "Standing body of water such as a lake or reservoir",
+            "Area adjacent to a large inland lake or reservoir"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_512",
+        "val_av": false,
+        "id": 78,
+        "theta_k": 0.2130451798439026,
+        "accuracy_baseline_train": 0.9349706768989563,
+        "accuracy_baseline_val": 0.0,
+        "accuracy_baseline_test": 1.612903118133545
+    },
+    {
+        "concept_caption": [
+            "Coastal or open sea waters",
+            "Area covered by marine, saltwater seas",
+            "Location dominated by ocean or sea water"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_52",
+        "val_av": true,
+        "id": 79,
+        "theta_k": 0.23808111250400543,
+        "accuracy_baseline_train": 2.9863243103027344,
+        "accuracy_baseline_val": 3.076923131942749,
+        "accuracy_baseline_test": 5.376344203948975
+    },
+    {
+        "concept_caption": [
+            "Estuary where a river meets the sea",
+            "Tidal river mouth blending fresh and salt water",
+            "Coastal estuary at a river's outlet to the sea"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_522",
+        "val_av": false,
+        "id": 81,
+        "theta_k": 0.1585458368062973,
+        "accuracy_baseline_train": 0.5302819013595581,
+        "accuracy_baseline_val": 0.0,
+        "accuracy_baseline_test": 0.5376344323158264
+    },
+    {
+        "concept_caption": [
+            "Open sea or ocean waters",
+            "Location out at sea, far from land",
+            "Vast expanse of ocean water"
+        ],
+        "is_max": true,
+        "col": "aux_corine_frac_523",
+        "val_av": true,
+        "id": 82,
+        "theta_k": 0.24461275339126587,
+        "accuracy_baseline_train": 2.53977108001709,
+        "accuracy_baseline_val": 3.076923131942749,
+        "accuracy_baseline_test": 5.376344203948975
+    },
+    {
+        "concept_caption": [
+            "Remote area with a point far from any road",
+            "Location containing an inaccessible spot distant from roads",
+            "Area reaching far beyond the nearest roadway"
+        ],
+        "is_max": true,
+        "col": "aux_maxdist_road",
+        "val_av": true,
+        "id": 83,
+        "theta_k": 2418.0,
+        "accuracy_baseline_train": 29.3050537109375,
+        "accuracy_baseline_val": 7.692307949066162,
+        "accuracy_baseline_test": 11.827957153320312
+    },
+    {
+        "concept_caption": [
+            "Sparsely connected area, generally far from roads",
+            "Region with a thin, spread-out road network",
+            "Location generally distant from roads across its whole area"
+        ],
+        "is_max": true,
+        "col": "aux_meandist_road",
+        "val_av": true,
+        "id": 84,
+        "theta_k": 1196.0,
+        "accuracy_baseline_train": 27.449066162109375,
+        "accuracy_baseline_val": 9.230769157409668,
+        "accuracy_baseline_test": 9.67741870880127
+    },
+    {
+        "concept_caption": [
+            "Densely populated area with many people per square kilometer",
+            "Crowded urban area with high population density",
+            "Location with a high concentration of residents"
+        ],
+        "is_max": true,
+        "col": "aux_pop_density",
+        "val_av": true,
+        "id": 85,
+        "theta_k": 999.0,
+        "accuracy_baseline_train": 7.340217590332031,
+        "accuracy_baseline_val": 18.461538314819336,
+        "accuracy_baseline_test": 19.892473220825195
+    },
+    {
+        "concept_caption": [
+            "Populous area home to a large number of people",
+            "Large town or city with a big total population",
+            "Location with a substantial resident population"
+        ],
+        "is_max": true,
+        "col": "aux_total_population",
+        "val_av": true,
+        "id": 86,
+        "theta_k": 5542.0,
+        "accuracy_baseline_train": 8.219369888305664,
+        "accuracy_baseline_val": 18.9743595123291,
+        "accuracy_baseline_test": 22.043010711669922
+    },
+    {
+        "concept_caption": [
+            "Area with a highly diverse mix of different land-cover types",
+            "Location where many different land-cover types occur together in similar proportions",
+            "Landscape combining several land-cover types in a varied mosaic"
+        ],
+        "is_max": true,
+        "col": "test-aux_shdi_lc",
+        "val_av": false,
+        "id": 87,
+        "theta_k": 1.302284598350525,
+        "accuracy_baseline_train": 8.037957191467285,
+        "accuracy_baseline_val": 17.948719024658203,
+        "accuracy_baseline_test": 17.204301834106445
+    },
+    {
+        "concept_caption": [
+            "Area covered by broadleaf woodland",
+            "Deciduous woodland landscape of broad-leaved trees",
+            "Location with extensive broadleaf tree cover"
+        ],
+        "is_max": true,
+        "col": "test-aux_p_broadleaf",
+        "val_av": false,
+        "id": 89,
+        "theta_k": 0.24062499403953552,
+        "accuracy_baseline_train": 11.582472801208496,
+        "accuracy_baseline_val": 36.92307662963867,
+        "accuracy_baseline_test": 31.182796478271484
+    },
+    {
+        "concept_caption": [
+            "Area covered by coniferous woodland",
+            "Evergreen conifer forest landscape",
+            "Location with extensive coniferous tree cover"
+        ],
+        "is_max": true,
+        "col": "test-aux_p_conifer",
+        "val_av": false,
+        "id": 90,
+        "theta_k": 0.19625000655651093,
+        "accuracy_baseline_train": 9.112475395202637,
+        "accuracy_baseline_val": 5.128205299377441,
+        "accuracy_baseline_test": 4.838709354400635
+    },
+    {
+        "concept_caption": [
+            "Area of arable farmland used for growing crops",
+            "Cropland landscape under cultivation",
+            "Location dominated by ploughed, cultivated fields"
+        ],
+        "is_max": true,
+        "col": "test-aux_p_arable",
+        "val_av": false,
+        "id": 91,
+        "theta_k": 0.2606250047683716,
+        "accuracy_baseline_train": 29.50041961669922,
+        "accuracy_baseline_val": 33.333335876464844,
+        "accuracy_baseline_test": 23.655914306640625
+    },
+    {
+        "concept_caption": [
+            "Semi-natural, unimproved grassland with a diverse mix of wild plants",
+            "Species-rich rough grassland that has developed naturally over time",
+            "Species-rich meadow or rough grazing land retaining natural vegetation"
+        ],
+        "is_max": true,
+        "col": "test-aux_p_smnat_grsl",
+        "val_av": false,
+        "id": 93,
+        "theta_k": 0.19499999284744263,
+        "accuracy_baseline_train": 15.057214736938477,
+        "accuracy_baseline_val": 7.692307949066162,
+        "accuracy_baseline_test": 8.064516067504883
+    },
+    {
+        "concept_caption": [
+            "Upland terrain of mountain ground or peat bog",
+            "High, rugged terrain or waterlogged boggy ground",
+            "Area of montane or bog habitat with sparse vegetation"
+        ],
+        "is_max": true,
+        "col": "test-aux_p_mountain",
+        "val_av": false,
+        "id": 94,
+        "theta_k": 0.1431249976158142,
+        "accuracy_baseline_train": 19.243650436401367,
+        "accuracy_baseline_val": 3.076923131942749,
+        "accuracy_baseline_test": 1.612903118133545
+    },
+    {
+        "concept_caption": [
+            "Area of coastal terrain bordering the shoreline",
+            "Land classified as coastal habitat, close to the sea's edge",
+            "Shoreline landscape directly adjoining the coast"
+        ],
+        "is_max": true,
+        "col": "test-aux_p_coast",
+        "val_av": false,
+        "id": 95,
+        "theta_k": 0.1850000023841858,
+        "accuracy_baseline_train": 2.4141781330108643,
+        "accuracy_baseline_val": 6.153846263885498,
+        "accuracy_baseline_test": 5.913978576660156
+    },
+    {
+        "concept_caption": [
+            "Built-up urban terrain with extensive development",
+            "Area classified as urban land, dense with buildings and infrastructure",
+            "Town or city landscape with heavy urban development"
+        ],
+        "is_max": true,
+        "col": "test-aux_p_urban",
+        "val_av": false,
+        "id": 96,
+        "theta_k": 0.14875000715255737,
+        "accuracy_baseline_train": 13.759419441223145,
+        "accuracy_baseline_val": 23.589744567871094,
+        "accuracy_baseline_test": 27.956989288330078
+    },
+    {
+        "concept_caption": [
+            "Location far inland, a long distance from the sea",
+            "Area well away from any coastline",
+            "Inland location distant from the nearest coast"
+        ],
+        "is_max": true,
+        "col": "test-aux_dist_to_sea",
+        "val_av": false,
+        "id": 97,
+        "theta_k": 75.29661560058594,
+        "accuracy_baseline_train": 21.183364868164062,
+        "accuracy_baseline_val": 24.102563858032227,
+        "accuracy_baseline_test": 24.19354820251465
+    },
+    {
+        "concept_caption": [
+            "High-altitude location, well above sea level",
+            "Upland area at a high elevation",
+            "Elevated terrain, situated high above sea level"
+        ],
+        "is_max": true,
+        "col": "test-aux_elevation",
+        "val_av": false,
+        "id": 98,
+        "theta_k": 248.0,
+        "accuracy_baseline_train": 20.639129638671875,
+        "accuracy_baseline_val": 2.5641026496887207,
+        "accuracy_baseline_test": 2.6881721019744873
+    },
+    {
+        "concept_caption": [
+            "Steeply sloping terrain",
+            "Area with a pronounced incline in the land surface",
+            "Hilly terrain with a steep gradient"
+        ],
+        "is_max": true,
+        "col": "test-aux_slope",
+        "val_av": false,
+        "id": 99,
+        "theta_k": 0.04347725212574005,
+        "accuracy_baseline_train": 11.973206520080566,
+        "accuracy_baseline_val": 4.102564334869385,
+        "accuracy_baseline_test": 1.0752688646316528
+    },
+    {
+        "concept_caption": [
+            "Landscape with a dense network of rivers and streams",
+            "Area richly veined with watercourses",
+            "Location where rivers and streams are closely spaced across the terrain"
+        ],
+        "is_max": true,
+        "col": "test-aux_river_dens",
+        "val_av": false,
+        "id": 101,
+        "theta_k": 2872.58984375,
+        "accuracy_baseline_train": 6.754116535186768,
+        "accuracy_baseline_val": 4.615384578704834,
+        "accuracy_baseline_test": 4.301075458526611
+    },
+    {
+        "concept_caption": [
+            "Area with elevated background PM2.5 air pollution",
+            "Location with elevated fine particulate air pollution",
+            "Polluted air with high concentrations of fine particulate matter"
+        ],
+        "is_max": true,
+        "col": "test-aux_pm252024g",
+        "val_av": false,
+        "id": 102,
+        "theta_k": 7.0567498207092285,
+        "accuracy_baseline_train": 5.372592926025391,
+        "accuracy_baseline_val": 10.769230842590332,
+        "accuracy_baseline_test": 17.204301834106445
+    }
+]

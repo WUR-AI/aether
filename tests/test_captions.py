@@ -18,18 +18,18 @@ def test_datamodule_uses_collate_when_aux_data(request, sample_csv, tmp_path):
     os.makedirs(str(tmp_path / "concept_captions"), exist_ok=True)
     print(f"Concept captions written to {concepts_path}")
     concepts_path.write_text(
-        json.dumps(
-            """[{
+        json.dumps([{
             "concept_caption": "Forested area",
-            "is_max": true,
-            "theta_k": 0.5,
-            "col": "aux_corine_frac_311"
-          }]"""
+            "is_max": True,
+            "theta_k": 50,
+            "id": 0,
+            "col": "aux_temp"
+          }]
         )
     )
 
     caption_builder = DummyCaptionBuilder("v1.json", "v1.json", data_dir=str(tmp_path), seed=0)
-
+    print(f'These are the concepts: {caption_builder.concepts}')
     dataset = ButterflyDataset(
         data_dir=sample_csv,
         cache_dir=str(tmp_path),
@@ -43,7 +43,7 @@ def test_datamodule_uses_collate_when_aux_data(request, sample_csv, tmp_path):
     dm = BaseDataModule(
         dataset,
         batch_size=2,
-        train_val_test_split=(4, 1, 1),
+        train_val_test_split=(50, 25, 25),
         split_mode="random",
         caption_builder=caption_builder,
         num_workers=0,
@@ -79,12 +79,13 @@ def test_captionbuilder_generic_properties(tmp_path):
         print(f"Concept captions written to {concepts_path}")
         concepts_path.write_text(
             json.dumps(
-                """[{
+                [{
                 "concept_caption": "Forested area",
-                "is_max": true,
-                "theta_k": 0.5,
+                "is_max": True,
+                "theta_k": 50,
+                "id": 0,
                 "col": "aux_corine_frac_311"
-              }]"""
+              }]
             )
         )
 
