@@ -66,9 +66,9 @@ def test_datamodule_random_split_and_loaders(create_butterfly_dataset):
     dataset, dm = create_butterfly_dataset
     dm.setup()
 
-    assert len(dm.data_train) == 12
-    assert len(dm.data_val) == 6
-    assert len(dm.data_test) == 6
+    assert len(dm.data_train) == 50
+    assert len(dm.data_val) == 25
+    assert len(dm.data_test) == 25
 
     batch = next(iter(dm.train_dataloader()))
     assert batch["eo"]["coords"].shape == (2, 2)

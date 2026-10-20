@@ -43,7 +43,7 @@ def test_datamodule_uses_collate_when_aux_data(request, sample_csv, tmp_path):
     dm = BaseDataModule(
         dataset,
         batch_size=2,
-        train_val_test_split=(12, 6, 6),
+        train_val_test_split=(50, 25, 25),
         split_mode="random",
         caption_builder=caption_builder,
         num_workers=0,
